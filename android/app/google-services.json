@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "590847299784",
+    "project_id": "makhub-79cc1",
+    "storage_bucket": "makhub-79cc1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:590847299784:android:c6eabf3deb1b4416c855fd",
+        "android_client_info": {
+          "package_name": "com.example.makhub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCehv0_8ZL2a8W86Vk-CJQbq--57NVpe1w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
