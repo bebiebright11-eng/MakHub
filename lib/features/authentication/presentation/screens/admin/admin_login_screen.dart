@@ -61,10 +61,15 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: "Email",
                     prefixIcon: Icon(Icons.email),
-                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -118,7 +123,13 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor:Colors.blue,
+                    foregroundColor:Colors.white,
+                    padding:const EdgeInsets.symmetric(vertical:16),
+                    shape:RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
                   ),
                   child: const Text(
                     "Login",
