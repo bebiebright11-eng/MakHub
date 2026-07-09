@@ -9,17 +9,35 @@ class AdminHostelsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Hostel Management"),
         centerTitle: true,
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 15),
+            child: Icon(Icons.more_vert),
+          )
+        ],
       ),
 
-      body: const Center(
-        child: Text(
-          "Admin Hostels Screen",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+      body: Padding(
+  padding: const EdgeInsets.all(16),
+  child: Column(
+    children: [
+
+      TextField(
+        decoration: InputDecoration(
+          hintText: "Search hostels...",
+          prefixIcon: const Icon(Icons.search),
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide.none,
           ),
         ),
       ),
+
+    ],
+  ),
+),
     );
   }
 }
