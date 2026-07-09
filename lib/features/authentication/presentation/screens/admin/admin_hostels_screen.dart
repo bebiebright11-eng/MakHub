@@ -35,9 +35,65 @@ class AdminHostelsScreen extends StatelessWidget {
         ),
       ),
 
+      const SizedBox(height: 15),
+
+SingleChildScrollView(
+  scrollDirection: Axis.horizontal,
+  child: Row(
+    children: [
+      _filterChip("All", true),
+
+      const SizedBox(width: 8),
+
+      _filterChip("Available", false),
+
+      const SizedBox(width: 8),
+
+      _filterChip("Full", false),
+
+      const SizedBox(width: 8),
+
+      _filterChip("Boys", false),
+
+      const SizedBox(width: 8),
+
+      _filterChip("Girls", false),
+
+      const SizedBox(width: 8),
+
+      _filterChip("Mixed", false),
+    ],
+  ),
+),
+
     ],
   ),
 ),
     );
   }
+
+  Widget _filterChip(String text, bool selected) {
+  return Container(
+    padding: const EdgeInsets.symmetric(
+      horizontal: 16,
+      vertical: 8,
+    ),
+    decoration: BoxDecoration(
+      color: selected
+          ? Colors.blue
+          : Colors.grey.shade200,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: selected
+            ? Colors.white
+            : Colors.grey,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
+}
+
 }
