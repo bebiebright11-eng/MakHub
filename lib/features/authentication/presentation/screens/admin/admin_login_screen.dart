@@ -27,7 +27,6 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
             child: Column(
@@ -80,23 +79,33 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Title
-                const Text(
-                  "Welcome Back",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Title
+                      const Text(
+                        "Welcome Back",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        "Sign in to your admin account",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // ...Email field, Password field, buttons all go here...
+
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  "Sign in to your admin account",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-                const SizedBox(height: 32),
-
 
 
                 // Email field
@@ -123,6 +132,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     return null;
                   },
                 ),
+
                 const SizedBox(height: 16),
 
                 // Password field
@@ -153,6 +163,17 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     return null;
                   },
                 ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      // Forgot password logic goes here later
+                    },
+                    child: const Text("Forgot Password?"),
+                  ),
+                ),
+
                 const SizedBox(height: 24),
 
                 // Login button
@@ -179,9 +200,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Register link
-                TextButton(
+                // Create Account button
+                OutlinedButton(
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -190,7 +210,24 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       ),
                     );
                   },
-                  child: const Text("Don't have an account? Register"),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.blue,
+                    side: const BorderSide(color: Colors.blue),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    "Create Account",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  "MakHub Admin v2.1 · Secure Login",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
             ),
