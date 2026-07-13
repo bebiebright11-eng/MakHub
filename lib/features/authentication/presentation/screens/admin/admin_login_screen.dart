@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'admin_register_screen.dart';
 import 'admin_dashboard_screen.dart';
+import 'forgot_password_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -169,7 +170,12 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {
-                      // Forgot password logic goes here later
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminForgotPasswordScreen(),
+                        ),
+                      );
                     },
                     child: const Text("Forgot Password?"),
                   ),
