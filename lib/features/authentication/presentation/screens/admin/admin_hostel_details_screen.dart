@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'admin_manage_floors_screen.dart';
 
 class AdminHostelDetailsScreen extends StatelessWidget {
   final String hostelName;
@@ -111,7 +112,14 @@ class AdminHostelDetailsScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminManageFloorsScreen(),
+                        ),
+                      );
+                    },
                     icon: const Icon(Icons.layers),
                     label: const Text("Manage Floors"),
                   ),
