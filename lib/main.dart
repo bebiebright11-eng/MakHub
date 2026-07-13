@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'features/authentication/presentation/screens/splash_screen.dart';
-import 'features/authentication/presentation/screens/admin/admin_hostels_screen.dart';
+import 'features/authentication/presentation/screens/admin/admin_login_screen.dart';
 
 void main() {
   runApp(const MakHubApp());
@@ -16,7 +16,7 @@ class MakHubApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'MakHub',
       theme: AppTheme.lightTheme,
-      home: AdminHostelsScreen()
+      home: AdminLoginScreen()
     );
   }
 }
