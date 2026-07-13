@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import "admin_hostels_screen.dart";
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -183,6 +189,16 @@ const ListTile(
   selectedItemColor: Colors.blue,
   unselectedItemColor: Colors.grey,
   type: BottomNavigationBarType.fixed,
+  onTap: (index) {
+    if(index ==index){
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AdminHostelsScreen(),
+        ),
+      );
+    }
+  },
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
