@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'admin_hostel_details_screen.dart';
+import 'admin_add_hostel_screen.dart';
 
 class AdminHostelsScreen extends StatelessWidget {
   const AdminHostelsScreen({super.key});
@@ -179,7 +181,17 @@ class AdminHostelsScreen extends StatelessWidget {
             children: [
 
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdminHostelDetailsScreen(
+                        hostelName: 'Dream World Hostel'
+                      ),
+
+                    ),
+                  );
+                },
                 icon: const Icon(Icons.visibility),
                 label: const Text("View"),
               ),
@@ -211,7 +223,14 @@ class AdminHostelsScreen extends StatelessWidget {
 ),
 
 floatingActionButton: FloatingActionButton(
-  onPressed: () {},
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AdminAddHostelScreen(),
+      ),
+    );
+  },
   child: const Icon(Icons.add),
 ),
     );
