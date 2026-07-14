@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'admin_add_floor_screen.dart';
 
 class AdminManageFloorsScreen extends StatelessWidget{
   const AdminManageFloorsScreen({super.key});
@@ -14,7 +15,14 @@ class AdminManageFloorsScreen extends StatelessWidget{
             padding : const EdgeInsets.only(right: 15),
             child : ElevatedButton.icon(
               onPressed: () {
-                // Add floor logic goes here later
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminAddFloorScreen(),
+                  ),
+
+                );
+                
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
