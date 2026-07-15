@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import "admin_hostels_screen.dart";
+import 'admin_bookings_screen.dart';
+import 'admin_notification_screen.dart';
+import 'admin_profile_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -190,7 +193,7 @@ const ListTile(
   unselectedItemColor: Colors.grey,
   type: BottomNavigationBarType.fixed,
   onTap: (index) {
-    if(index ==index){
+    if (index == 1) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -198,6 +201,31 @@ const ListTile(
         ),
       );
     }
+    if (index == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AdminBookingsScreen(),
+        ),
+      );
+    }
+    if (index == 3) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AdminNotificationsScreen(),
+        ),
+      );
+    }
+    if (index == 4) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AdminProfileScreen(),
+        ),
+      );
+    }
+    // We'll add Payments and Settings navigation later
   },
         items: const [
           BottomNavigationBarItem(
