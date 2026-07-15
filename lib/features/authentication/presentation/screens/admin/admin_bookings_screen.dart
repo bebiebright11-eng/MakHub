@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'admin_bookings_details_screen.dart';
 import 'admin_notification_screen.dart';
+import 'admin_profile_screen.dart';
 
 class AdminBookingsScreen extends StatefulWidget {
   const AdminBookingsScreen({super.key});
@@ -120,6 +121,15 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
             );
             return;
           } 
+          if (index == 4) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AdminProfileScreen(),
+        ),
+      );
+      return;
+    }
           Navigator.pop(context);
           // Other tabs (Dashboard, Hostels, Notifications, Profile)
           // can be wired the same way once those screens are ready.
