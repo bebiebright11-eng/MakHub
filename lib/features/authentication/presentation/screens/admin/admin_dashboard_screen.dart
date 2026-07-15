@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import "admin_hostels_screen.dart";
 import 'admin_bookings_screen.dart';
+import 'admin_notification_screen.dart';
+
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -204,6 +206,14 @@ const ListTile(
         context,
         MaterialPageRoute(
           builder: (context) => const AdminBookingsScreen(),
+        ),
+      );
+    }
+    if (index == 3) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AdminNotificationsScreen(),
         ),
       );
     }

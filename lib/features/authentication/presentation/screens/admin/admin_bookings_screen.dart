@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'admin_bookings_details_screen.dart';
+import 'admin_notification_screen.dart';
 
 class AdminBookingsScreen extends StatefulWidget {
   const AdminBookingsScreen({super.key});
@@ -109,7 +110,16 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
-          if (index == 2) return; // already on Bookings
+          if (index == 2) return;
+          if (index == 3) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminNotificationsScreen(),
+              ),
+            );
+            return;
+          } 
           Navigator.pop(context);
           // Other tabs (Dashboard, Hostels, Notifications, Profile)
           // can be wired the same way once those screens are ready.
