@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'admin_add_floor_screen.dart';
+import 'admin_room_list_screen.dart';
 
 class AdminManageFloorsScreen extends StatelessWidget{
   const AdminManageFloorsScreen({super.key});
@@ -58,6 +59,7 @@ class AdminManageFloorsScreen extends StatelessWidget{
             const SizedBox(height: 20),
       
             _floorCard(
+              context: context,
               name: "Ground Floor",
               description: "Main access level and reception area",
               rooms: "30",
@@ -70,6 +72,7 @@ class AdminManageFloorsScreen extends StatelessWidget{
   }
 
   Widget _floorCard({
+    required BuildContext context,
     required String name,
     required String description,
     required String rooms,
@@ -157,7 +160,12 @@ class AdminManageFloorsScreen extends StatelessWidget{
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () {
-                // Navigate to Room List screen — we'll wire this later
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminRoomListScreen(),
+                  ),
+                );
               },
               icon: const Icon(Icons.meeting_room, size: 18),
               label: const Text("Manage Rooms"),
