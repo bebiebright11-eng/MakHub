@@ -54,7 +54,7 @@ class FloorsScreen extends StatelessWidget {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2563EB),
-              shape: BorderRadius.circular(10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text('Manage Rooms', style: TextStyle(color: Colors.white)),
           ),

@@ -47,7 +47,7 @@ class RoomDetailsScreen extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2563EB),
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: BorderRadius.circular(12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: const Text('Update Status', style: TextStyle(color: Colors.white)),
                   ),

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 class UpdateRoomStatusScreen extends StatefulWidget {
   final String roomNumber;
-  const UpdateRoomStatusScreen({super.key, required this.roomNumber});
+  final bool isDouble;
+  const UpdateRoomStatusScreen({super.key, required this.roomNumber, this.isDouble = false});
 
   @override
   State<UpdateRoomStatusScreen> createState() => _UpdateRoomStatusScreenState();
@@ -10,7 +11,13 @@ class UpdateRoomStatusScreen extends StatefulWidget {
 
 class _UpdateRoomStatusScreenState extends State<UpdateRoomStatusScreen> {
   String _availability = 'Occupied';
-  String _occupancy = '1/1';
+  late String _occupancy;
+
+  @override
+  void initState() {
+    super.initState();
+    _occupancy = widget.isDouble ? '1/2' : '1/1';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,19 +39,27 @@ class _UpdateRoomStatusScreenState extends State<UpdateRoomStatusScreen> {
             const SizedBox(height: 24),
             const Text('Occupancy', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            _buildChoiceChipGroup(['0/1', '1/1'], _occupancy, (val) => setState(() => _occupancy = val)),
+            if (widget.isDouble)
+              _buildChoiceChipGroup(['0/2', '1/2', '2/2'], _occupancy, (val) => setState(() => _occupancy = val))
+            else
+              _buildChoiceChipGroup(['0/1', '1/1'], _occupancy, (val) => setState(() => _occupancy = val)),
             const Spacer(),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Room status updated in real-time!')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Room status updated instantly across all platforms!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2563EB),
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: BorderRadius.circular(12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
               ),
