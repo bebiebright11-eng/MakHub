@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'booking_status_screen.dart';
 
 class StudentPaymentScreen extends StatefulWidget {
   final String hostelName;
@@ -114,8 +115,16 @@ class _StudentPaymentScreenState extends State<StudentPaymentScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        // Payment processing / Booking Status navigation goes here later
-                        debugPrint("Paying with: ${_mobileNumberController.text}");
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => StudentBookingStatusScreen(
+                              hostelName: widget.hostelName,
+                              roomNumber: widget.roomNumber,
+                              
+                            ),
+                          ),
+                        );
                       }
                     },
                     style: ElevatedButton.styleFrom(

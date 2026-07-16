@@ -1,159 +1,121 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
-class StudentPaymentScreen extends StatefulWidget {
+class StudentBookingStatusScreen extends StatefulWidget {
   final String hostelName;
   final String roomNumber;
-  final String bookingFee;
-  final String mobileMoneyCharges;
 
-  const StudentPaymentScreen({
+  const StudentBookingStatusScreen({
     super.key,
     required this.hostelName,
     required this.roomNumber,
-    this.bookingFee = "GHS 500",
-    this.mobileMoneyCharges = "GHS 15",
   });
 
   @override
-  State<StudentPaymentScreen> createState() => _StudentPaymentScreenState();
+  State<StudentBookingStatusScreen> createState() => _StudentBookingStatusScreenState();
 }
 
-class _StudentPaymentScreenState extends State<StudentPaymentScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _mobileNumberController = TextEditingController();
+class _StudentBookingStatusScreenState extends State<StudentBookingStatusScreen> {
+  Duration _remaining = const Duration(hours: 12);
+  Timer? _timer;
 
-  double get _bookingFeeValue =>
-      double.tryParse(widget.bookingFee.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
-  double get _chargesValue =>
-      double.tryParse(widget.mobileMoneyCharges.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
-  double get _totalValue => _bookingFeeValue + _chargesValue;
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        if (_remaining.inSeconds > 0) {
+          _remaining = _remaining - const Duration(seconds: 1);
+        } else {
+          _timer?.cancel();
+        }
+      });
+    });
+  }
 
   @override
   void dispose() {
-    _mobileNumberController.dispose();
+    _timer?.cancel();
     super.dispose();
+  }
+
+  String get _formattedTime {
+    final hours = _remaining.inHours.toString().padLeft(2, '0');
+    final minutes = (_remaining.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (_remaining.inSeconds % 60).toString().padLeft(2, '0');
+    return "$hours:$minutes:$seconds";
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Payment"),
+        title: const Text("Booking Status"),
         centerTitle: true,
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "${widget.hostelName} • Room ${widget.roomNumber}",
-                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                const SizedBox(height: 20),
-
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(
-                    children: [
-                      _summaryRow("Booking Fee", widget.bookingFee),
-                      const SizedBox(height: 10),
-                      _summaryRow("Mobile Money Charges", widget.mobileMoneyCharges),
-                      const Divider(height: 24),
-                      _summaryRow(
-                        "Total Amount",
-                        "GHS ${_totalValue.toStringAsFixed(2)}",
-                        bold: true,
-                      ),
-                    ],
-                  ),
+                child: const Text(
+                  "Pending",
+                  style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w600),
                 ),
+              ),
+              const SizedBox(height: 24),
 
-                const SizedBox(height: 28),
+              Text(
+                "${widget.hostelName} • Room ${widget.roomNumber}",
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 32),
 
-                const Text(
-                  "Mobile Money Number",
-                  style: TextStyle(fontWeight: FontWeight.w600),
+              const Text(
+                "Time Remaining",
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _formattedTime,
+                style: const TextStyle(
+                  fontSize: 42,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
                 ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _mobileNumberController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    hintText: "e.g. 024 000 0000",
-                    prefixIcon: const Icon(Icons.phone_android),
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return "Please enter your mobile money number";
-                    }
-                    if (value.length < 10) {
-                      return "Please enter a valid phone number";
-                    }
-                    return null;
-                  },
+              ),
+              const SizedBox(height: 32),
+
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-
-                const SizedBox(height: 32),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        // Payment processing / Booking Status navigation goes here later
-                        debugPrint("Paying with: ${_mobileNumberController.text}");
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.red),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "You must complete payment before the timer expires, otherwise the room will automatically become available again.",
+                        style: TextStyle(fontSize: 12, color: Colors.red),
                       ),
                     ),
-                    child: const Text(
-                      "Pay Now",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _summaryRow(String label, String value, {bool bold = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: bold ? 15 : 13)),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: bold ? FontWeight.bold : FontWeight.w600,
-            fontSize: bold ? 17 : 14,
-            color: bold ? Colors.blue : Colors.black,
-          ),
-        ),
-      ],
     );
   }
 }
