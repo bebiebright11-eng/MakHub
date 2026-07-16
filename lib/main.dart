@@ -6,6 +6,7 @@ import 'features/authentication/presentation/screens/student/screens/student_log
 import 'features/authentication/presentation/screens/personnel/personnel_login_screen.dart';
 import 'features/authentication/presentation/screens/personnel/activate_account_screen.dart';
 import 'features/authentication/presentation/screens/personnel/3_dashboard_screen.dart';
+import 'features/authentication/presentation/screens/student/screens/home_screen.dart';
 
 void main() {
   runApp(const MakHubApp());
@@ -26,6 +27,7 @@ class MakHubApp extends StatelessWidget {
         '/activate-account': (context) => const ActivateAccountScreen(),
         '/dashboard': (context) => const DashboardScreen(),
         '/student-login': (context) => const StudentLoginScreen(),
+        '/student-home': (context) => const StudentHomeScreen(),
         '/admin-login': (context) => const AdminLoginScreen(),
       },
     );
