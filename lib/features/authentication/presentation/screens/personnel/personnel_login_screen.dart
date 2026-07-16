@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(
           builder: (context) => const ActivateAccountScreen(),
         ),
-      )
+      );
 
     } else {
       Navigator.pushReplacementNamed(context, '/dashboard');
