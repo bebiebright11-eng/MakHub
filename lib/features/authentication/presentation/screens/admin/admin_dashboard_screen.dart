@@ -3,6 +3,8 @@ import "admin_hostels_screen.dart";
 import 'admin_bookings_screen.dart';
 import 'admin_notification_screen.dart';
 import 'admin_profile_screen.dart';
+import 'admin_add_hostel_screen.dart';
+import 'admin_payments_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -105,13 +107,45 @@ _summaryCard(
               crossAxisCount: 3,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
-              children: const [
-                _ActionButton("Add Hostel", Icons.add),
-                _ActionButton("Add Staff", Icons.group),
-                _ActionButton("Bookings", Icons.list),
-                _ActionButton("Reports", Icons.bar_chart),
-                _ActionButton("Payments", Icons.payment),
-                _ActionButton("View All", Icons.arrow_forward),
+              children: [
+                _ActionButton("Add Hostel", Icons.add, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdminAddHostelScreen(),
+                    ),
+                  );
+                }),
+                _ActionButton("Add Staff", Icons.group, () {
+                  // Add Staff screen not built yet
+                }),
+                _ActionButton("Bookings", Icons.list, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdminBookingsScreen(),
+                    ),
+                  );
+                }),
+                _ActionButton("Reports", Icons.bar_chart, () {
+                  // Reports screen not built yet
+                }),
+                _ActionButton("Payments", Icons.payment, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdminPaymentsScreen(),
+                    ),
+                  );
+                }),
+                _ActionButton("View All", Icons.arrow_forward, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdminHostelsScreen(),
+                    ),
+                  );
+                }),
               ],
             ),
 
@@ -230,7 +264,7 @@ const ListTile(
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            label: "Home",
+            label: "Dashboard",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.apartment),
@@ -241,12 +275,12 @@ const ListTile(
             label: "Bookings",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.payment),
-            label: "Payments",
+            icon: Icon(Icons.notifications),
+            label: "Notifications",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: "Settings",
+            icon: Icon(Icons.person),
+            label: "Profile",
           ),
         ],
       ),
@@ -306,33 +340,37 @@ const ListTile(
   );
 }
 }
-
 class _ActionButton extends StatelessWidget {
   final String title;
   final IconData icon;
+  final VoidCallback onTap;
 
   const _ActionButton(
     this.title,
     this.icon,
+    this.onTap,
   );
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-          ),
-        ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
