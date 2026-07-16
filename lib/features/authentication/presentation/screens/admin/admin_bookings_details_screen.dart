@@ -21,7 +21,7 @@ class AdminBookingDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      app_bar: AppBar(
         title: const Text('Booking Details'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
