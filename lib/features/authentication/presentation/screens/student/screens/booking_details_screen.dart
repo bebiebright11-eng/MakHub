@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'receipt_screen.dart';
 
 class StudentBookingDetailsScreen extends StatelessWidget {
   final String bookingId;
@@ -73,7 +74,20 @@ class StudentBookingDetailsScreen extends StatelessWidget {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () {
-                  // Navigate to Receipt screen — wired next
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => StudentReceiptScreen(
+                        receiptNumber: "RCPT123456",
+                        bookingId: bookingId,
+                        studentName: "Kwame Asante",
+                        hostelName: hostelName,
+                        roomNumber: roomNumber,
+                        amountPaid: "GHS 500",
+                      
+                      ),
+                    ),
+                  );
                 },
                 icon: const Icon(Icons.receipt_long),
                 label: const Text("View Receipt"),
@@ -88,7 +102,7 @@ class StudentBookingDetailsScreen extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // Contact hostel logic goes here later
+                  
                 },
                 icon: const Icon(Icons.call),
                 label: const Text("Contact Hostel"),
