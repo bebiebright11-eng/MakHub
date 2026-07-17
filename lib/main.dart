@@ -10,6 +10,10 @@ import 'features/authentication/presentation/screens/splash_screen.dart';
 import 'features/authentication/presentation/screens/student/screens/student_login_screen.dart';
 import 'firebase_options.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'features/authentication/presentation/screens/admin/admin_dashboard_screen.dart';
+import 'shared/widgets/auth_guard.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -29,12 +33,16 @@ class MakHubApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'MakHub',
       theme: AppTheme.lightTheme,
-      initialRoute: '/role-selection',
+      home: FirebaseAuth.instance.currentUser == null
+          ? const RoleSelectionScreen()
+          : const AdminDashboardScreen(),
       routes: {
         '/role-selection': (context) => const RoleSelectionScreen(),
         '/login': (context) => const LoginScreen(),
         '/activate-account': (context) => const ActivateAccountScreen(),
-        '/dashboard': (context) => const DashboardScreen(),
+        '/dashboard': (context) => const AuthGuard(
+              child: DashboardScreen(),
+            ),
         '/student-login': (context) => const StudentLoginScreen(),
         '/admin-login': (context) => const AdminLoginScreen(),
       },
