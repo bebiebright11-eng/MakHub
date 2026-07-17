@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AdminAddHostelScreen extends StatefulWidget {
   const AdminAddHostelScreen({super.key});
@@ -24,6 +26,8 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
 
   String _selectedType = "Mixed";
   final Set<String> _selectedFacilities = {};
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   final List<String> _facilities = [
     "WiFi",
@@ -291,27 +295,64 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
 
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        // Firebase save logic goes here later
-                        debugPrint("Hostel: ${_nameController.text}");
-                        Navigator.pop(context);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      "Save Hostel",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                  ),
+child: ElevatedButton(
+  onPressed: () async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        await _firestore.collection('hostels').add({
+          'hostelName': _nameController.text.trim(),
+          'location': _locationController.text.trim(),
+          'description': _descriptionController.text.trim(),
+          'type': _selectedType,
+          'distance': _distanceController.text.trim(),
+          'walkingTime': _walkingTimeController.text.trim(),
+          'mapsLink': _mapsLinkController.text.trim(),
+          'singlePrice': _singlePriceController.text.trim(),
+          'doublePrice': _doublePriceController.text.trim(),
+          'facilities': _selectedFacilities.toList(),
+          'shops': _shopsController.text.trim(),
+          'hospital': _hospitalController.text.trim(),
+          'atm': _atmController.text.trim(),
+          'createdBy': _auth.currentUser!.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Hostel added successfully'),
+          ),
+        );
+
+        Navigator.pop(context);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+          ),
+        );
+      }
+    }
+  },
+
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.blue,
+    foregroundColor: Colors.white,
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+
+  child: const Text(
+    "Save Hostel",
+    style: TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+    ),
+  ),
+),
+
+
                 ),
                 const SizedBox(height: 20),
               ],
