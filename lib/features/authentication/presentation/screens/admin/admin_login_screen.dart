@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'admin_register_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'forgot_password_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -185,20 +186,32 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
                 // Login button
                 ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      // Firebase login logic goes here later
-                      debugPrint("Email: ${_emailController.text}");
-                      debugPrint("Password: ${_passwordController.text}");
+                  onPressed: () async {
+  if (_formKey.currentState!.validate()) {
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AdminDashboardScreen(),
-                        ),
-                      );
-                    }
-                  },
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AdminDashboardScreen(),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+  print("Firebase Error Code: ${e.code}");
+  print("Firebase Error Message: ${e.message}");
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(e.message ?? 'Login failed'),
+    ),
+  );
+}
+  }
+},
                   style: ElevatedButton.styleFrom(
                     backgroundColor:Colors.blue,
                     foregroundColor:Colors.white,

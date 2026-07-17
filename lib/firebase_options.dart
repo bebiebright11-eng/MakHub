@@ -53,10 +53,10 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCehv0_8ZL2a8W86Vk-CJQbq--57NVpe1w',
-    appId: '1:590847299784:android:c6eabf3deb1b4416c855fd',
-    messagingSenderId: '590847299784',
-    projectId: 'makhub-79cc1',
-    storageBucket: 'makhub-79cc1.firebasestorage.app',
+    apiKey: 'AIzaSyDQ_YlOCZn7zp-MS_V4N4X7_wm24ddfD70',
+    appId: '1:65841628745:android:d154fad6aa4ba3fe142198',
+    messagingSenderId: '65841628745',
+    projectId: 'makhub-f2223',
+    storageBucket: 'makhub-f2223.firebasestorage.app',
   );
 }
