@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'admin_hostel_details_screen.dart';
 import 'admin_add_hostel_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminHostelsScreen extends StatelessWidget {
   const AdminHostelsScreen({super.key});
@@ -71,151 +72,153 @@ class AdminHostelsScreen extends StatelessWidget {
 
   const SizedBox(height: 20),
 
-  Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      const Text(
-        "14 Hostels Found",
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+StreamBuilder<QuerySnapshot>(
+  stream: FirebaseFirestore.instance
+      .collection('hostels')
+      .snapshots(),
+  builder: (context, snapshot) {
 
-      Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 8,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Row(
-          children: [
-            Icon(
-              Icons.sort,
-              size: 18,
-            ),
-            SizedBox(width: 5),
-            Text("Sort"),
-          ],
-        ),
-      ),
-    ],
-  ),
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
-  const SizedBox(height: 20),
+    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+      return const Center(
+        child: Text("No hostels found"),
+      );
+    }
 
-  Card(
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
-    ),
-    elevation: 3,
-    child: Padding(
-      padding: const EdgeInsets.all(15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: snapshot.data!.docs.length,
+      itemBuilder: (context, index) {
 
-          Container(
-            height: 180,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.apartment,
-                size: 70,
-                color: Colors.grey,
-              ),
-            ),
+        final hostel = snapshot.data!.docs[index];
+
+        return Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
+          elevation: 3,
+          margin: const EdgeInsets.only(bottom: 20),
+          child: Padding(
+            padding: const EdgeInsets.all(15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
 
-          const SizedBox(height: 15),
-
-          const Text(
-            "Dream World Hostel",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          const Row(
-            children: [
-              Icon(
-                Icons.location_on,
-                size: 18,
-                color: Colors.red,
-              ),
-              SizedBox(width: 5),
-              Text("500m from campus"),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("Available Rooms: 45"),
-              Text(
-                "UGX 450,000",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 15),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AdminHostelDetailsScreen(
-                        hostelName: 'Dream World Hostel'
-                      ),
-
+                Container(
+                  height: 180,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.apartment,
+                      size: 70,
+                      color: Colors.grey,
                     ),
-                  );
-                },
-                icon: const Icon(Icons.visibility),
-                label: const Text("View"),
-              ),
-
-              ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.edit),
-                label: const Text("Edit"),
-              ),
-
-              ElevatedButton.icon(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  ),
                 ),
-                icon: const Icon(Icons.delete),
-                label: const Text("Delete"),
-              ),
-            ],
+
+                const SizedBox(height: 15),
+
+                Text(
+                  hostel['name'] ?? '',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on,
+                      size: 18,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      hostel['location'] ?? '',
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      hostel['type'] ?? '',
+                    ),
+                    Text(
+                      "UGX ${hostel['singlePrice']}",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 15),
+
+                Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceEvenly,
+                  children: [
+
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                AdminHostelDetailsScreen(
+                              hostelName: hostel['name'],
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.visibility),
+                      label: const Text("View"),
+                    ),
+
+                    ElevatedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.edit),
+                      label: const Text("Edit"),
+                    ),
+
+                    ElevatedButton.icon(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      icon: const Icon(Icons.delete),
+                      label: const Text("Delete"),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
-    ),
-  ),
+        );
+      },
+    );
+  },
+),
+ 
 
       ],
     ),
