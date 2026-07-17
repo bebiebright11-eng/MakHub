@@ -6,6 +6,10 @@ import 'admin_profile_screen.dart';
 import 'admin_add_hostel_screen.dart';
 import 'admin_payments_screen.dart';
 
+import 'admin_login_screen.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
+
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -20,13 +24,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       appBar: AppBar(
         title: const Text("MakHub Admin"),
         centerTitle: true,
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: CircleAvatar(
-              child: Icon(Icons.person),
-            ),
-          )
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: "Logout",
+           onPressed: () async {
+  await FirebaseAuth.instance.signOut();
+
+  if (!mounted) return;
+
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const AdminLoginScreen(),
+    ),
+    (route) => false,
+  );
+},
+          ),
         ],
       ),
 

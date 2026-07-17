@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'admin_hostel_details_screen.dart';
 import 'admin_add_hostel_screen.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 class AdminHostelsScreen extends StatelessWidget {
   const AdminHostelsScreen({super.key});
 

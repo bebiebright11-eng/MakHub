@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminRegisterScreen extends StatefulWidget {
   const AdminRegisterScreen({super.key});
@@ -15,6 +17,9 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -193,15 +198,56 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
 
                 // Register button
                 ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      // Firebase registration logic goes here later
-                      debugPrint("Full Name: ${_fullNameController.text}");
-                      debugPrint("Email: ${_emailController.text}");
-                      debugPrint("Phone: ${_phoneController.text}");
-                      debugPrint("Password: ${_passwordController.text}");
-                    }
-                  },
+                  onPressed: () async {
+  if (_formKey.currentState!.validate()) {
+    try {
+      // Create user in Firebase Authentication
+      UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // Save extra information in Firestore
+     await FirebaseFirestore.instance
+    .collection('users')
+    .doc(userCredential.user!.uid)
+    .set({
+  'fullName': _fullNameController.text.trim(),
+  'email': _emailController.text.trim(),
+  'phone': _phoneController.text.trim(),
+  'role': 'admin',
+  'createdAt': FieldValue.serverTimestamp(),
+});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("User registered successfully!"),
+        ),
+      );
+
+      Navigator.pop(context);
+
+    } on FirebaseAuthException catch (e) {
+
+      String message = "";
+
+      if (e.code == 'email-already-in-use') {
+        message = "Email already exists.";
+      } else if (e.code == 'weak-password') {
+        message = "Password is too weak.";
+      } else if (e.code == 'invalid-email') {
+        message = "Invalid email.";
+      } else {
+        message = e.message ?? "Registration failed.";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
+},
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
