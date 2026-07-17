@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'core/theme/app_theme.dart';
-import 'features/authentication/presentation/screens/splash_screen.dart';
 import 'features/authentication/presentation/screens/admin/admin_login_screen.dart';
-import 'features/authentication/presentation/screens/student/screens/student_login_screen.dart';
-import 'features/authentication/presentation/screens/personnel/personnel_login_screen.dart';
-import 'features/authentication/presentation/screens/personnel/activate_account_screen.dart';
 import 'features/authentication/presentation/screens/personnel/3_dashboard_screen.dart';
 import 'features/authentication/presentation/screens/student/screens/home_screen.dart';
 
-void main() {
   runApp(const MakHubApp());
 }
 
@@ -21,8 +17,9 @@ class MakHubApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'MakHub',
       theme: AppTheme.lightTheme,
-      initialRoute: '/login',
+      initialRoute: '/role-selection',
       routes: {
+        '/role-selection': (context) => const RoleSelectionScreen(),
         '/login': (context) => const LoginScreen(),
         '/activate-account': (context) => const ActivateAccountScreen(),
         '/dashboard': (context) => const DashboardScreen(),
