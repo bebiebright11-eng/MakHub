@@ -100,7 +100,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
             ],
           ),
           const SizedBox(height: 20),
-          const Row(
+           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _summaryItem('Room Number', 'Room 110'),
@@ -108,7 +108,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
             ],
           ),
           const SizedBox(height: 16),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _summaryItem('Mobile Money Charges', 'UGX 2K'),

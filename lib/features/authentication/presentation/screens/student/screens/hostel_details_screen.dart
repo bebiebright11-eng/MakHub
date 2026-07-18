@@ -301,7 +301,7 @@ class HostelDetailsScreen extends StatelessWidget {
         children: [
           _ruleRow(Icons.access_time, 'Gate closes at 11:00 PM', const Color(0xFFF97316)),
           const SizedBox(height: 12),
-          _ruleRow(Icons.no_smoking, 'No smoking indoors', Colors.red),
+          _ruleRow(Icons.block, 'No smoking indoors', Colors.red),
           const SizedBox(height: 12),
           _ruleRow(Icons.people_outline, 'Visitors until 8:00 PM only', Colors.blue),
           const SizedBox(height: 12),
