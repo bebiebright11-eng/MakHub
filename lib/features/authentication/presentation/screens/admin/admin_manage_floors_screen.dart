@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 import 'admin_add_floor_screen.dart';
 import 'admin_room_list_screen.dart';
 
-class AdminManageFloorsScreen extends StatelessWidget{
-  const AdminManageFloorsScreen({super.key});
+class AdminManageFloorsScreen extends StatelessWidget {
+  final String hostelId;
+  final String hostelName;
+
+  const AdminManageFloorsScreen({
+    super.key,
+    required this.hostelId,
+    required this.hostelName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +26,9 @@ class AdminManageFloorsScreen extends StatelessWidget{
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const AdminAddFloorScreen(),
+                    builder: (_) => AdminAddFloorScreen(
+                        hostelId: hostelId,
+                    ),
                   ),
 
                 );
@@ -42,13 +51,13 @@ class AdminManageFloorsScreen extends StatelessWidget{
        child:Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children:[
-          const Text(
-            'Sunrise Residence',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey
-            ),
-          ),
+          Text(
+  hostelName,
+  style: const TextStyle(
+    fontSize: 13,
+    color: Colors.grey,
+  ),
+),
           const Text(
             'Hostel management',
               style: TextStyle(
@@ -58,13 +67,7 @@ class AdminManageFloorsScreen extends StatelessWidget{
             ),
             const SizedBox(height: 20),
       
-            _floorCard(
-              context: context,
-              name: "Ground Floor",
-              description: "Main access level and reception area",
-              rooms: "30",
-              available: "8",
-            ),
+            
           ],
         ),
       ),

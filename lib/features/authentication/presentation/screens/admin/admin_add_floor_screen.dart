@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 
 class AdminAddFloorScreen extends StatefulWidget {
-  const AdminAddFloorScreen({super.key});
+  final String hostelId;
+
+  const AdminAddFloorScreen({
+    super.key,
+    required this.hostelId,
+  });
 
   @override
-  State<AdminAddFloorScreen> createState() => _AdminAddFloorScreenState();
+  State<AdminAddFloorScreen> createState() =>
+      _AdminAddFloorScreenState();
 }
 
-class _AdminAddFloorScreenState extends State<AdminAddFloorScreen> {
+class _AdminAddFloorScreenState
+    extends State<AdminAddFloorScreen> {
+
   final _floorNameController = TextEditingController();
   final _roomRangeController = TextEditingController();
 
@@ -17,6 +25,7 @@ class _AdminAddFloorScreenState extends State<AdminAddFloorScreen> {
     _roomRangeController.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -89,14 +98,17 @@ class _AdminAddFloorScreenState extends State<AdminAddFloorScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: const Text(
                   "Save",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+  fontSize: 16,
+  fontWeight: FontWeight.w600,
+),
                 ),
               ),
             ),
@@ -107,3 +119,4 @@ class _AdminAddFloorScreenState extends State<AdminAddFloorScreen> {
     );
   }
 }
+

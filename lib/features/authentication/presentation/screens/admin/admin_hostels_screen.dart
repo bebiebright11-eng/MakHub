@@ -3,12 +3,20 @@ import 'admin_hostel_details_screen.dart';
 import 'admin_add_hostel_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'admin_edit_hostel_screen.dart';
 
-class AdminHostelsScreen extends StatelessWidget {
-  const AdminHostelsScreen({super.key});
+class AdminHostelsScreen extends StatefulWidget {
+const AdminHostelsScreen({super.key});
+  @override
+  State<AdminHostelsScreen> createState() =>
+      _AdminHostelsScreenState();
+}
 
+class _AdminHostelsScreenState
+    extends State<AdminHostelsScreen> {
+
+  String searchQuery = '';
+  String selectedFilter = 'All';
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,6 +38,11 @@ class AdminHostelsScreen extends StatelessWidget {
       children: [
 
         TextField(
+          onChanged: (value) {
+            setState(() {
+              searchQuery = value.toLowerCase();
+            });
+          },
           decoration: InputDecoration(
             hintText: "Search hostels...",
             prefixIcon: const Icon(Icons.search),
@@ -48,27 +61,19 @@ class AdminHostelsScreen extends StatelessWidget {
     scrollDirection: Axis.horizontal,
     child: Row(
       children: [
-        _filterChip("All", true),
+_filterChip("All"),
 
         const SizedBox(width: 8),
 
-        _filterChip("Available", false),
+        _filterChip("Boys"),
 
         const SizedBox(width: 8),
 
-        _filterChip("Full", false),
+        _filterChip("Girls"),
 
         const SizedBox(width: 8),
 
-        _filterChip("Boys", false),
-
-        const SizedBox(width: 8),
-
-        _filterChip("Girls", false),
-
-        const SizedBox(width: 8),
-
-        _filterChip("Mixed", false),
+        _filterChip("Mixed"),
       ],
     ),
   ),
@@ -100,6 +105,22 @@ StreamBuilder<QuerySnapshot>(
       itemBuilder: (context, index) {
 
         final hostel = snapshot.data!.docs[index];
+        final data = hostel.data() as Map<String, dynamic>;
+        final hostelName =
+    (data['hostelName'] ?? '').toString().toLowerCase();
+
+final hostelType =
+    (data['type'] ?? '').toString();
+
+if (!hostelName.contains(searchQuery)) {
+  return const SizedBox.shrink();
+}
+
+if (selectedFilter != 'All' &&
+    hostelType != selectedFilter) {
+  return const SizedBox.shrink();
+}
+                
 
         return Card(
           shape: RoundedRectangleBorder(
@@ -132,7 +153,7 @@ StreamBuilder<QuerySnapshot>(
                 const SizedBox(height: 15),
 
                 Text(
-                  hostel['name'] ?? '',
+                  data['hostelName'] ?? '',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -141,38 +162,54 @@ StreamBuilder<QuerySnapshot>(
 
                 const SizedBox(height: 8),
 
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on,
-                      size: 18,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      hostel['location'] ?? '',
-                    ),
-                  ],
-                ),
+                Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Text(data['location'] ?? ''),
+    Text(
+      "${data['distance']} from campus",
+      style: const TextStyle(
+        color: Colors.grey,
+      ),
+    ),
+  ],
+),
 
                 const SizedBox(height: 10),
 
                 Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      hostel['type'] ?? '',
-                    ),
-                    Text(
-                      "UGX ${hostel['singlePrice']}",
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
+  children: [
+    Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.green.shade50,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          "Single\nUGX ${data['singlePrice']}",
+          textAlign: TextAlign.center,
+        ),
+      ),
+    ),
+
+    const SizedBox(width: 10),
+
+    Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          "Double\nUGX ${data['doublePrice']}",
+          textAlign: TextAlign.center,
+        ),
+      ),
+    ),
+  ],
+),
 
                 const SizedBox(height: 15),
 
@@ -182,35 +219,86 @@ StreamBuilder<QuerySnapshot>(
                   children: [
 
                     ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                AdminHostelDetailsScreen(
-                              hostelName: hostel['name'],
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.visibility),
-                      label: const Text("View"),
-                    ),
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdminHostelDetailsScreen(
+          hostelId: hostel.id,
+          hostelData: data,
+        ),
+      ),
+    );
+  },
+  icon: const Icon(Icons.visibility),
+  label: const Text("View"),
+),
 
-                    ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.edit),
-                      label: const Text("Edit"),
-                    ),
+ElevatedButton.icon(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdminEditHostelScreen(
+          hostelId: hostel.id,
+          hostelData: data,
+        ),
+      ),
+    );
+  },
+  icon: const Icon(Icons.edit),
+  label: const Text("Edit"),
+),
 
-                    ElevatedButton.icon(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                      ),
-                      icon: const Icon(Icons.delete),
-                      label: const Text("Delete"),
-                    ),
+                  
+                      ElevatedButton.icon(
+  onPressed: () async {
+    final confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Hostel"),
+        content: Text(
+          "Are you sure you want to delete ${data['hostelName']}?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, false);
+            },
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, true);
+            },
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await FirebaseFirestore.instance
+          .collection('hostels')
+          .doc(hostel.id)
+          .delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Hostel deleted successfully"),
+        ),
+      );
+    }
+  },
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.red,
+  ),
+  icon: const Icon(Icons.delete),
+  label: const Text("Delete"),
+),
                   ],
                 ),
               ],
@@ -242,25 +330,34 @@ floatingActionButton: FloatingActionButton(
     );
   }
 
-  Widget _filterChip(String text, bool selected) {
-  return Container(
-    padding: const EdgeInsets.symmetric(
-      horizontal: 16,
-      vertical: 8,
-    ),
-    decoration: BoxDecoration(
-      color: selected
-          ? Colors.blue
-          : Colors.grey.shade200,
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Text(
-      text,
-      style: TextStyle(
+   Widget _filterChip(String text) {
+  final selected = selectedFilter == text;
+
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        selectedFilter = text;
+      });
+    },
+    child: Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 8,
+      ),
+      decoration: BoxDecoration(
         color: selected
-            ? Colors.white
-            : Colors.grey,
-        fontWeight: FontWeight.w600,
+            ? Colors.blue
+            : Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: selected
+              ? Colors.white
+              : Colors.grey,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     ),
   );
