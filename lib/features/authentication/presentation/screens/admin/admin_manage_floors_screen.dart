@@ -1,16 +1,29 @@
 import 'package:flutter/material.dart';
 import 'admin_add_floor_screen.dart';
 import 'admin_room_list_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class AdminManageFloorsScreen extends StatelessWidget {
-  final String hostelId;
-  final String hostelName;
 
-  const AdminManageFloorsScreen({
-    super.key,
-    required this.hostelId,
-    required this.hostelName,
-  });
+class AdminManageFloorsScreen extends StatefulWidget {
+final String hostelId;
+final String hostelName;
+
+const AdminManageFloorsScreen({
+  super.key,
+  required this.hostelId,
+  required this.hostelName,
+});
+
+@override
+State<AdminManageFloorsScreen> createState() =>
+    _AdminManageFloorsScreenState();
+}
+
+class _AdminManageFloorsScreenState
+    extends State<AdminManageFloorsScreen> {
+
+  final List<Map<String, dynamic>> floors = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -19,21 +32,31 @@ class AdminManageFloorsScreen extends StatelessWidget {
         title: const Text("Manage Floors"),
         centerTitle: true,
         actions:[
+
           Padding(
             padding : const EdgeInsets.only(right: 15),
             child : ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AdminAddFloorScreen(
-                        hostelId: hostelId,
-                    ),
-                  ),
+              onPressed: () async {
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => AdminAddFloorScreen(
+  hostelId: widget.hostelId,
+),
+    ),
+  );
 
-                );
-                
-              },
+  if (result != null) {
+  setState(() {
+    floors.add({
+      "name": result["floorName"],
+      "description": "Rooms ${result["roomRange"]}",
+      "rooms": _countRooms(result["roomRange"]).toString(),
+      "available": _countRooms(result["roomRange"]).toString(),
+    });
+  });
+}
+},
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
@@ -52,7 +75,7 @@ class AdminManageFloorsScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children:[
           Text(
-  hostelName,
+  widget.hostelName,
   style: const TextStyle(
     fontSize: 13,
     color: Colors.grey,
@@ -66,6 +89,51 @@ class AdminManageFloorsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+
+            
+            
+            Expanded(
+  child: StreamBuilder<QuerySnapshot>(
+    stream: _firestore
+        .collection("hostels")
+        .doc(widget.hostelId)
+        .collection("floors")
+        .orderBy("createdAt")
+        .snapshots(),
+    builder: (context, snapshot) {
+
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return const Center(
+          child: Text("No floors added yet."),
+        );
+      }
+
+      return ListView.builder(
+        itemCount: snapshot.data!.docs.length,
+        itemBuilder: (context, index) {
+
+          final floor = snapshot.data!.docs[index];
+
+          return _floorCard(
+            context: context,
+            floorId: floor.id,
+            name: floor["floorName"],
+            description: "Rooms ${floor["roomRange"]}",
+            roomRange: floor["roomRange"],
+            rooms: floor["totalRooms"].toString(),
+            available: floor["availableRooms"].toString(),
+          );
+        },
+      );
+    },
+  ),
+),
       
             
           ],
@@ -74,13 +142,31 @@ class AdminManageFloorsScreen extends StatelessWidget {
     );
   }
 
+
+
+int _countRooms(String range) {
+  try {
+    final parts = range.split('-');
+
+    final start = int.parse(parts[0]);
+    final end = int.parse(parts[1]);
+
+    return end - start + 1;
+  } catch (e) {
+    return 0;
+  }
+}
+
+
   Widget _floorCard({
-    required BuildContext context,
-    required String name,
-    required String description,
-    required String rooms,
-    required String available,
-  }) {
+  required BuildContext context,
+  required String floorId,
+  required String name,
+  required String description,
+  required String roomRange,
+  required String rooms,
+  required String available,
+}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -172,8 +258,53 @@ class AdminManageFloorsScreen extends StatelessWidget {
               },
               icon: const Icon(Icons.meeting_room, size: 18),
               label: const Text("Manage Rooms"),
-            ),
+            ),          
           ),
+          const SizedBox(height: 10),
+
+Row(
+  children: [
+
+    Expanded(
+      child: OutlinedButton.icon(
+        onPressed: () {
+          // TODO: Edit Floor
+        },
+        icon: const Icon(Icons.edit),
+        label: const Text("Edit Floor"),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.blue,
+          side: const BorderSide(color: Colors.blue),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    ),
+
+    const SizedBox(width: 10),
+
+    Expanded(
+      child: OutlinedButton.icon(
+        onPressed: () {
+          // TODO: Delete Floor
+        },
+        icon: const Icon(Icons.delete),
+        label: const Text("Delete"),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.red,
+          side: const BorderSide(color: Colors.red),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    ),
+
+  ],
+),
         ],
       ),
     );

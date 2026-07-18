@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminAddFloorScreen extends StatefulWidget {
   final String hostelId;
@@ -18,6 +19,7 @@ class _AdminAddFloorScreenState
 
   final _floorNameController = TextEditingController();
   final _roomRangeController = TextEditingController();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void dispose() {
@@ -90,11 +92,64 @@ class _AdminAddFloorScreenState
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  debugPrint("Floor Name: ${_floorNameController.text}");
-                  debugPrint("Room Range: ${_roomRangeController.text}");
-                  Navigator.pop(context);
-                },
+                onPressed: () async {
+  if (_floorNameController.text.isEmpty ||
+      _roomRangeController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Please fill in all fields"),
+      ),
+    );
+    return;
+  }
+
+  final range = _roomRangeController.text.split("-");
+
+if (range.length != 2) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Enter room range like 101-130"),
+    ),
+  );
+  return;
+}
+
+final start = int.tryParse(range.first.trim());
+final end = int.tryParse(range.last.trim());
+
+if (start == null || end == null || start > end) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Invalid room range"),
+    ),
+  );
+  return;
+}
+
+final totalRooms = end - start + 1;
+
+  await _firestore
+      .collection("hostels")
+      .doc(widget.hostelId)
+      .collection("floors")
+      .add({
+    "floorName": _floorNameController.text.trim(),
+    "roomRange": _roomRangeController.text.trim(),
+    "totalRooms": totalRooms,
+    "availableRooms": totalRooms,
+    "createdAt": FieldValue.serverTimestamp(),
+  });
+
+  Navigator.pop(
+    context,
+    {
+      "floorName": _floorNameController.text.trim(),
+      "roomRange": _roomRangeController.text.trim(),
+    },
+  );
+},
+
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
