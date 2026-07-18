@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+ import 'active_booking_screen.dart';
+ import 'notifications_screen.dart';
+ import 'help_center_screen.dart';
+ import 'profile_screen.dart';
 
 class StudentMenuScreen extends StatelessWidget {
   const StudentMenuScreen({super.key});
@@ -14,22 +18,56 @@ class StudentMenuScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: [
           _menuRow(Icons.person, "My Profile", () {
-            // Navigate to Student Profile screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const StudentProfileScreen(),
+              ),
+            );
           }),
           _menuRow(Icons.book_online, "My Booking", () {
-            // Navigate to Active Booking screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const StudentActiveBookingScreen(
+                  bookingId: "BK-2048",
+                  hostelName: "Sunrise Hostel",
+                  roomNumber: "101A",
+                ),
+              ),
+            );
           }),
           _menuRow(Icons.notifications, "Notifications", () {
-            // Navigate to Notifications screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const StudentNotificationsScreen(),
+              ),
+            );
           }),
           _menuRow(Icons.help_outline, "Help Center", () {
-            // Navigate to Help Center screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const StudentHelpCenterScreen(),
+              ),
+            );
           }),
           _menuRow(Icons.privacy_tip_outlined, "Privacy Policy", () {
-            // Show Privacy Policy content
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const StudentHelpCenterScreen(),
+              ),
+            );
           }),
           _menuRow(Icons.description_outlined, "Terms & Conditions", () {
-            // Show Terms & Conditions content
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const StudentHelpCenterScreen(),
+              ),
+            );
           }),
 
           const SizedBox(height: 24),

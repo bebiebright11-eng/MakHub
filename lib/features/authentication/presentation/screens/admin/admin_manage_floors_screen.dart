@@ -27,7 +27,7 @@ class _AdminManageFloorsScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Scaffold( 
       appBar: AppBar(
         title: const Text("Manage Floors"),
         centerTitle: true,
@@ -249,12 +249,7 @@ int _countRooms(String range) {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AdminRoomListScreen(),
-                  ),
-                );
+                // Navigate to Room List screen — we'll wire this later
               },
               icon: const Icon(Icons.meeting_room, size: 18),
               label: const Text("Manage Rooms"),

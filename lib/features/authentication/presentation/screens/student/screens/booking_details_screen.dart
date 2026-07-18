@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'receipt_screen.dart';
 
 class StudentBookingDetailsScreen extends StatefulWidget {
   const StudentBookingDetailsScreen({super.key});
