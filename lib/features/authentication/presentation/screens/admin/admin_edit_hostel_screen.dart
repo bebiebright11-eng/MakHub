@@ -2,14 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class AdminAddHostelScreen extends StatefulWidget {
-  const AdminAddHostelScreen({super.key});
+class AdminEditHostelScreen extends StatefulWidget {
+  final String hostelId;
+  final Map<String, dynamic> hostelData;
+
+  const AdminEditHostelScreen({
+    super.key,
+    required this.hostelId,
+    required this.hostelData,
+  });
 
   @override
-  State<AdminAddHostelScreen> createState() => _AdminAddHostelScreenState();
+  State<AdminEditHostelScreen> createState() =>
+      _AdminEditHostelScreenState();
 }
 
-class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
+class _AdminEditHostelScreenState extends State<AdminEditHostelScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
@@ -40,6 +48,53 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
     "Shuttle",
     "Security",
   ];
+
+@override
+void initState() {
+  super.initState();
+
+  _nameController.text =
+      widget.hostelData['hostelName'] ?? '';
+
+  _locationController.text =
+      widget.hostelData['location'] ?? '';
+
+  _descriptionController.text =
+      widget.hostelData['description'] ?? '';
+
+  _distanceController.text =
+      widget.hostelData['distance'] ?? '';
+
+  _walkingTimeController.text =
+      widget.hostelData['walkingTime'] ?? '';
+
+  _mapsLinkController.text =
+      widget.hostelData['mapsLink'] ?? '';
+
+  _singlePriceController.text =
+      widget.hostelData['singlePrice'] ?? '';
+
+  _doublePriceController.text =
+      widget.hostelData['doublePrice'] ?? '';
+
+  _shopsController.text =
+      widget.hostelData['shops'] ?? '';
+
+  _hospitalController.text =
+      widget.hostelData['hospital'] ?? '';
+
+  _atmController.text =
+      widget.hostelData['atm'] ?? '';
+
+  _selectedType =
+      widget.hostelData['type'] ?? 'Mixed';
+
+  _selectedFacilities.addAll(
+    List<String>.from(
+      widget.hostelData['facilities'] ?? [],
+    ),
+  );
+}
 
   @override
   void dispose() {
@@ -105,7 +160,7 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Add Hostel"),
+        title: const Text("Edit Hostel"),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -299,7 +354,10 @@ child: ElevatedButton(
   onPressed: () async {
     if (_formKey.currentState!.validate()) {
       try {
-        await _firestore.collection('hostels').add({
+        await _firestore
+    .collection('hostels')
+    .doc(widget.hostelId)
+    .update({
           'hostelName': _nameController.text.trim(),
           'location': _locationController.text.trim(),
           'description': _descriptionController.text.trim(),
@@ -313,13 +371,12 @@ child: ElevatedButton(
           'shops': _shopsController.text.trim(),
           'hospital': _hospitalController.text.trim(),
           'atm': _atmController.text.trim(),
-          'createdBy': _auth.currentUser!.uid,
-          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Hostel added successfully'),
+            content: Text('Hostel updated successfully'),
           ),
         );
 
@@ -344,7 +401,7 @@ child: ElevatedButton(
   ),
 
   child: const Text(
-    "Save Hostel",
+    "Update Hostel",
     style: TextStyle(
       fontSize: 16,
       fontWeight: FontWeight.w600,

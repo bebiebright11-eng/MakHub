@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 import 'admin_manage_floors_screen.dart';
 
+import 'admin_edit_hostel_screen.dart';
+
 class AdminHostelDetailsScreen extends StatelessWidget {
-  final String hostelName;
+  final String hostelId;
+  final Map<String, dynamic> hostelData;
 
   const AdminHostelDetailsScreen({
     super.key,
-    required this.hostelName,
+    required this.hostelId,
+    required this.hostelData,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(hostelName),
+        title: Text(hostelData['hostelName'] ?? ''),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -42,34 +46,125 @@ class AdminHostelDetailsScreen extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: const [
-                _FacilityChip("WiFi", Icons.wifi),
-                _FacilityChip("Kitchen", Icons.kitchen),
-                _FacilityChip("DSTV", Icons.tv),
-                _FacilityChip("Laundry", Icons.local_laundry_service),
-                _FacilityChip("Reading Room", Icons.menu_book),
-                _FacilityChip("Swimming Pool", Icons.pool),
-                _FacilityChip("Pool Table", Icons.sports_bar),
-                _FacilityChip("Shuttle", Icons.directions_bus),
-                _FacilityChip("Security", Icons.security),
-              ],
-            ),
-            const SizedBox(height: 24),
 
-            // Hostel Rules
-            const Text(
-              "Hostel Rules",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            const _RuleItem("Keep noise levels low after 10:00 PM."),
-            const _RuleItem("No unauthorized visitors inside rooms."),
-            const _RuleItem("Maintain cleanliness in shared spaces and bathrooms."),
-            const _RuleItem("Report damages or facility issues immediately."),
-            const SizedBox(height: 24),
+           Wrap(
+  spacing: 10,
+  runSpacing: 10,
+  children: (hostelData['facilities'] as List<dynamic>? ?? [])
+      .map(
+        (facility) => _FacilityChip(
+          facility.toString(),
+          _getFacilityIcon(facility.toString()),
+        ),
+      )
+      .toList(),
+),
+
+           const Text(
+  "Hostel Information",
+  style: TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+  ),
+),
+
+const SizedBox(height: 12),
+
+_infoCard(
+  Icons.location_on,
+  "Location",
+  hostelData['location'] ?? "Not provided",
+),
+
+const SizedBox(height: 12),
+
+Row(
+  children: [
+
+    Expanded(
+      child: _infoCard(
+        Icons.home,
+        "Type",
+        hostelData['type'] ?? "",
+      ),
+    ),
+
+    const SizedBox(width: 10),
+
+    Expanded(
+      child: _infoCard(
+        Icons.straighten,
+        "Distance",
+        hostelData['distance'] ?? "",
+      ),
+    ),
+
+  ],
+),
+
+const SizedBox(height: 10),
+
+Row(
+  children: [
+
+    Expanded(
+      child: _infoCard(
+        Icons.directions_walk,
+        "Walk Time",
+        hostelData['walkingTime'] ?? "",
+      ),
+    ),
+
+    const SizedBox(width: 10),
+
+    Expanded(
+      child: _infoCard(
+        Icons.atm,
+        "ATM",
+        hostelData['atm'] ?? "",
+      ),
+    ),
+
+  ],
+),
+
+const SizedBox(height: 10),
+
+Row(
+  children: [
+
+    Expanded(
+      child: _infoCard(
+        Icons.store,
+        "Shops",
+        hostelData['shops'] ?? "",
+      ),
+    ),
+
+    const SizedBox(width: 10),
+
+    Expanded(
+      child: _infoCard(
+        Icons.local_hospital,
+        "Hospital",
+        hostelData['hospital'] ?? "",
+      ),
+    ),
+
+  ],
+),
+
+const SizedBox(height: 10),
+
+_infoCard(
+  Icons.description,
+  "Description",
+  hostelData['description'] ?? "",
+),
+
+const SizedBox(height: 24),
+
+
 
             // Prices
             const Text(
@@ -77,9 +172,15 @@ class AdminHostelDetailsScreen extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            _priceRow("Single Room Price", "GHS 2,500"),
+            _priceRow(
+              "Single Room Price",
+              "UGX ${hostelData['singlePrice']}",
+            ),
             const SizedBox(height: 8),
-            _priceRow("Double Room Price", "GHS 1,800"),
+            _priceRow(
+                "Double Room Price",
+                "UGX ${hostelData['doublePrice']}",
+              ),
             const SizedBox(height: 24),
 
             // Student Reviews
@@ -94,19 +195,33 @@ class AdminHostelDetailsScreen extends StatelessWidget {
             const SizedBox(height: 30),
 
             // Action buttons
-            ElevatedButton.icon(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const Icon(Icons.edit),
-              label: const Text("Edit Hostel"),
-            ),
+            
+              // Action buttons
+
+ElevatedButton.icon(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdminEditHostelScreen(
+          hostelId: hostelId,
+          hostelData: hostelData,
+        ),
+      ),
+    );
+  },
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.blue,
+    foregroundColor: Colors.white,
+    padding: const EdgeInsets.symmetric(vertical: 14),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+  icon: const Icon(Icons.edit),
+  label: const Text("Edit Hostel"),
+),
+
             const SizedBox(height: 12),
             Row(
               children: [
@@ -116,7 +231,10 @@ class AdminHostelDetailsScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AdminManageFloorsScreen(),
+                          builder: (context) => AdminManageFloorsScreen(
+                            hostelId: hostelId,
+                            hostelName: hostelData['hostelName']?.toString() ?? '',
+                          ),
                         ),
                       );
                     },
@@ -139,6 +257,49 @@ class AdminHostelDetailsScreen extends StatelessWidget {
       ),
     );
   }
+
+
+Widget _infoCard(
+  IconData icon,
+  String title,
+  String value,
+) {
+  return Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade100,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          color: Colors.blue,
+        ),
+
+        const SizedBox(height: 8),
+
+        Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+
+        const SizedBox(height: 4),
+
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _priceRow(String label, String price) {
     return Container(
@@ -187,6 +348,40 @@ class AdminHostelDetailsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+IconData _getFacilityIcon(String facility) {
+  switch (facility) {
+    case "WiFi":
+      return Icons.wifi;
+
+    case "Kitchen":
+      return Icons.kitchen;
+
+    case "DSTV":
+      return Icons.tv;
+
+    case "Laundry":
+      return Icons.local_laundry_service;
+
+    case "Reading Room":
+      return Icons.menu_book;
+
+    case "Swimming Pool":
+      return Icons.pool;
+
+    case "Pool Table":
+      return Icons.sports_bar;
+
+    case "Shuttle":
+      return Icons.directions_bus;
+
+    case "Security":
+      return Icons.security;
+
+    default:
+      return Icons.check_circle;
   }
 }
 

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'admin_register_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'forgot_password_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -14,14 +16,65 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _obscurePassword = true;
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
+@override
+void dispose() {
+  _emailController.dispose();
+  _passwordController.dispose();
+  super.dispose();
+}
+
+Future<void> _loginAdmin() async {
+  if (!_formKey.currentState!.validate()) return;
+
+  try {
+    UserCredential userCredential =
+        await _auth.signInWithEmailAndPassword(
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
+
+    DocumentSnapshot userDoc = await _firestore
+        .collection('users')
+        .doc(userCredential.user!.uid)
+        .get();
+
+    if (!userDoc.exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("User record not found."),
+        ),
+      );
+      return;
+    }
+
+    String role = userDoc['role'];
+
+    if (role == "admin") {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const AdminDashboardScreen(),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Access denied."),
+        ),
+      );
+    }
+  } on FirebaseAuthException catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(e.message ?? "Login failed"),
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -184,35 +237,23 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 const SizedBox(height: 24),
 
                 // Login button
-                ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      // Firebase login logic goes here later
-                      debugPrint("Email: ${_emailController.text}");
-                      debugPrint("Password: ${_passwordController.text}");
-
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AdminDashboardScreen(),
-                        ),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:Colors.blue,
-                    foregroundColor:Colors.white,
-                    padding:const EdgeInsets.symmetric(vertical:16),
-                    shape:RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    "Login",
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ),
+                // Login button
+ElevatedButton(
+  onPressed: _loginAdmin,
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.blue,
+    foregroundColor: Colors.white,
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    elevation: 0,
+  ),
+  child: const Text(
+    "Login",
+    style: TextStyle(fontSize: 16),
+  ),
+),
                 const SizedBox(height: 16),
                 // Create Account button
                 OutlinedButton(

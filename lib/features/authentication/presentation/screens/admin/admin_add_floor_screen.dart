@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminAddFloorScreen extends StatefulWidget {
-  const AdminAddFloorScreen({super.key});
+  final String hostelId;
+
+  const AdminAddFloorScreen({
+    super.key,
+    required this.hostelId,
+  });
 
   @override
-  State<AdminAddFloorScreen> createState() => _AdminAddFloorScreenState();
+  State<AdminAddFloorScreen> createState() =>
+      _AdminAddFloorScreenState();
 }
 
-class _AdminAddFloorScreenState extends State<AdminAddFloorScreen> {
+class _AdminAddFloorScreenState
+    extends State<AdminAddFloorScreen> {
+
   final _floorNameController = TextEditingController();
   final _roomRangeController = TextEditingController();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void dispose() {
@@ -17,6 +27,7 @@ class _AdminAddFloorScreenState extends State<AdminAddFloorScreen> {
     _roomRangeController.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -81,22 +92,78 @@ class _AdminAddFloorScreenState extends State<AdminAddFloorScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  debugPrint("Floor Name: ${_floorNameController.text}");
-                  debugPrint("Room Range: ${_roomRangeController.text}");
-                  Navigator.pop(context);
-                },
+                onPressed: () async {
+  if (_floorNameController.text.isEmpty ||
+      _roomRangeController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Please fill in all fields"),
+      ),
+    );
+    return;
+  }
+
+  final range = _roomRangeController.text.split("-");
+
+if (range.length != 2) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Enter room range like 101-130"),
+    ),
+  );
+  return;
+}
+
+final start = int.tryParse(range.first.trim());
+final end = int.tryParse(range.last.trim());
+
+if (start == null || end == null || start > end) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Invalid room range"),
+    ),
+  );
+  return;
+}
+
+final totalRooms = end - start + 1;
+
+  await _firestore
+      .collection("hostels")
+      .doc(widget.hostelId)
+      .collection("floors")
+      .add({
+    "floorName": _floorNameController.text.trim(),
+    "roomRange": _roomRangeController.text.trim(),
+    "totalRooms": totalRooms,
+    "availableRooms": totalRooms,
+    "createdAt": FieldValue.serverTimestamp(),
+  });
+
+  Navigator.pop(
+    context,
+    {
+      "floorName": _floorNameController.text.trim(),
+      "roomRange": _roomRangeController.text.trim(),
+    },
+  );
+},
+
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: const Text(
                   "Save",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+  fontSize: 16,
+  fontWeight: FontWeight.w600,
+),
                 ),
               ),
             ),
@@ -107,3 +174,4 @@ class _AdminAddFloorScreenState extends State<AdminAddFloorScreen> {
     );
   }
 }
+
