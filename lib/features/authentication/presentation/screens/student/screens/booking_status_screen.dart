@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'payment_screen.dart';
 
 class StudentBookingStatusScreen extends StatefulWidget {
   final String hostelName;
@@ -110,6 +111,35 @@ class _StudentBookingStatusScreenState extends State<StudentBookingStatusScreen>
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const StudentPaymentScreen(
+                          hostelName: "Hostel Name",
+                          roomNumber: "Room Number",
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text(
+                    "Proceed to Payment",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
             ],
