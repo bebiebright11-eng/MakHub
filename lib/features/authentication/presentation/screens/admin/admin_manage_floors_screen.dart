@@ -252,7 +252,12 @@ int _countRooms(String range) {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const AdminRoomListScreen(),
+                    builder: (context) => AdminRoomListScreen(
+                      hostelId: widget.hostelId,
+                      floorId: floorId,
+                      hostelName: widget.hostelName,
+                      floorName: name,
+                    ),
                   ),
                 );
               },

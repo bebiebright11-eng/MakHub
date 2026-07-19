@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'admin_room_details_screen.dart';
 
 class AdminEditRoomScreen extends StatefulWidget {
+  final String hostelId;
+  final String floorId;
+  final String roomId;
   final String roomNumber;
 
   const AdminEditRoomScreen({
     super.key,
+    required this.hostelId,
+    required this.floorId,
+    required this.roomId,
     required this.roomNumber,
   });
 
@@ -15,8 +23,20 @@ class AdminEditRoomScreen extends StatefulWidget {
 class _AdminEditRoomScreenState extends State<AdminEditRoomScreen> {
   String _availability = "Available";
   String _roomType = "Double";
+  int _occupied = 0;
+  int _capacity = 1;
 
   final Set<String> _selectedFeatures = {};
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final TextEditingController _descriptionController =
+    TextEditingController();
+bool _loading = true;
+
+String _singlePrice = "";
+String _doublePrice = "";
+
+String _singleRoomSize = "";
+String _doubleRoomSize = "";
 
   final List<String> _features = [
     "Near Balcony",
@@ -25,6 +45,96 @@ class _AdminEditRoomScreenState extends State<AdminEditRoomScreen> {
     "Window View",
   ];
 
+
+Future<void> _loadRoom() async {
+  try {
+    final hostelDoc = await _firestore
+    .collection("hostels")
+    .doc(widget.hostelId)
+    .get();
+
+if (hostelDoc.exists) {
+  final hostel = hostelDoc.data()!;
+
+  _singlePrice = hostel["singlePrice"] ?? "";
+  _doublePrice = hostel["doublePrice"] ?? "";
+
+  _singleRoomSize = hostel["singleRoomSize"] ?? "";
+  _doubleRoomSize = hostel["doubleRoomSize"] ?? "";
+}
+
+    final doc = await _firestore
+        .collection("hostels")
+        .doc(widget.hostelId)
+        .collection("floors")
+        .doc(widget.floorId)
+        .collection("rooms")
+        .doc(widget.roomId)
+        .get();
+
+    if (!doc.exists) {
+      setState(() {
+        _loading = false;
+      });
+      return;
+    }
+
+    final data = doc.data()!;
+
+    setState(() {
+      _availability = data["status"] ?? "Available";
+      _roomType = data["roomType"] ?? "Single";
+      _descriptionController.text =
+          data["description"] ?? "";
+      _occupied = data["occupied"] ?? 0;
+      if (data["capacity"] != null) {
+        _capacity = data["capacity"];
+      } else {
+        _capacity = _roomType == "Double" ? 2 : 1;
+      }
+
+      _selectedFeatures.clear();
+
+      if (data["features"] != null &&
+          data["features"] is Map<String, dynamic>) {
+
+        final features =
+            Map<String, dynamic>.from(data["features"]);
+
+        features.forEach((key, value) {
+          if (value is bool && value) {
+            _selectedFeatures.add(key);
+          }
+        });
+      }
+
+      _loading = false;
+    });
+
+  } catch (e) {
+
+    debugPrint(e.toString());
+
+    setState(() {
+      _loading = false;
+    });
+  }
+}
+
+
+@override
+void initState() {
+  super.initState();
+  _loadRoom();
+}
+
+
+@override
+void dispose() {
+  _descriptionController.dispose();
+  super.dispose();
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,7 +142,11 @@ class _AdminEditRoomScreenState extends State<AdminEditRoomScreen> {
         title: Text("Room ${widget.roomNumber}"),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
+      body: _loading
+    ? const Center(
+        child: CircularProgressIndicator(),
+      )
+    : SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,7 +155,10 @@ class _AdminEditRoomScreenState extends State<AdminEditRoomScreen> {
             // Room photo
             const Text(
               "Room Photo",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
             const SizedBox(height: 4),
             const Text(
@@ -49,6 +166,7 @@ class _AdminEditRoomScreenState extends State<AdminEditRoomScreen> {
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 12),
+
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -74,7 +192,7 @@ class _AdminEditRoomScreenState extends State<AdminEditRoomScreen> {
                     ),
                   ),
                   OutlinedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       // File picker logic goes here later
                     },
                     child: const Text("Choose File"),
@@ -83,7 +201,115 @@ class _AdminEditRoomScreenState extends State<AdminEditRoomScreen> {
               ),
             ),
 
-            const SizedBox(height: 28),
+const SizedBox(height: 28),
+
+           const Text(
+  "Description",
+  style: TextStyle(
+    fontWeight: FontWeight.bold,
+    fontSize: 16,
+  ),
+),
+
+const SizedBox(height: 8),
+
+TextField(
+  controller: _descriptionController,
+  maxLines: 4,
+  decoration: InputDecoration(
+    hintText: "Describe this room...",
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+),
+
+const SizedBox(height: 28),
+  const Text(
+  "Current Occupants",
+ style: TextStyle(
+    fontWeight: FontWeight.bold,
+    fontSize: 16,
+  ),
+),
+
+const SizedBox(height: 4),
+
+const Text(
+  "Update how many students currently occupy this room.",
+  style: TextStyle(
+    color: Colors.grey,
+    fontSize: 12,
+  ),
+),
+
+const SizedBox(height: 12),
+
+Container(
+  padding: const EdgeInsets.symmetric(
+    horizontal: 16,
+    vertical: 12,
+  ),
+  decoration: BoxDecoration(
+    color: Colors.grey.shade100,
+    borderRadius: BorderRadius.circular(12),
+  ),
+  child: Row(
+    children: [
+
+      IconButton(
+        onPressed: () {
+  if (_occupied > 0) {
+    setState(() {
+      _occupied--;
+
+      if (_occupied == _capacity) {
+        _availability = "Occupied";
+      } else {
+        _availability = "Available";
+      }
+    });
+  }
+},
+        icon: const Icon(Icons.remove_circle),
+        color: Colors.red,
+      ),
+
+      Expanded(
+        child: Center(
+          child: Text(
+            "$_occupied / $_capacity",
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+
+      IconButton(
+        onPressed: () {
+  if (_occupied < _capacity) {
+    setState(() {
+      _occupied++;
+
+      if (_occupied == _capacity) {
+        _availability = "Occupied";
+      } else {
+        _availability = "Available";
+      }
+    });
+  }
+},
+        icon: const Icon(Icons.add_circle),
+        color: Colors.green,
+      ),
+
+    ],
+  ),
+),
+
+const SizedBox(height: 28),
 
             // Availability status
             const Text(
@@ -124,6 +350,64 @@ class _AdminEditRoomScreenState extends State<AdminEditRoomScreen> {
 
             const SizedBox(height: 28),
 
+            const SizedBox(height: 20),
+
+Container(
+  padding: const EdgeInsets.all(16),
+  decoration: BoxDecoration(
+    color: Colors.grey.shade100,
+    borderRadius: BorderRadius.circular(12),
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+
+      const Text(
+        "Room Information",
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
+
+      const SizedBox(height: 12),
+
+      Row(
+        children: [
+          const Icon(
+            Icons.straighten,
+            color: Colors.blue,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              "Room Size (ft): ${_roomType == "Single" ? _singleRoomSize : _doubleRoomSize}",
+            ),
+          ),
+        ],
+      ),
+
+      const SizedBox(height: 12),
+
+      Row(
+        children: [
+          const Icon(
+            Icons.payments,
+            color: Colors.green,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              "Price per Semester: UGX ${_roomType == "Single" ? _singlePrice : _doublePrice}",
+            ),
+          ),
+        ],
+      ),
+
+    ],
+  ),
+),
+
             // Room Features
             const Text(
               "Room Features",
@@ -161,13 +445,55 @@ class _AdminEditRoomScreenState extends State<AdminEditRoomScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  debugPrint("Room: ${widget.roomNumber}");
-                  debugPrint("Availability: $_availability");
-                  debugPrint("Type: $_roomType");
-                  debugPrint("Features: $_selectedFeatures");
-                  Navigator.pop(context);
-                },
+                onPressed: () async {
+
+  await _firestore
+      .collection("hostels")
+      .doc(widget.hostelId)
+      .collection("floors")
+      .doc(widget.floorId)
+      .collection("rooms")
+      .doc(widget.roomId)
+      .update({
+
+    "status": _availability,
+
+    "roomType": _roomType,
+
+    "occupied": _occupied,
+
+    "capacity": _capacity,
+
+    "description": _descriptionController.text.trim(),
+
+    "features": {
+      "Near Balcony":
+          _selectedFeatures.contains("Near Balcony"),
+
+      "Self-contained":
+          _selectedFeatures.contains("Self-contained"),
+
+      "Bathroom Distance":
+          _selectedFeatures.contains("Bathroom Distance"),
+
+      "Window View":
+          _selectedFeatures.contains("Window View"),
+    },
+
+  });
+
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Room updated successfully"),
+    ),
+  );
+
+  Navigator.pop(context);
+  },
+
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
@@ -218,7 +544,29 @@ class _AdminEditRoomScreenState extends State<AdminEditRoomScreen> {
     final selected = _roomType == label;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _roomType = label),
+        onTap: () {
+  setState(() {
+    _roomType = label;
+
+    if (label == "Single") {
+      _capacity = 1;
+    } else {
+      _capacity = 2;
+    }
+
+    // Prevent occupied from exceeding capacity
+    if (_occupied > _capacity) {
+      _occupied = _capacity;
+    }
+
+    // Automatically update status
+    if (_occupied == _capacity) {
+      _availability = "Occupied";
+    } else {
+      _availability = "Available";
+    }
+  });
+},
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
