@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'booking_details_screen.dart';
+
 
 class StudentActiveBookingScreen extends StatelessWidget {
   final String bookingId;
@@ -103,7 +105,16 @@ class StudentActiveBookingScreen extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to Booking Details screen — wired next
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => StudentBookingDetailsScreen(
+                        bookingId: bookingId,
+                        hostelName: hostelName,
+                        roomNumber: roomNumber,
+                      ),
+                    ),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
