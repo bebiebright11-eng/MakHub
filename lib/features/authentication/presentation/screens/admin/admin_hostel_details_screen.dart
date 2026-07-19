@@ -164,7 +164,30 @@ _infoCard(
 
 const SizedBox(height: 24),
 
+// Room Sizes
+const Text(
+  "Room Sizes",
+  style: TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+  ),
+),
 
+const SizedBox(height: 10),
+
+_priceRow(
+  "Single Room Size (ft)",
+  hostelData['singleRoomSize'] ?? "Not provided",
+),
+
+const SizedBox(height: 8),
+
+_priceRow(
+  "Double Room Size (ft)",
+  hostelData['doubleRoomSize'] ?? "Not provided",
+),
+
+const SizedBox(height: 24),
 
             // Prices
             const Text(

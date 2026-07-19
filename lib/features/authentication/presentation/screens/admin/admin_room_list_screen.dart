@@ -1,8 +1,20 @@
 import 'package:flutter/material.dart';
-import 'admin_edit_room_screen.dart'; 
+import 'admin_room_details_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; 
 
 class AdminRoomListScreen extends StatefulWidget {
-  const AdminRoomListScreen({super.key});
+  final String hostelId;
+  final String floorId;
+  final String hostelName;
+  final String floorName;
+
+  const AdminRoomListScreen({
+    super.key,
+    required this.hostelId,
+    required this.floorId,
+    required this.hostelName,
+    required this.floorName,
+  });
 
   @override
   State<AdminRoomListScreen> createState() => _AdminRoomListScreenState();
@@ -23,9 +35,12 @@ class _AdminRoomListScreenState extends State<AdminRoomListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Sunrise Residence • First Floor",
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+            Text(
+              "${widget.hostelName} • ${widget.floorName}",
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.grey,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -52,21 +67,61 @@ class _AdminRoomListScreenState extends State<AdminRoomListScreen> {
               ],
             ),
                 Expanded(
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.4,
-                    children: [
-                     _tappableRoomCard(context, "101", "Available", "Single", "1/1"),
-                  _tappableRoomCard(context, "102", "Occupied", "Double", "2/2"),
-                  _tappableRoomCard(context, "103", "Available", "Double", "1/2"),
-                  _tappableRoomCard(context, "104", "Available", "Single", "1/1"),
-                  _tappableRoomCard(context, "105", "Occupied", "Double", "2/2"),
-                  _tappableRoomCard(context, "106", "Reserved", "Double", "1/2"),
-                    ],
-                  ),
-                ),
+  child: StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection("hostels")
+        .doc(widget.hostelId)
+        .collection("floors")
+        .doc(widget.floorId)
+        .collection("rooms")
+        .orderBy("roomNumber")
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return const Center(
+          child: Text("No rooms found"),
+        );
+      }
+
+      final rooms = snapshot.data!.docs;
+
+      return GridView.builder(
+        itemCount: rooms.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.4,
+        ),
+        itemBuilder: (context, index) {
+          final room = rooms[index];
+
+final roomId = room.id;
+final roomNumber = room["roomNumber"];
+final roomType = room["roomType"];
+final status = room["status"];
+final occupied = room["occupied"];
+final capacity = room["capacity"];
+
+return _tappableRoomCard(
+  context,
+  roomId,
+  roomNumber,
+  status,
+  roomType,
+  "$occupied/$capacity",
+);
+        },
+      );
+    },
+  ),
+),
               ],
             ),
           ),
@@ -101,18 +156,26 @@ class _AdminRoomListScreenState extends State<AdminRoomListScreen> {
       ); 
     }
     Widget _tappableRoomCard(
-    BuildContext context,
-    String number,
-    String status,
-    String type,
-    String occupancy,
-  ) {
+  BuildContext context,
+  String roomId,
+  String number,
+  String status,
+  String type,
+  String occupancy,
+)
+  
+   {
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => AdminEditRoomScreen(roomNumber: number),
+           builder: (context) => AdminRoomDetailsScreen(
+  hostelId: widget.hostelId,
+  floorId: widget.floorId,
+  roomId: roomId,
+  roomNumber: number,
+),
           ),
         );
       },

@@ -128,17 +128,30 @@ if (start == null || end == null || start > end) {
 
 final totalRooms = end - start + 1;
 
-  await _firestore
-      .collection("hostels")
-      .doc(widget.hostelId)
-      .collection("floors")
-      .add({
-    "floorName": _floorNameController.text.trim(),
-    "roomRange": _roomRangeController.text.trim(),
-    "totalRooms": totalRooms,
-    "availableRooms": totalRooms,
+ final floorRef = await _firestore
+    .collection("hostels")
+    .doc(widget.hostelId)
+    .collection("floors")
+    .add({
+  "floorName": _floorNameController.text.trim(),
+  "roomRange": _roomRangeController.text.trim(),
+  "totalRooms": totalRooms,
+  "availableRooms": totalRooms,
+  "createdAt": FieldValue.serverTimestamp(),
+});
+
+for (int roomNumber = start; roomNumber <= end; roomNumber++) {
+  await floorRef.collection("rooms").add({
+    "roomNumber": roomNumber.toString(),
+    "roomType": "Single",
+    "capacity": 1,
+    "occupied": 0,
+    "status": "Available",
+    "features": [],
+    "imageUrl": "",
     "createdAt": FieldValue.serverTimestamp(),
   });
+}
 
   Navigator.pop(
     context,
