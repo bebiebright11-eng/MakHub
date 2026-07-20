@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'booking_status_screen.dart';
+import 'package:makhub/models/booking_model.dart';
+import 'package:makhub/services/booking_service.dart';
 
 
 class StudentPaymentScreen extends StatefulWidget {
@@ -22,6 +25,7 @@ class StudentPaymentScreen extends StatefulWidget {
 class _StudentPaymentScreenState extends State<StudentPaymentScreen> {
   final _formKey = GlobalKey<FormState>();
   final _mobileNumberController = TextEditingController();
+  final BookingService _bookingService = BookingService();k[]
 
   double get _bookingFeeValue =>
       double.tryParse(widget.bookingFee.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
