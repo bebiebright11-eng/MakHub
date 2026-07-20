@@ -1,8 +1,21 @@
 import 'package:flutter/material.dart';
 import 'room_list_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class StudentFloorSelectionScreen extends StatelessWidget {
-  const StudentFloorSelectionScreen({super.key});
+class StudentFloorSelectionScreen extends StatefulWidget {
+  final String hostelId;
+  const StudentFloorSelectionScreen({super.key, required this.hostelId});
+
+  @override
+  State<StudentFloorSelectionScreen> createState() => _StudentFloorSelectionScreenState();
+  
+}
+
+class _StudentFloorSelectionScreenState extends State<StudentFloorSelectionScreen> {
+  late final Stream<QuerySnapshot> _floorsStream = FirebaseFirestore.instance
+    .collection('floors')
+    .where('hostelId', isEqualTo: widget.hostelId)
+    .snapshots();
 
   @override
   Widget build(BuildContext context) {
@@ -15,28 +28,49 @@ class StudentFloorSelectionScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Select a Floor', style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
-            Text('Kilimanjaro Hostel', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            Text(widget.hostelId, style: const TextStyle(color: Colors.grey, fontSize: 12)),
           ],
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          _buildFloorCard(context, 'Ground Floor', 'Rooms 101-110', 8, Icons.layers, const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
-          _buildFloorCard(context, 'First Floor', 'Rooms 111-120', 6, Icons.apartment, const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
-          _buildFloorCard(context, 'Second Floor', 'Rooms 121-130', 4, Icons.copy, const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
-          _buildFloorCard(context, 'Third Floor', 'Rooms 131-140', 2, Icons.grid_view, const Color(0xFFEFF6FF), const Color(0xFF2563EB)),
-        ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _floorsStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('No floors available'));
+          }
+
+          final floorDocs = snapshot.data!.docs;
+
+          return ListView(
+            padding: const EdgeInsets.all(24),
+            children: floorDocs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return _buildFloorCard(
+                context,
+                data['floorName'] ?? '',
+                data['roomRange'] ?? '',
+                data['totalRooms'] ?? 0,
+                Icons.layers,
+                const Color(0xFFEFF6FF),
+                const Color(0xFF2563EB),
+                doc.id, // pass floorId forward
+              );
+            }).toList(),
+          );
+        },
       ),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
 
-  Widget _buildFloorCard(BuildContext context, String floor, String rooms, int available, IconData icon, Color bgColor, Color iconColor) {
+  Widget _buildFloorCard(BuildContext context, String floor, String rooms, int available, IconData icon, Color bgColor, Color iconColor, String floorId) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
@@ -84,7 +118,10 @@ class StudentFloorSelectionScreen extends StatelessWidget {
             ),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StudentRoomListScreen())),
+            onPressed: () => Navigator.push(
+              context, 
+              MaterialPageRoute(
+                builder: (context) =>StudentRoomListScreen(hostelId: widget.hostelId, floorId: floorId))),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2563EB),
               elevation: 0,

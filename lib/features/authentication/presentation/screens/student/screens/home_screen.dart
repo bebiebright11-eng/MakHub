@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../../../models/hostel_model.dart';
-import '../../../../../../services/hostel_service.dart';
-import '../hostel_details_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'hostel_details_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -11,16 +10,7 @@ class StudentHomeScreen extends StatefulWidget {
 }
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
-  late HostelService _hostelService;
-  late Stream<List<HostelModel>> _hostelsStream;
-
-  @override
-  void initState() {
-    super.initState();
-    _hostelService = HostelService();
-    _hostelsStream = _hostelService.getHostels();
-  }
-
+    final Stream<QuerySnapshot> _hostelsStream = FirebaseFirestore.instance.collection('hostels').snapshots();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -176,49 +166,53 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 
   Widget _buildHostelList() {
-  return StreamBuilder<List<HostelModel>>(
-    stream: _hostelsStream,
-    builder: (context, snapshot) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _hostelsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-      if (snapshot.connectionState ==
-          ConnectionState.waiting) {
-        return const Center(
-          child: CircularProgressIndicator(),
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No hostels available'));
+        }
+
+        final hostelDocs = snapshot.data!.docs;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            children: hostelDocs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return Padding(
+                padding: const EdgeInsets.only(right: 20),
+                child: _buildHostelCard(
+                  hostelId: doc.id,
+                  name: data['hostelName'] ?? 'Unnamed Hostel',
+                  distance: data['location'] ?? '',
+                  singlePrice: data['singlePrice'] ?? '0',
+                  doublePrice: data['doublePrice'] ?? '0',
+                  rating: '4.5',
+                ),
+              );
+            }).toList(),
+          ),
         );
-      }
+      },
+    );
+  }
 
-      if (!snapshot.hasData ||
-          snapshot.data!.isEmpty) {
-        return const Center(
-          child: Text('No hostels available'),
-        );
-      }
 
-      final hostels = snapshot.data!;
 
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Row(
-          children: hostels.map((hostel) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 20),
-              child: _buildHostelCard(
-                hostel.hostelName,
-                hostel.location,
-                hostel.singlePrice,
-                hostel.doublePrice,
-                '4.5',
-              ),
-            );
-          }).toList(),
-        ),
-      );
-    },
-  );
-}
-
-  Widget _buildHostelCard(String name, String distance, String singlePrice, String doublePrice, String rating) {
+  Widget _buildHostelCard({
+    required String hostelId,
+    required String name,
+    required String distance,
+    required String singlePrice,
+    required String doublePrice,
+    required String rating,
+  }) {
     return Container(
       width: 280,
       decoration: BoxDecoration(
@@ -300,7 +294,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => HostelDetailsScreen(hostel: hostel),
+                          builder: (context) => HostelDetailsScreen(hostelId: hostelId),
                         ),
                       );
                     },
