@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'booking_details_screen.dart';
+import 'booking_information_screen.dart';
 
 
 class StudentActiveBookingScreen extends StatelessWidget {
@@ -108,7 +108,7 @@ class StudentActiveBookingScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => StudentBookingDetailsScreen(
+                      builder: (context) => StudentBookingInformationScreen(
                         bookingId: bookingId,
                         hostelName: hostelName,
                         roomNumber: roomNumber,

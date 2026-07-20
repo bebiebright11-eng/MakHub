@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'hostel_details_screen.dart';
 
-class StudentHomeScreen extends StatelessWidget {
+class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
 
+  @override
+  State<StudentHomeScreen> createState() => _StudentHomeScreenState();
+}
+
+class _StudentHomeScreenState extends State<StudentHomeScreen> {
+    final Stream<QuerySnapshot> _hostelsStream = FirebaseFirestore.instance.collection('hostels').snapshots();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -158,20 +166,53 @@ class StudentHomeScreen extends StatelessWidget {
   }
 
   Widget _buildHostelList() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        children: [
-          _buildHostelCard('Nakawa Heights Hostel', '0.4 km to campus', '850K', '550K', '4.8'),
-          const SizedBox(width: 20),
-          _buildHostelCard('Kikoni Plaza', '0.7 km to campus', '900K', '600K', '4.6'),
-        ],
-      ),
+    return StreamBuilder<QuerySnapshot>(
+      stream: _hostelsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('No hostels available'));
+        }
+
+        final hostelDocs = snapshot.data!.docs;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            children: hostelDocs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return Padding(
+                padding: const EdgeInsets.only(right: 20),
+                child: _buildHostelCard(
+                  hostelId: doc.id,
+                  name: data['hostelName'] ?? 'Unnamed Hostel',
+                  distance: data['location'] ?? '',
+                  singlePrice: data['singlePrice'] ?? '0',
+                  doublePrice: data['doublePrice'] ?? '0',
+                  rating: '4.5',
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildHostelCard(String name, String distance, String singlePrice, String doublePrice, String rating) {
+
+
+  Widget _buildHostelCard({
+    required String hostelId,
+    required String name,
+    required String distance,
+    required String singlePrice,
+    required String doublePrice,
+    required String rating,
+  }) {
     return Container(
       width: 280,
       decoration: BoxDecoration(
@@ -249,7 +290,14 @@ class StudentHomeScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HostelDetailsScreen(hostelId: hostelId),
+                        ),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2563EB),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

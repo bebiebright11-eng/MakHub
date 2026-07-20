@@ -1,66 +1,99 @@
 import 'package:flutter/material.dart';
 import 'booking_details_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class StudentRoomDetailsScreen extends StatelessWidget {
-  const StudentRoomDetailsScreen({super.key});
+class StudentRoomDetailsScreen extends StatefulWidget {
+  final String hostelId;
+  final String roomId;
+
+  const StudentRoomDetailsScreen({super.key, required this.hostelId, required this.roomId});
+
+  @override
+  State<StudentRoomDetailsScreen> createState() => _StudentRoomDetailsScreenState();
+}
+
+class _StudentRoomDetailsScreenState extends State<StudentRoomDetailsScreen> {
+  late final Stream<DocumentSnapshot> _roomStream = FirebaseFirestore.instance
+      .collection('rooms')
+      .doc(widget.roomId)
+      .snapshots();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: _roomStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const Center(child: Text('Room not found'));
+          }
+
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          final availability = data['availability'] ?? 'unavailable';
+
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildHeader(context, data),
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Room 101 • Single Room', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                          SizedBox(height: 4),
-                          Row(
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.location_on, size: 14, color: Color(0xFF2563EB)),
-                              SizedBox(width: 4),
-                              Text('Kilimanjaro Hostel', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                              Text('Room ${data['roomNumber'] ?? ''} • ${data['roomType'] ?? ''}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on, size: 14, color: Color(0xFF2563EB)),
+                                  const SizedBox(width: 4),
+                                  Text(widget.hostelId, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                                ],
+                              ),
                             ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(10)),
+                            child: Text(availability, style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 12)),
                           ),
                         ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(10)),
-                        child: const Text('Available', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 12)),
-                      ),
+                      const SizedBox(height: 32),
+                      _buildRoomDetails(data),
+                      const SizedBox(height: 32),
+                      const Text('Room Highlights', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text('Comfort, privacy, and convenience.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                      const SizedBox(height: 16),
+                      _buildHighlightsGrid(),
+                      const SizedBox(height: 100),
                     ],
                   ),
-                  const SizedBox(height: 32),
-                  _buildRoomDetails(),
-                  const SizedBox(height: 32),
-                  const Text('Room Highlights', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const Text('Comfort, privacy, and convenience.', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                  const SizedBox(height: 16),
-                  _buildHighlightsGrid(),
-                  const SizedBox(height: 100),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
       bottomSheet: _buildBottomAction(context),
       bottomNavigationBar: _buildBottomNav(),
     );
+
   }
 
-  Widget _buildHeader(BuildContext context) {
+  
+
+  Widget _buildHeader(BuildContext context, Map<String, dynamic> data) {
+    final roomPhoto = data['roomPhoto'] as String?;
     return Stack(
       children: [
         Container(
@@ -68,8 +101,13 @@ class StudentRoomDetailsScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.grey.shade200,
             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+            image: roomPhoto != null && roomPhoto.isNotEmpty
+                ? DecorationImage(image: NetworkImage(roomPhoto), fit: BoxFit.cover)
+                : null,
           ),
-          child: const Center(child: Icon(Icons.bed, size: 80, color: Colors.grey)),
+          child: roomPhoto == null || roomPhoto.isEmpty
+              ? const Center(child: Icon(Icons.bed, size: 80, color: Colors.grey))
+              : null,
         ),
         Positioned(
           top: 50,
@@ -102,7 +140,12 @@ class StudentRoomDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRoomDetails() {
+  Widget _buildRoomDetails(Map<String, dynamic> data) {
+    final selfContained = data['selfContained'] == true ? 'Yes' : 'No';
+    final nearBalcony = data['nearBalcony'] == true ? 'Yes' : 'No';
+    final bathroomDistance = data['bathroomDistance']?.toString() ?? 'N/A';
+    final windowView = data['windowView']?.toString() ?? 'N/A';
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -115,13 +158,13 @@ class StudentRoomDetailsScreen extends StatelessWidget {
           const Text('Room Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const Text('Key information about this room before booking.', style: TextStyle(color: Colors.grey, fontSize: 12)),
           const SizedBox(height: 20),
-          _detailRow(Icons.bathroom_outlined, 'Self-contained', 'Private bathroom included', 'Yes'),
+          _detailRow(Icons.bathroom_outlined, 'Self-contained', 'Private bathroom included', selfContained),
           const SizedBox(height: 16),
-          _detailRow(Icons.directions_walk, 'Bathroom Distance', 'From room entrance', 'Inside room'),
+          _detailRow(Icons.directions_walk, 'Bathroom Distance', 'From room entrance', bathroomDistance),
           const SizedBox(height: 16),
-          _detailRow(Icons.balcony_outlined, 'Near Balcony', 'Natural light and airflow', 'Yes'),
+          _detailRow(Icons.balcony_outlined, 'Near Balcony', 'Natural light and airflow', nearBalcony),
           const SizedBox(height: 16),
-          _detailRow(Icons.window_outlined, 'Window View', 'Facing the courtyard', 'Open view'),
+          _detailRow(Icons.window_outlined, 'Window View', 'Facing the courtyard', windowView),
         ],
       ),
     );
@@ -183,7 +226,7 @@ class StudentRoomDetailsScreen extends StatelessWidget {
         width: double.infinity,
         height: 56,
         child: ElevatedButton(
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StudentBookingDetailsScreen())),
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => StudentBookingDetailsScreen(hostelId: widget.hostelId, roomId: widget.roomId))),
           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
           child: const Text('Book Room', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
         ),

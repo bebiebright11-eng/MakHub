@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class StudentForgotPasswordScreen extends StatefulWidget {
   const StudentForgotPasswordScreen({super.key});
@@ -9,6 +10,7 @@ class StudentForgotPasswordScreen extends StatefulWidget {
 
 class _StudentForgotPasswordScreenState extends State<StudentForgotPasswordScreen> {
   final _emailController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +89,13 @@ class _StudentForgotPasswordScreenState extends State<StudentForgotPasswordScree
                         backgroundColor: const Color(0xFF2563EB),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
-                      child: const Row(
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.send_outlined, color: Colors.white, size: 20),
@@ -138,6 +146,44 @@ class _StudentForgotPasswordScreenState extends State<StudentForgotPasswordScree
       ),
       bottomNavigationBar: _buildBottomNav(),
     );
+  }
+  Future<void> _handleResetPassword() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter your email address")),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Reset link sent! Check your email.")),
+      );
+
+      Navigator.pop(context);
+    } on FirebaseAuthException catch (e) {
+      String message = "Something went wrong. Please try again.";
+      if (e.code == 'user-not-found') {
+        message = "No account found with that email.";
+      } else if (e.code == 'invalid-email') {
+        message = "Please enter a valid email address.";
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Widget _buildBottomNav() {

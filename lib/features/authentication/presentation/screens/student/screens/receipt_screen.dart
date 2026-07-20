@@ -1,28 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class StudentReceiptScreen extends StatelessWidget {
-  final String receiptNumber;
+class StudentReceiptScreen extends StatefulWidget {
   final String bookingId;
-  final String studentName;
-  final String hostelName;
-  final String roomNumber;
-  final String amountPaid;
-  final String date;
-  final String time;
-  final String transactionId;
+  const StudentReceiptScreen({super.key, required this.bookingId});
 
-  const StudentReceiptScreen({
-    super.key,
-    required this.receiptNumber,
-    required this.bookingId,
-    required this.studentName,
-    required this.hostelName,
-    required this.roomNumber,
-    required this.amountPaid,
-    this.date = "12 Jul 2026",
-    this.time = "3:42 PM",
-    this.transactionId = "TXN-2048-8891",
-  });
+  @override
+  State<StudentReceiptScreen> createState() => _StudentReceiptScreenState();
+}
+
+class _StudentReceiptScreenState extends State<StudentReceiptScreen> {
+  late final Stream<DocumentSnapshot> _bookingStream =
+      FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).snapshots();
 
   @override
   Widget build(BuildContext context) {
@@ -31,82 +20,114 @@ class StudentReceiptScreen extends StatelessWidget {
         title: const Text("Receipt"),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      shape: BoxShape.circle,
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: _bookingStream,
+        builder: (context, bookingSnap) {
+          if (!bookingSnap.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!bookingSnap.data!.exists) {
+            return const Center(child: Text('Booking not found'));
+          }
+
+          final booking = bookingSnap.data!.data() as Map<String, dynamic>;
+          final hostelId = booking['hostelId'] as String? ?? '';
+          final roomId = booking['roomId'] as String? ?? '';
+
+          return FutureBuilder<List<DocumentSnapshot>>(
+            future: Future.wait([
+              FirebaseFirestore.instance.collection('hostels').doc(hostelId).get(),
+              FirebaseFirestore.instance.collection('rooms').doc(roomId).get(),
+            ]),
+            builder: (context, futureSnap) {
+              if (!futureSnap.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final hostelData = futureSnap.data![0].data() as Map<String, dynamic>? ?? {};
+              final roomData = futureSnap.data![1].data() as Map<String, dynamic>? ?? {};
+              final bookingDate = booking['bookingDate'] as Timestamp?;
+              final dateStr = bookingDate != null
+                  ? '${bookingDate.toDate().day}/${bookingDate.toDate().month}/${bookingDate.toDate().year}'
+                  : 'N/A';
+              final timeStr = bookingDate != null
+                  ? '${bookingDate.toDate().hour}:${bookingDate.toDate().minute.toString().padLeft(2, '0')}'
+                  : 'N/A';
+
+              return Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.check_circle, color: Colors.green, size: 48),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            "Payment Successful",
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    "Payment Successful",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
 
-            const SizedBox(height: 28),
+                    const SizedBox(height: 28),
 
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                children: [
-                  _infoRow("Receipt Number", receiptNumber),
-                  const SizedBox(height: 10),
-                  _infoRow("Booking ID", bookingId),
-                  const SizedBox(height: 10),
-                  _infoRow("Student Name", studentName),
-                  const SizedBox(height: 10),
-                  _infoRow("Hostel Name", hostelName),
-                  const SizedBox(height: 10),
-                  _infoRow("Room Number", roomNumber),
-                  const Divider(height: 24),
-                  _infoRow("Amount Paid", amountPaid, bold: true),
-                  const SizedBox(height: 10),
-                  _infoRow("Date", date),
-                  const SizedBox(height: 10),
-                  _infoRow("Time", time),
-                  const SizedBox(height: 10),
-                  _infoRow("Transaction ID", transactionId),
-                ],
-              ),
-            ),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Column(
+                        children: [
+                          _infoRow("Booking ID", widget.bookingId),
+                          const SizedBox(height: 10),
+                          _infoRow("Hostel Name", hostelData['hostelName'] ?? ''),
+                          const SizedBox(height: 10),
+                          _infoRow("Room Number", 'Room ${roomData['roomNumber'] ?? ''}'),
+                          const Divider(height: 24),
+                          _infoRow("Booking Status", booking['bookingStatus'] ?? '', bold: true),
+                          const SizedBox(height: 10),
+                          _infoRow("Date", dateStr),
+                          const SizedBox(height: 10),
+                          _infoRow("Time", timeStr),
+                        ],
+                      ),
+                    ),
 
-            const SizedBox(height: 32),
+                    const SizedBox(height: 32),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // PDF download logic goes here later
-                },
-                icon: const Icon(Icons.download),
-                label: const Text("Download Receipt"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          // PDF download logic goes here later
+                        },
+                        icon: const Icon(Icons.download),
+                        label: const Text("Download Receipt"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-          ],
-        ),
+              );
+            },
+          );
+        },
       ),
     );
   }
