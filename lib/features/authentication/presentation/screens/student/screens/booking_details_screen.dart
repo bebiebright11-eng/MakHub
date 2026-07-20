@@ -2,7 +2,15 @@ import 'package:flutter/material.dart';
 import 'receipt_screen.dart';
 
 class StudentBookingDetailsScreen extends StatefulWidget {
-  const StudentBookingDetailsScreen({super.key});
+  final String hostelId;
+  final String roomId;
+
+  const StudentBookingDetailsScreen({
+    super.key,
+    required this.hostelId,
+    required this.roomId,
+  });
+
 
   @override
   State<StudentBookingDetailsScreen> createState() => _StudentBookingDetailsScreenState();
