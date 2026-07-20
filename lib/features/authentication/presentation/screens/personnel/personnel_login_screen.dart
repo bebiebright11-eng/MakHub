@@ -1,6 +1,8 @@
 // ignore_for_file: file_names, deprecated_member_use, dead_code
 import 'package:flutter/material.dart';
 import 'activate_account_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,21 +16,78 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
-  void _handleLogin() {
-    bool isFirstLogin = true; // Change this after connecting API
+Future<void> _handleLogin() async {
+  try {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-    if (isFirstLogin) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const ActivateAccountScreen(),
+    // Login with Firebase Authentication
+    final credential =
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    final uid = credential.user!.uid;
+
+    // Find this personnel in Firestore
+    final result = await FirebaseFirestore.instance
+        .collection('personnel')
+        .where('email', isEqualTo: email)
+        .limit(1)
+        .get();
+
+    if (result.docs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Personnel account not found."),
+          backgroundColor: Colors.red,
         ),
       );
-
-    } else {
-      Navigator.pushReplacementNamed(context, '/dashboard');
+      return;
     }
+
+    final doc = result.docs.first;
+
+    // Check activation
+    if (doc['activated'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please activate your account first."),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Save Firebase UID if it hasn't been saved yet
+    if (doc['firebaseUid'] == "") {
+      await doc.reference.update({
+        'firebaseUid': uid,
+      });
+    }
+
+    // Open Hostel Personnel Dashboard
+    Navigator.pushReplacementNamed(context, '/dashboard');
+  } on FirebaseAuthException catch (e) {
+    String message = "Login failed.";
+
+    if (e.code == 'user-not-found') {
+      message = "No account found.";
+    } else if (e.code == 'wrong-password') {
+      message = "Incorrect password.";
+    } else if (e.code == 'invalid-credential') {
+      message = "Invalid email or password.";
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
 
   @override
   void dispose() {
@@ -167,6 +226,29 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
+
+                      const SizedBox(height: 12),
+
+Center(
+  child: TextButton(
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ActivateAccountScreen(),
+        ),
+      );
+    },
+    child: const Text(
+      'Activate Account',
+      style: TextStyle(
+        color: Color(0xFF2563EB),
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+      ),
+    ),
+  ),
+),
 
                       // FORGOT PASSWORD - Orange
                       Center(
