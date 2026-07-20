@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StudentRegisterScreen extends StatefulWidget {
   const StudentRegisterScreen({super.key});
@@ -17,6 +19,7 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +131,14 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
                   backgroundColor: const Color(0xFF2563EB),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Row(
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    
+                : const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.person_add_outlined, color: Colors.white),
@@ -155,6 +165,80 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
       ),
       bottomNavigationBar: _buildBottomNav(),
     );
+  }
+
+  Future<void> _handleRegister() async {
+    final fullName = _fullNameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final admissionNumber = _admissionController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    if (fullName.isEmpty || email.isEmpty || phone.isEmpty || admissionNumber.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill in all fields")),
+      );
+      return;
+    }
+
+    if (password != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Passwords do not match")),
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Password must be at least 6 characters")),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Step 1: Create the account in Firebase Authentication
+      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Step 2: Save the student's profile info in Firestore
+      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+        'fullName': fullName,
+        'email': email,
+        'phoneNumber': phone,
+        'admissionNumber': admissionNumber,
+        'role': 'student',
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Account created successfully! Please log in.")),
+      );
+
+      Navigator.pop(context); // back to Login
+    } on FirebaseAuthException catch (e) {
+      String message = "Registration failed. Please try again.";
+      if (e.code == 'email-already-in-use') {
+        message = "An account already exists with that email.";
+      } else if (e.code == 'weak-password') {
+        message = "Password is too weak.";
+      } else if (e.code == 'invalid-email') {
+        message = "Please enter a valid email address.";
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Widget _buildField(String label, String hint, IconData icon, TextEditingController controller, {bool isPassword = false, bool obscure = false, VoidCallback? onToggle}) {
