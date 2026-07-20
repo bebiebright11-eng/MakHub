@@ -1,6 +1,8 @@
 // ignore_for_file: file_names, deprecated_member_use
 import 'package:flutter/material.dart';
-import '3_dashboard_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 
 class ActivateAccountScreen extends StatefulWidget {
   const ActivateAccountScreen({super.key});
@@ -10,11 +12,12 @@ class ActivateAccountScreen extends StatefulWidget {
 }
 
 class _ActivateAccountScreenState extends State<ActivateAccountScreen> {
-  final _tempPassController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _newPassController = TextEditingController();
   final _confirmPassController = TextEditingController();
 
-  bool _obscureTemp = true;
+
   bool _obscureNew = true;
   bool _obscureConfirm = true;
 
@@ -38,26 +41,96 @@ class _ActivateAccountScreenState extends State<ActivateAccountScreen> {
     setState(() {});
   }
 
-  void _activateAccount() {
-    if (_newPassController.text != _confirmPassController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Passwords do not match'), backgroundColor: Colors.red),
-      );
-      return;
-    }
-    if (_passwordStrength < 0.6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password is too weak'), backgroundColor: Colors.red),
-      );
-      return;
-    }
-    // TODO: Call API to activate
-    Navigator.pushReplacementNamed(context, '/dashboard');
+  Future<void> _activateAccount() async {
+
+  if (_newPassController.text != _confirmPassController.text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Passwords do not match"),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
   }
+
+  if (_passwordStrength < 0.6) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Password is too weak"),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
+
+  final email = _emailController.text.trim();
+  final phone = _phoneController.text.trim();
+
+  final result = await FirebaseFirestore.instance
+      .collection('personnel')
+      .where('email', isEqualTo: email)
+      .where('phoneNumber', isEqualTo: phone)
+      .limit(1)
+      .get();
+
+      print("Email entered: $email");
+print("Phone entered: $phone");
+print("Documents found: ${result.docs.length}");
+
+  if (result.docs.isEmpty) {
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Account does not exist."),
+        backgroundColor: Colors.red,
+      ),
+    );
+
+    return;
+  }
+
+  final data = result.docs.first.data();
+  final docId = result.docs.first.id;
+
+if (data['activated'] == true) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('This account has already been activated. Please login.'),
+      backgroundColor: Colors.orange,
+    ),
+  );
+  return;
+}
+
+await FirebaseAuth.instance.createUserWithEmailAndPassword(
+  email: email,
+  password: _newPassController.text,
+);
+
+final user = FirebaseAuth.instance.currentUser;
+
+await FirebaseFirestore.instance
+    .collection('personnel')
+    .doc(docId)
+    .update({
+  'activated': true,
+  'firebaseUid': user!.uid,
+});
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Account activated successfully."),
+      backgroundColor: Colors.green,
+    ),
+  );
+
+  Navigator.pushReplacementNamed(context, '/login');
+}
 
   @override
   void dispose() {
-    _tempPassController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
     _newPassController.dispose();
     _confirmPassController.dispose();
     super.dispose();
@@ -95,7 +168,7 @@ class _ActivateAccountScreenState extends State<ActivateAccountScreen> {
                         Text('Activate Account', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
                         SizedBox(height: 6),
                         Text(
-                          'Set a secure password for your first login to continue to the hostel personnel dashboard.',
+                          'Verify your email and phone number, then create a password to activate your hostel personnel account.',
                           style: TextStyle(color: Colors.grey, height: 1.4),
                         ),
                       ],
@@ -105,14 +178,29 @@ class _ActivateAccountScreenState extends State<ActivateAccountScreen> {
               ),
               const SizedBox(height: 32),
 
-              // TEMP PASSWORD
-              _passwordField(
-                label: 'Temporary Password',
-                controller: _tempPassController,
-                obscure: _obscureTemp,
-                toggle: () => setState(() => _obscureTemp = !_obscureTemp),
-              ),
+
+              
+
+              
               const SizedBox(height: 16),
+
+              _buildTextField(
+  label: "Email Address",
+  controller: _emailController,
+  icon: Icons.email_outlined,
+  hint: "Enter your email",
+),
+
+const SizedBox(height: 16),
+
+_buildTextField(
+  label: "Phone Number",
+  controller: _phoneController,
+  icon: Icons.phone_outlined,
+  hint: "Enter your phone number",
+),
+
+const SizedBox(height: 16),
 
               // NEW PASSWORD + STRENGTH
               _passwordFieldWithStrength(
@@ -122,6 +210,8 @@ class _ActivateAccountScreenState extends State<ActivateAccountScreen> {
                 toggle: () => setState(() => _obscureNew = !_obscureNew),
               ),
               const SizedBox(height: 16),
+
+             
 
               // CONFIRM PASSWORD
               _passwordField(
@@ -134,40 +224,36 @@ class _ActivateAccountScreenState extends State<ActivateAccountScreen> {
 
               // SECURITY TIP CARD
               Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF7ED),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFFED7AA)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFDBA74),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.auto_awesome, color: Color(0xFF9A3412), size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Security tip', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF9A3412), fontSize: 15)),
-                          SizedBox(height: 4),
-                          Text(
-                            'Choose a password you can remember, but avoid using your temporary password again.',
-                            style: TextStyle(color: Color(0xFF9A3412)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+  padding: const EdgeInsets.all(16),
+  decoration: BoxDecoration(
+    color: const Color(0xFFEFF6FF),
+    borderRadius: BorderRadius.circular(18),
+    border: Border.all(
+      color: const Color(0xFFBFDBFE),
+    ),
+  ),
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Icon(
+        Icons.info_outline,
+        color: Color(0xFF2563EB),
+      ),
+
+      const SizedBox(width: 12),
+
+      Expanded(
+        child: Text(
+          "Your account must already have been created by the hostel administrator before you can activate it.",
+          style: TextStyle(
+            color: Colors.grey.shade700,
+            height: 1.4,
+          ),
+        ),
+      ),
+    ],
+  ),
+),
               const SizedBox(height: 32),
 
               // BUTTON
@@ -191,6 +277,69 @@ class _ActivateAccountScreenState extends State<ActivateAccountScreen> {
       ),
     );
   }
+
+Widget _buildTextField({
+  required String label,
+  required TextEditingController controller,
+  required IconData icon,
+  required String hint,
+}) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7F9FC),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(
+            icon,
+            color: Colors.grey,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 12,
+                ),
+              ),
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  hintText: hint,
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _passwordField({
     required String label,
