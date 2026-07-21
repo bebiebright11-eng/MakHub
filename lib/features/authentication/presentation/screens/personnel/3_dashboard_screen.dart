@@ -27,7 +27,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// the bottom navigation bar.
   final List<Widget> _pages = [
     const _DashboardContent(),
-    const FloorsScreen(),
+    FloorsScreen(
+      hostelId: AppState().hostelId,
+      hostelName: AppState().hostelName,
+    ),
     const PendingPaymentsScreen(),
     const ReportingStudentsScreen(),
     const ProfileScreen(),
@@ -138,7 +141,21 @@ class _DashboardContent extends StatelessWidget {
               mainAxisSpacing: 16,
               childAspectRatio: 1.15,
               children: [
-                _quickAction('Manage Rooms', Icons.tune, const Color(0xFFDBEAFE), const Color(0xFF2563EB), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FloorsScreen()))),
+                _quickAction(
+  'Manage Rooms',
+  Icons.apartment,
+  const Color(0xFFDBEAFE),
+  const Color(0xFF2563EB),
+  () => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => FloorsScreen(
+        hostelId: AppState().hostelId,
+        hostelName: AppState().hostelName,
+      ),
+    ),
+  ),
+),
                 _quickAction('Payment\nConfirmations', Icons.credit_card, const Color(0xFFFED7AA), const Color(0xFFF97316), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PendingPaymentsScreen()))),
                 _quickAction('Reporting\nStudents', Icons.person_add_alt, const Color(0xFFDBEAFE), const Color(0xFF2563EB), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportingStudentsScreen()))),
                 _quickAction('Hostel Details', Icons.info_outline, const Color(0xFFD1FAE5), const Color(0xFF10B981), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HostelDetailsScreen()))),

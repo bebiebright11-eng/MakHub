@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'activate_account_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../state/app_state.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -47,28 +48,41 @@ Future<void> _handleLogin() async {
       return;
     }
 
-    final doc = result.docs.first;
 
-    // Check activation
-    if (doc['activated'] != true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Please activate your account first."),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
+final doc = result.docs.first;
+final data = doc.data();
 
-    // Save Firebase UID if it hasn't been saved yet
-    if (doc['firebaseUid'] == "") {
-      await doc.reference.update({
-        'firebaseUid': uid,
-      });
-    }
+// Check activation
+if (data['activated'] != true) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Please activate your account first."),
+      backgroundColor: Colors.orange,
+    ),
+  );
+  return;
+}
 
-    // Open Hostel Personnel Dashboard
-    Navigator.pushReplacementNamed(context, '/dashboard');
+// Save Firebase UID if it hasn't been saved yet
+if ((data['firebaseUid'] ?? '') == '') {
+  await doc.reference.update({
+    'firebaseUid': uid,
+  });
+}
+
+// Save personnel + hostel session into AppState
+AppState().setPersonnel(
+  personnelId: doc.id,
+  personnelName: data['fullName'] ?? '',
+  personnelEmail: data['email'] ?? '',
+  hostelId: data['hostelId'] ?? '',
+  hostelName: data['hostelName'] ?? '',
+);
+
+// Open Hostel Personnel Dashboard
+Navigator.pushReplacementNamed(context, '/dashboard');
+
+
   } on FirebaseAuthException catch (e) {
     String message = "Login failed.";
 

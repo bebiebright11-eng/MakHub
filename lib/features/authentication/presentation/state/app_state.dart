@@ -12,6 +12,14 @@ class AppState extends ChangeNotifier {
   int pendingPayments = 0;
   int reservedRooms = 0;
   int studentsReportingToday = 0;
+  // Logged in hostel personnel
+String personnelId = "";
+String personnelName = "";
+String personnelEmail = "";
+
+String hostelId = "";
+String hostelName = "";
+
 
   Future<void> fetchStats() async {
     // Collection group query: searches every 'rooms' subcollection,
@@ -34,6 +42,7 @@ class AppState extends ChangeNotifier {
         reserved++;
       }
     }
+    
 
     totalRooms = total;
     availableRooms = available;
@@ -42,4 +51,21 @@ class AppState extends ChangeNotifier {
 
     notifyListeners();
   }
+void setPersonnel({
+  required String personnelId,
+  required String personnelName,
+  required String personnelEmail,
+  required String hostelId,
+  required String hostelName,
+}) {
+  this.personnelId = personnelId;
+  this.personnelName = personnelName;
+  this.personnelEmail = personnelEmail;
+  this.hostelId = hostelId;
+  this.hostelName = hostelName;
+
+  notifyListeners();
 }
+
+}
+
