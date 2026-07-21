@@ -60,13 +60,27 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
                       _buildPricingCards(data),
                       const SizedBox(height: 32),
                       _buildSectionTitle('Description'),
-                      const SizedBox(height: 8),
-                      Text(
-                        data['description'] ?? '',
-                        style: const TextStyle(color: Colors.grey, height: 1.5, fontSize: 14),
-                      ),
-                      const SizedBox(height: 24),
-                      _buildSectionTitle('Facilities'),
+const SizedBox(height: 8),
+Text(
+  data['description'] ?? '',
+  style: const TextStyle(
+    color: Colors.grey,
+    height: 1.5,
+    fontSize: 14,
+  ),
+),
+
+const SizedBox(height: 28),
+
+_buildSectionTitle('Hostel Information'),
+
+const SizedBox(height: 16),
+
+_buildHostelInformation(data),
+
+const SizedBox(height: 28),
+
+_buildSectionTitle('Facilities'),
                       const SizedBox(height: 16),
                       _buildFacilitiesGrid(data),
                       const SizedBox(height: 24),
@@ -218,14 +232,24 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
   }
 
   Widget _buildTags(Map<String, dynamic> data) {
-    return Row(
-      children: [
-        _buildTag('Security ${data['securityRating'] ?? '-'}', const Color(0xFFFFF7ED), const Color(0xFFF97316), Icons.security),
-        const SizedBox(width: 12),
-        _buildTag('${data['walkingTime'] ?? ''}', const Color(0xFFF1F5F9), Colors.black, Icons.directions_walk),
-      ],
-    );
-  }
+  return Row(
+    children: [
+      _buildTag(
+        '${data['distance'] ?? ''} from campus',
+        const Color(0xFFEFF6FF),
+        const Color(0xFF2563EB),
+        Icons.location_on,
+      ),
+      const SizedBox(width: 12),
+      _buildTag(
+        '${data['walkingTime'] ?? ''}',
+        const Color(0xFFF1F5F9),
+        Colors.black,
+        Icons.directions_walk,
+      ),
+    ],
+  );
+}
 
   Widget _buildTag(String label, Color bgColor, Color textColor, IconData icon) {
     return Container(
@@ -241,15 +265,21 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
     );
   }
 
-  Widget _buildPricingCards(Map<String, dynamic> data) {
-    return Row(
-      children: [
-        _buildPriceCard('Single Room', '${data['singleRoomPrice'] ?? 0}'),
-        const SizedBox(width: 16),
-        _buildPriceCard('Double Room', '${data['doubleRoomPrice'] ?? 0}'),
-      ],
-    );
-  }
+Widget _buildPricingCards(Map<String, dynamic> data) {
+  return Row(
+    children: [
+      _buildPriceCard(
+        'Single Room',
+        data['singlePrice']?.toString() ?? '0',
+      ),
+      const SizedBox(width: 16),
+      _buildPriceCard(
+        'Double Room',
+        data['doublePrice']?.toString() ?? '0',
+      ),
+    ],
+  );
+}
 
   Widget _buildPriceCard(String type, String price) {
     return Expanded(
@@ -280,6 +310,65 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
     );
   }
 
+
+  Widget _buildHostelInformation(Map<String, dynamic> data) {
+  return Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Column(
+      children: [
+        _infoRow(Icons.home, "Hostel Type", data['type'] ?? ""),
+        _infoRow(Icons.location_on, "Distance", data['distance'] ?? ""),
+        _infoRow(Icons.king_bed, "Single Room Size", data['singleRoomSize'] ?? ""),
+        _infoRow(Icons.bed, "Double Room Size", data['doubleRoomSize'] ?? ""),
+        _infoRow(Icons.directions_walk, "Walking Time", data['walkingTime'] ?? ""),
+        _infoRow(Icons.atm, "ATM", data['atm'] ?? ""),
+        _infoRow(Icons.local_hospital, "Hospital", data['hospital'] ?? ""),
+        _infoRow(Icons.store, "Nearby Shops", data['shops'] ?? ""),
+      ],
+    ),
+  );
+}
+
+
+Widget _infoRow(
+  IconData icon,
+  String title,
+  String value,
+) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    child: Row(
+      children: [
+        Icon(
+          icon,
+          color: const Color(0xFF2563EB),
+          size: 20,
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
   Widget _buildSectionTitle(String title) {
     return Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
   }
@@ -287,13 +376,16 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
   Widget _buildFacilitiesGrid(Map<String, dynamic> data) {
     final facilities = List<String>.from(data['facilities'] ?? []);
     final iconMap = {
-      'Wi-Fi': Icons.wifi,
-      'Shuttle': Icons.airport_shuttle,
-      'Kitchen': Icons.restaurant,
-      'Laundry': Icons.local_laundry_service,
-      'Reading': Icons.menu_book,
-      'Pool': Icons.pool,
-    };
+  'WiFi': Icons.wifi,
+  'DSTV': Icons.tv,
+  'Reading Room': Icons.menu_book,
+  'Shuttle': Icons.airport_shuttle,
+  'Security': Icons.security,
+  'Kitchen': Icons.restaurant,
+  'Laundry': Icons.local_laundry_service,
+  'Swimming Pool': Icons.pool,
+  'Pool Table': Icons.sports_esports,
+};
 
     if (facilities.isEmpty) {
       return const Text('No facilities listed', style: TextStyle(color: Colors.grey));
@@ -325,8 +417,13 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
   }
 
   Widget _buildRules(Map<String, dynamic> data) {
-    final rules = List<String>.from(data['rules'] ?? []);
-
+    final rules = [
+  "No smoking inside the hostel.",
+  "Visitors are allowed from 8:00 AM to 8:00 PM.",
+  "Keep noise to a minimum after 10:00 PM.",
+  "Maintain cleanliness in shared areas.",
+  "Report damaged property to hostel management.",
+];
     if (rules.isEmpty) {
       return const Text('No rules listed', style: TextStyle(color: Colors.grey));
     }

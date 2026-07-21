@@ -4,18 +4,27 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StudentFloorSelectionScreen extends StatefulWidget {
   final String hostelId;
-  const StudentFloorSelectionScreen({super.key, required this.hostelId});
+
+  const StudentFloorSelectionScreen({
+    super.key,
+    required this.hostelId,
+  });
 
   @override
-  State<StudentFloorSelectionScreen> createState() => _StudentFloorSelectionScreenState();
-  
+  State<StudentFloorSelectionScreen> createState() =>
+      _StudentFloorSelectionScreenState();
 }
 
-class _StudentFloorSelectionScreenState extends State<StudentFloorSelectionScreen> {
-  late final Stream<QuerySnapshot> _floorsStream = FirebaseFirestore.instance
-    .collection('floors')
-    .where('hostelId', isEqualTo: widget.hostelId)
-    .snapshots();
+class _StudentFloorSelectionScreenState
+    extends State<StudentFloorSelectionScreen> {
+
+  late final Stream<QuerySnapshot> _floorsStream =
+      FirebaseFirestore.instance
+          .collection("hostels")
+          .doc(widget.hostelId)
+          .collection("floors")
+          .orderBy("createdAt")
+          .snapshots();
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +41,28 @@ class _StudentFloorSelectionScreenState extends State<StudentFloorSelectionScree
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Select a Floor', style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
-            Text(widget.hostelId, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            FutureBuilder<DocumentSnapshot>(
+  future: FirebaseFirestore.instance
+      .collection("hostels")
+      .doc(widget.hostelId)
+      .get(),
+  builder: (context, snapshot) {
+    if (!snapshot.hasData) {
+      return const SizedBox();
+    }
+
+    final hostel =
+        snapshot.data!.data() as Map<String, dynamic>;
+
+    return Text(
+      hostel["hostelName"] ?? "",
+      style: const TextStyle(
+        color: Colors.grey,
+        fontSize: 12,
+      ),
+    );
+  },
+),
           ],
         ),
       ),
@@ -56,7 +86,7 @@ class _StudentFloorSelectionScreenState extends State<StudentFloorSelectionScree
                 context,
                 data['floorName'] ?? '',
                 data['roomRange'] ?? '',
-                data['totalRooms'] ?? 0,
+                data['availableRooms'] ?? 0,
                 Icons.layers,
                 const Color(0xFFEFF6FF),
                 const Color(0xFF2563EB),
@@ -93,9 +123,19 @@ class _StudentFloorSelectionScreenState extends State<StudentFloorSelectionScree
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  children: [
-                    Text(floor, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(width: 8),
+  children: [
+    Expanded(
+      child: Text(
+        floor,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+    ),
+    const SizedBox(width: 6),
+                  
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
