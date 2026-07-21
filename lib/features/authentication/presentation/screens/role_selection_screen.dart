@@ -8,7 +8,7 @@ class RoleSelectionScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xffF5F6FA),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(25),
           child: Column(
             children: [
