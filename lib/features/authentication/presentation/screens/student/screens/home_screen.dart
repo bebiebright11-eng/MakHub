@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'hostel_details_screen.dart';
+import 'package:flutter/gestures.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -9,39 +10,107 @@ class StudentHomeScreen extends StatefulWidget {
   State<StudentHomeScreen> createState() => _StudentHomeScreenState();
 }
 
+
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
-    final Stream<QuerySnapshot> _hostelsStream = FirebaseFirestore.instance.collection('hostels').snapshots();
-  @override
+    final Stream<QuerySnapshot> _hostelsStream =
+    FirebaseFirestore.instance
+        .collection('hostels')
+        .snapshots();
+    String _searchText = "";
+    String _selectedFilter = "";
+final TextEditingController _searchController =
+    TextEditingController();
+
+    final ScrollController _chipsScrollController = ScrollController();
+final ScrollController _hostelsScrollController = ScrollController();
+
+
+@override
+void dispose() {
+  _searchController.dispose();
+  _chipsScrollController.dispose();
+  _hostelsScrollController.dispose();
+  super.dispose();
+}
+  
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildCategoryChips(),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader('Recommended Hostels'),
-                  const SizedBox(height: 16),
-                  _buildHostelList(),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader('Near Campus'),
-                  const SizedBox(height: 16),
-                  // Add more content here as needed
-                ],
-              ),
-            ),
-          ),
-        ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _hostelsStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('No hostels available'));
+          }
+
+          final filteredDocs = _filterHostels(snapshot.data!.docs);
+
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _buildHeader()),
+              SliverToBoxAdapter(child: const SizedBox(height: 20)),
+              SliverToBoxAdapter(child: _buildCategoryChips()),
+              SliverToBoxAdapter(child: const SizedBox(height: 12)),
+              SliverToBoxAdapter(child: _buildSectionHeader("Recommended Hostels")),
+              SliverToBoxAdapter(child: const SizedBox(height: 12)),
+              SliverToBoxAdapter(child: _buildHostelList(filteredDocs)),
+              SliverToBoxAdapter(child: const SizedBox(height: 12)),
+              SliverToBoxAdapter(child: _buildSectionHeader("All Hostels")),
+              SliverToBoxAdapter(child: const SizedBox(height: 12)),
+              SliverToBoxAdapter(child: _buildAllHostelsList(filteredDocs)),
+              SliverToBoxAdapter(child: const SizedBox(height: 30)),
+            ],
+          );
+        },
       ),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
+
+
+  List<QueryDocumentSnapshot> _filterHostels(List<QueryDocumentSnapshot> docs) {
+    return docs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+
+      final hostelName = (data['hostelName'] ?? '').toString().toLowerCase();
+      final location = (data['location'] ?? '').toString().toLowerCase();
+      final hostelType = (data['type'] ?? '').toString().toLowerCase();
+      final singlePrice = (data['singlePrice'] ?? '')
+          .toString()
+          .replaceAll(RegExp(r'[^0-9]'), '');
+
+      bool matchesSearch =
+          hostelName.contains(_searchText) || location.contains(_searchText);
+
+      bool matchesFilter = true;
+      switch (_selectedFilter) {
+        case "Girls":
+          matchesFilter = hostelType == "girls";
+          break;
+        case "Boys":
+          matchesFilter = hostelType == "boys";
+          break;
+        case "Single":
+          matchesFilter = singlePrice.isNotEmpty;
+          break;
+        case "Budget":
+          if (singlePrice.isNotEmpty) {
+            matchesFilter = int.parse(singlePrice) <= 500000;
+          }
+          break;
+        default:
+          matchesFilter = true;
+      }
+
+      return matchesSearch && matchesFilter;
+    }).toList();
+  }
+
 
   Widget _buildHeader() {
     return Container(
@@ -87,13 +156,19 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search, color: Colors.grey),
-                      const SizedBox(width: 12),
-                      Text('Search by hostel name or location', style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
-                    ],
-                  ),
+                  child: TextField(
+  controller: _searchController,
+  onChanged: (value) {
+    setState(() {
+      _searchText = value.toLowerCase();
+    });
+  },
+  decoration: const InputDecoration(
+    border: InputBorder.none,
+    hintText: "Search by hostel name or location",
+    prefixIcon: Icon(Icons.search),
+  ),
+),
                 ),
               ),
               const SizedBox(width: 12),
@@ -113,41 +188,96 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  Widget _buildCategoryChips() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        children: [
-          _buildChip('Budget', Icons.account_balance_wallet_outlined, true),
-          const SizedBox(width: 12),
-          _buildChip('Location', Icons.location_on_outlined, false),
-          const SizedBox(width: 12),
-          _buildChip('Girls', Icons.female_outlined, false),
-          const SizedBox(width: 12),
-          _buildChip('Single', Icons.person_outline, false),
-        ],
-      ),
-    );
-  }
+// ===== UPDATED: chips are now tappable AND scroll horizontally =====
+Widget _buildCategoryChips() {
+  final categories = [
+    {"label": "All", "icon": Icons.apps},
+    {"label": "Budget", "icon": Icons.savings_outlined},
+    {"label": "Girls", "icon": Icons.female},
+    {"label": "Boys", "icon": Icons.male},
+    {"label": "Single", "icon": Icons.bed},
+    {"label": "Double", "icon": Icons.king_bed_outlined},
+    {"label": "Mixed", "icon": Icons.people_outline},
+    {"label": "Luxury", "icon": Icons.diamond_outlined},
+    {"label": "Cheap", "icon": Icons.attach_money},
+  ];
 
-  Widget _buildChip(String label, IconData icon, bool isActive) {
-    return Container(
+  return SizedBox(
+    height: 58,
+    child: Scrollbar(
+      controller: _chipsScrollController,
+      thumbVisibility: true,
+      trackVisibility: true,
+      interactive: true,
+      thickness: 8,
+      radius: const Radius.circular(8),
+      child: ListView.builder(
+        controller: _chipsScrollController,
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final label = categories[index]["label"] as String;
+          final icon = categories[index]["icon"] as IconData;
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: _buildChip(label, icon),
+          );
+        },
+      ),
+    ),
+  );
+}
+
+
+
+
+Widget _buildChip(String label, IconData icon) {
+  final filterValue = label == "All" ? "" : label;
+  final isActive = _selectedFilter == filterValue;
+
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        _selectedFilter = filterValue;
+      });
+    },
+    child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: isActive ? const Color(0xFF2563EB) : Colors.white,
+        color: isActive
+            ? const Color(0xFF2563EB)
+            : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isActive ? const Color(0xFF2563EB) : Colors.grey.shade200),
+        border: Border.all(
+          color: isActive
+              ? const Color(0xFF2563EB)
+              : Colors.grey.shade200,
+        ),
       ),
       child: Row(
         children: [
-          Icon(icon, color: isActive ? Colors.white : Colors.black, size: 18),
+          Icon(
+            icon,
+            color: isActive ? Colors.white : Colors.black,
+            size: 18,
+          ),
           const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: isActive ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive
+                  ? Colors.white
+                  : Colors.black,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSectionHeader(String title) {
     return Padding(
@@ -165,47 +295,85 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  Widget _buildHostelList() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _hostelsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
+    if (hostelDocs.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Text("No hostels found.", style: TextStyle(fontSize: 16)),
+        ),
+      );
+    }
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('No hostels available'));
-        }
-
-        final hostelDocs = snapshot.data!.docs;
-
-        return SingleChildScrollView(
+    return SizedBox(
+      height: 400,
+      child: Scrollbar(
+        controller: _hostelsScrollController,
+        thumbVisibility: true,
+        trackVisibility: true,
+        interactive: true,
+        thickness: 8,
+        radius: const Radius.circular(8),
+        child: ListView.builder(
+          controller: _hostelsScrollController,
+          physics: const BouncingScrollPhysics(),
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            children: hostelDocs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return Padding(
-                padding: const EdgeInsets.only(right: 20),
-                child: _buildHostelCard(
-                  hostelId: doc.id,
-                  name: data['hostelName'] ?? 'Unnamed Hostel',
-                  distance: data['location'] ?? '',
-                  singlePrice: data['singlePrice'] ?? '0',
-                  doublePrice: data['doublePrice'] ?? '0',
-                  rating: '4.5',
-                ),
-              );
-            }).toList(),
-          ),
-        );
-      },
+          itemCount: hostelDocs.length,
+          itemBuilder: (context, index) {
+            final data = hostelDocs[index].data() as Map<String, dynamic>;
+            return Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: _buildHostelCard(
+                hostelId: hostelDocs[index].id,
+                name: data['hostelName'] ?? 'Unnamed Hostel',
+                distance: data['location'] ?? '',
+                singlePrice: data['singlePrice'] ?? '0',
+                doublePrice: data['doublePrice'] ?? '0',
+                rating: '4.5',
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
+    
+  
 
+Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
+    if (hostelDocs.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Text("No hostels found.", style: TextStyle(fontSize: 16)),
+        ),
+      );
+    }
 
-  Widget _buildHostelCard({
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: hostelDocs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _buildAllHostelCard(
+              hostelId: doc.id,
+              name: data['hostelName'] ?? 'Unnamed Hostel',
+              distance: data['location'] ?? '',
+              singlePrice: data['singlePrice'] ?? '0',
+              doublePrice: data['doublePrice'] ?? '0',
+              rating: '4.5',
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildAllHostelCard({
     required String hostelId,
     required String name,
     required String distance,
@@ -214,7 +382,114 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     required String rating,
   }) {
     return Container(
-      width: 280,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
+            ),
+            child: const Center(child: Icon(Icons.image, size: 32, color: Colors.grey)),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, color: Colors.grey, size: 13),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          distance,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.grey, fontSize: 11),
+                        ),
+                      ),
+                      const Icon(Icons.star, color: Color(0xFFF97316), size: 13),
+                      const SizedBox(width: 2),
+                      Text(rating, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+  children: [
+    Expanded(
+      child: Text(
+        'Single UGX $singlePrice',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 11),
+      ),
+    ),
+    const SizedBox(width: 10),
+    Expanded(
+      child: Text(
+        'Double UGX $doublePrice',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 11),
+      ),
+    ),
+  ],
+),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HostelDetailsScreen(hostelId: hostelId),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'View Details',
+                      style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+  Widget _buildHostelCard({
+
+
+    required String hostelId,
+    required String name,
+    required String distance,
+    required String singlePrice,
+    required String doublePrice,
+    required String rating,
+  }) {
+    return Container(
+    width: 280,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -227,7 +502,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           Stack(
             children: [
               Container(
-                height: 160,
+                height: 140,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade200,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -263,21 +538,35 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               )
             ],
           ),
+          // ===== UPDATED: mainAxisSize.min + ellipsis protection added below =====
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
                     const Icon(Icons.location_on_outlined, color: Colors.grey, size: 14),
                     const SizedBox(width: 4),
-                    Text(distance, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    Expanded(
+                      child: Text(
+                        distance,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     _buildPriceOption('Single', singlePrice),
@@ -285,7 +574,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     _buildPriceOption('Double', doublePrice),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   height: 48,

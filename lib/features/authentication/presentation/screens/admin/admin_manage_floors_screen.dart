@@ -248,12 +248,23 @@ int _countRooms(String range) {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () {
-                // Navigate to Room List screen — we'll wire this later
-              },
-              icon: const Icon(Icons.meeting_room, size: 18),
-              label: const Text("Manage Rooms"),
-            ),          
+  onPressed: () {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => AdminRoomListScreen(
+        hostelId: widget.hostelId,
+        floorId: floorId,
+        hostelName: widget.hostelName,
+        floorName: name,
+      ),
+    ),
+  );
+},
+  icon: const Icon(Icons.meeting_room, size: 18),
+  label: const Text("Manage Rooms"),
+),
+
           ),
           const SizedBox(height: 10),
 
