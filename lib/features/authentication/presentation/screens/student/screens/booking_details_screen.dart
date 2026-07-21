@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'receipt_screen.dart';
 
 class StudentBookingDetailsScreen extends StatefulWidget {
@@ -18,8 +20,69 @@ class StudentBookingDetailsScreen extends StatefulWidget {
 
 class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScreen> {
   bool _isOnlyMe = true;
+  bool _isSaving = false;
   final _friendNameController = TextEditingController();
   final _friendPhoneController = TextEditingController();
+
+  late final Stream<DocumentSnapshot> _hostelStream =
+      FirebaseFirestore.instance.collection('hostels').doc(widget.hostelId).snapshots();
+  late final Stream<DocumentSnapshot> _roomStream =
+      FirebaseFirestore.instance.collection('rooms').doc(widget.roomId).snapshots();
+
+  @override
+  void dispose() {
+    // Clean up controllers to prevent memory leaks
+    _friendNameController.dispose();
+    _friendPhoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createBooking() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be logged in to book')),
+      );
+      return;
+    }
+
+    if (!_isOnlyMe &&
+        (_friendNameController.text.trim().isEmpty ||
+            _friendPhoneController.text.trim().isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in your friend\'s details')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      final bookingRef = await FirebaseFirestore.instance.collection('bookings').add({
+        'studentId': user.uid,
+        'hostelId': widget.hostelId,
+        'roomId': widget.roomId,
+        'bookingStatus': 'pending',
+        'bookingDate': FieldValue.serverTimestamp(),
+        'friendBooking': !_isOnlyMe,
+        if (!_isOnlyMe) 'friendName': _friendNameController.text.trim(),
+        if (!_isOnlyMe) 'friendPhone': _friendPhoneController.text.trim(),
+      });
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => StudentReceiptScreen(bookingId: bookingRef.id)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Booking failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,46 +103,73 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
           ],
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSummaryCard(),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Booking Options', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(10)),
-                  child: const Text('Choose one', style: TextStyle(color: Color(0xFFF97316), fontSize: 11, fontWeight: FontWeight.bold)),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: _hostelStream,
+        builder: (context, hostelSnap) {
+          return StreamBuilder<DocumentSnapshot>(
+            stream: _roomStream,
+            builder: (context, roomSnap) {
+              if (!hostelSnap.hasData || !roomSnap.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final hostelData = hostelSnap.data!.data() as Map<String, dynamic>? ?? {};
+              final roomData = roomSnap.data!.data() as Map<String, dynamic>? ?? {};
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSummaryCard(hostelData, roomData),
+                    const SizedBox(height: 32),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Booking Options', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(10)),
+                          child: const Text('Choose one', style: TextStyle(color: Color(0xFFF97316), fontSize: 11, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _buildOptionCard('Only Me', 'Book the room for yourself only', _isOnlyMe, () => setState(() => _isOnlyMe = true)),
+                        const SizedBox(width: 16),
+                        _buildOptionCard('Me & Friend', 'Share the room with another student', !_isOnlyMe, () => setState(() => _isOnlyMe = false)),
+                      ],
+                    ),
+                    if (!_isOnlyMe) ...[
+                      const SizedBox(height: 32),
+                      _buildFriendDetailsSection(),
+                    ],
+                    const SizedBox(height: 40), 
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _buildOptionCard('Only Me', 'Book the room for yourself only', _isOnlyMe, () => setState(() => _isOnlyMe = true)),
-                const SizedBox(width: 16),
-                _buildOptionCard('Me & Friend', 'Share the room with another student', !_isOnlyMe, () => setState(() => _isOnlyMe = false)),
-              ],
-            ),
-            if (!_isOnlyMe) ...[
-              const SizedBox(height: 32),
-              _buildFriendDetailsSection(),
-            ],
-            const SizedBox(height: 100),
-          ],
-        ),
+              );
+            },
+          );
+        },
       ),
-      bottomSheet: _buildBottomAction(),
-      bottomNavigationBar: _buildBottomNav(),
+      // We combine both components layout-wise into the bottom parameter 
+      // so that they stack nicely and don't conflict with the virtual keyboard.
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildBottomAction(),
+          _buildBottomNav(),
+        ],
+      ),
     );
   }
 
-  Widget _buildSummaryCard() {
+  Widget _buildSummaryCard(Map<String, dynamic> hostelData, Map<String, dynamic> roomData) {
+    const bookingFee = 50000;
+    const mobileMoneyCharge = 2000;
+    final total = bookingFee + mobileMoneyCharge;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -93,38 +183,38 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Hostel Name', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  Text('Kilimanjaro Hostel', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text('Hostel Name', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text(hostelData['hostelName'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
-                child: const Text('Security A+', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                child: Text('Security ${hostelData['securityRating'] ?? '-'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
               ),
             ],
           ),
           const SizedBox(height: 20),
-           Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _summaryItem('Room Number', 'Room 110'),
-              _summaryItem('Booking Fee', 'UGX 50K'),
+              _summaryItem('Room Number', 'Room ${roomData['roomNumber'] ?? ''}'),
+              _summaryItem('Booking Fee', 'UGX $bookingFee'),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _summaryItem('Mobile Money Charges', 'UGX 2K'),
+              _summaryItem('Mobile Money Charges', 'UGX $mobileMoneyCharge'),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Total Amount', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  Text('UGX 52K', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF2563EB))),
+                  const Text('Total Amount', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text('UGX $total', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF2563EB))),
                 ],
               ),
             ],
@@ -208,8 +298,8 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
                 children: [
                   TextSpan(text: 'Upload Friend\'s Admission Letter ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   TextSpan(text: '*', style: TextStyle(color: Colors.red)),
-                ]
-              )
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -233,7 +323,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
                   icon: const Icon(Icons.upload_file, size: 18),
                   label: const Text('Choose File'),
                   style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                )
+                ),
               ],
             ),
           ),
@@ -272,24 +362,39 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
   Widget _buildBottomAction() {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05), 
+            blurRadius: 10, 
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
       child: SizedBox(
         width: double.infinity,
         height: 56,
         child: ElevatedButton(
-          onPressed: () {},
+          onPressed: _isSaving ? null : _createBooking,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF2563EB),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Continue to Payment', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              SizedBox(width: 8),
-              Icon(Icons.arrow_forward, color: Colors.white, size: 20),
-            ],
-          ),
+          child: _isSaving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+              : const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Continue to Payment', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                  ],
+                ),
         ),
       ),
     );
