@@ -7,8 +7,11 @@ class StudentBookingDetailsScreen extends StatefulWidget {
   final String hostelId;
   final String roomId;
 <<<<<<< HEAD
+<<<<<<< HEAD
   const StudentBookingDetailsScreen({super.key, required this.hostelId, required this.roomId});
 =======
+=======
+>>>>>>> 150b4d60bd8f596e743053291cadc263ee117a66
 
   const StudentBookingDetailsScreen({
     super.key,
@@ -16,7 +19,10 @@ class StudentBookingDetailsScreen extends StatefulWidget {
     required this.roomId,
   });
 
+<<<<<<< HEAD
 >>>>>>> main
+=======
+>>>>>>> 150b4d60bd8f596e743053291cadc263ee117a66
 
   @override
   State<StudentBookingDetailsScreen> createState() => _StudentBookingDetailsScreenState();
