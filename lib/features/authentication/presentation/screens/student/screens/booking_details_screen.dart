@@ -6,7 +6,17 @@ import 'receipt_screen.dart';
 class StudentBookingDetailsScreen extends StatefulWidget {
   final String hostelId;
   final String roomId;
+<<<<<<< HEAD
   const StudentBookingDetailsScreen({super.key, required this.hostelId, required this.roomId});
+=======
+
+  const StudentBookingDetailsScreen({
+    super.key,
+    required this.hostelId,
+    required this.roomId,
+  });
+
+>>>>>>> main
 
   @override
   State<StudentBookingDetailsScreen> createState() => _StudentBookingDetailsScreenState();

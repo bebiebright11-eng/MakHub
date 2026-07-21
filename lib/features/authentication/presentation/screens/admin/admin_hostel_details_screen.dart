@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'admin_manage_floors_screen.dart';
 
 import 'admin_edit_hostel_screen.dart';
+import 'admin_add_personnel_screen.dart';
 
 class AdminHostelDetailsScreen extends StatelessWidget {
   final String hostelId;
@@ -164,7 +165,30 @@ _infoCard(
 
 const SizedBox(height: 24),
 
+// Room Sizes
+const Text(
+  "Room Sizes",
+  style: TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+  ),
+),
 
+const SizedBox(height: 10),
+
+_priceRow(
+  "Single Room Size (ft)",
+  hostelData['singleRoomSize'] ?? "Not provided",
+),
+
+const SizedBox(height: 8),
+
+_priceRow(
+  "Double Room Size (ft)",
+  hostelData['doubleRoomSize'] ?? "Not provided",
+),
+
+const SizedBox(height: 24),
 
             // Prices
             const Text(
@@ -245,10 +269,20 @@ ElevatedButton.icon(
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.people),
-                    label: const Text("Manage Personnel"),
-                  ),
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdminAddPersonnelScreen(
+          hostelId: hostelId,
+          hostelName: hostelData['hostelName'],
+        ),
+      ),
+    );
+  },
+  icon: const Icon(Icons.person_add),
+  label: const Text("Add Personnel"),
+),
                 ),
               ],
             ),
