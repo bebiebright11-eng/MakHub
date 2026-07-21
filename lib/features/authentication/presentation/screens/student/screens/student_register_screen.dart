@@ -16,6 +16,10 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
   final _admissionController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _courseController = TextEditingController();
+final _yearController = TextEditingController();
+
+String _selectedUniversity = "Makerere University";
 
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
@@ -67,11 +71,40 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
             _buildField('Admission Number', '# 21/U/1234', Icons.tag, _admissionController),
             const SizedBox(height: 16),
             
-            _buildDropdownField('University', 'Select university', Icons.account_balance_outlined),
+            DropdownButtonFormField<String>(
+  value: _selectedUniversity,
+  decoration: InputDecoration(
+    labelText: "University",
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+  items: const [
+    DropdownMenuItem(
+      value: "Makerere University",
+      child: Text("Makerere University"),
+    ),
+  ],
+  onChanged: (value) {
+    setState(() {
+      _selectedUniversity = value!;
+    });
+  },
+),
             const SizedBox(height: 16),
-            _buildDropdownField('Course', 'Select course', Icons.book_outlined),
+            _buildField(
+  'Course',
+  'Bachelor of Computer Science',
+  Icons.book_outlined,
+  _courseController,
+),
             const SizedBox(height: 16),
-            _buildDropdownField('Year of Study', 'Select year', Icons.calendar_today_outlined),
+            _buildField(
+  'Year of Study',
+  'Year 1',
+  Icons.calendar_today_outlined,
+  _yearController,
+),
             const SizedBox(height: 24),
             
             // Upload Admission Letter
@@ -103,7 +136,7 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
                   const Text('PDF, JPG or PNG (max 5MB)', style: TextStyle(color: Colors.grey, fontSize: 12)),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: _isLoading ? null : _handleRegister,
                     icon: const Icon(Icons.upload_file, size: 18),
                     label: const Text('Choose File'),
                     style: OutlinedButton.styleFrom(
@@ -126,7 +159,7 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: _isLoading ? null : _handleRegister,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2563EB),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -174,8 +207,20 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
     final admissionNumber = _admissionController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
+    final course = _courseController.text.trim();
 
-    if (fullName.isEmpty || email.isEmpty || phone.isEmpty || admissionNumber.isEmpty || password.isEmpty) {
+    final year = _yearController.text.trim();
+
+    final university = _selectedUniversity;
+
+    if (fullName.isEmpty ||
+    email.isEmpty ||
+    phone.isEmpty ||
+    admissionNumber.isEmpty ||
+    course.isEmpty ||
+    year.isEmpty ||
+    university.isEmpty ||
+    password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please fill in all fields")),
       );
@@ -206,14 +251,29 @@ class _StudentRegisterScreenState extends State<StudentRegisterScreen> {
       );
 
       // Step 2: Save the student's profile info in Firestore
-      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
-        'fullName': fullName,
-        'email': email,
-        'phoneNumber': phone,
-        'admissionNumber': admissionNumber,
-        'role': 'student',
-        'createdAt': DateTime.now().toIso8601String(),
-      });
+      await FirebaseFirestore.instance
+    .collection('users')
+    .doc(userCredential.user!.uid)
+    .set({
+  'fullName': fullName,
+  'email': email,
+  'phoneNumber': phone,
+  'admissionNumber': admissionNumber,
+
+  'university': university,
+  'course': course,
+  'yearOfStudy': year,
+
+  'role': 'student',
+
+  // Verification (for later)
+  'isVerified': true,
+
+  // Admission letter (for later)
+  'admissionLetter': "",
+
+  'createdAt': FieldValue.serverTimestamp(),
+});
 
       if (!mounted) return;
 

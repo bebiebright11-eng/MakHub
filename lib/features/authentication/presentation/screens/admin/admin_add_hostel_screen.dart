@@ -23,6 +23,9 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
   final _shopsController = TextEditingController();
   final _hospitalController = TextEditingController();
   final _atmController = TextEditingController();
+  final _singleRoomSizeController = TextEditingController();
+  final _doubleRoomSizeController = TextEditingController();
+
 
   String _selectedType = "Mixed";
   final Set<String> _selectedFacilities = {};
@@ -51,6 +54,8 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
     _mapsLinkController.dispose();
     _singlePriceController.dispose();
     _doublePriceController.dispose();
+    _singleRoomSizeController.dispose();
+    _doubleRoomSizeController.dispose();
     _shopsController.dispose();
     _hospitalController.dispose();
     _atmController.dispose();
@@ -200,6 +205,42 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
                   decoration: _decoration("Paste Google Maps link"),
                 ),
 
+const SizedBox(height: 10),
+
+Row(
+  children: [
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _fieldLabel("Single Room Size (ft)"),
+          TextFormField(
+            controller: _singleRoomSizeController,
+            decoration: _decoration("e.g. 8 × 10"),
+          ),
+        ],
+      ),
+    ),
+
+    const SizedBox(width: 12),
+
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _fieldLabel("Double Room Size (ft)"),
+          TextFormField(
+            controller: _doubleRoomSizeController,
+            decoration: _decoration("e.g. 10 × 12"),
+          ),
+        ],
+      ),
+    ),
+  ],
+),
+
+const SizedBox(height: 10),
+
                 Row(
                   children: [
                     Expanded(
@@ -307,6 +348,8 @@ child: ElevatedButton(
           'distance': _distanceController.text.trim(),
           'walkingTime': _walkingTimeController.text.trim(),
           'mapsLink': _mapsLinkController.text.trim(),
+          'singleRoomSize': _singleRoomSizeController.text.trim(),
+          'doubleRoomSize': _doubleRoomSizeController.text.trim(),
           'singlePrice': _singlePriceController.text.trim(),
           'doublePrice': _doublePriceController.text.trim(),
           'facilities': _selectedFacilities.toList(),

@@ -33,9 +33,7 @@ class MakHubApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'MakHub',
       theme: AppTheme.lightTheme,
-      home: FirebaseAuth.instance.currentUser == null
-          ? const RoleSelectionScreen()
-          : const AdminDashboardScreen(),
+      home: const RoleSelectionScreen(),
       routes: {
         '/role-selection': (context) => const RoleSelectionScreen(),
         '/login': (context) => const LoginScreen(),

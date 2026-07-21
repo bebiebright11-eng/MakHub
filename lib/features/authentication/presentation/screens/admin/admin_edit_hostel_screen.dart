@@ -28,6 +28,8 @@ class _AdminEditHostelScreenState extends State<AdminEditHostelScreen> {
   final _mapsLinkController = TextEditingController();
   final _singlePriceController = TextEditingController();
   final _doublePriceController = TextEditingController();
+  final _singleRoomSizeController = TextEditingController();
+  final _doubleRoomSizeController = TextEditingController();
   final _shopsController = TextEditingController();
   final _hospitalController = TextEditingController();
   final _atmController = TextEditingController();
@@ -86,6 +88,12 @@ void initState() {
   _atmController.text =
       widget.hostelData['atm'] ?? '';
 
+  _singleRoomSizeController.text =
+      widget.hostelData['singleRoomSize'] ?? '';
+
+  _doubleRoomSizeController.text =
+      widget.hostelData['doubleRoomSize'] ?? '';
+
   _selectedType =
       widget.hostelData['type'] ?? 'Mixed';
 
@@ -109,6 +117,8 @@ void initState() {
     _shopsController.dispose();
     _hospitalController.dispose();
     _atmController.dispose();
+    _singleRoomSizeController.dispose();
+    _doubleRoomSizeController.dispose();
     super.dispose();
   }
 
@@ -255,6 +265,42 @@ void initState() {
                   decoration: _decoration("Paste Google Maps link"),
                 ),
 
+                const SizedBox(height: 10),
+
+Row(
+  children: [
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _fieldLabel("Single Room Size (ft)"),
+          TextFormField(
+            controller: _singleRoomSizeController,
+            decoration: _decoration("e.g. 8 × 10"),
+          ),
+        ],
+      ),
+    ),
+
+    const SizedBox(width: 12),
+
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _fieldLabel("Double Room Size (ft)"),
+          TextFormField(
+            controller: _doubleRoomSizeController,
+            decoration: _decoration("e.g. 10 × 12"),
+          ),
+        ],
+      ),
+    ),
+  ],
+),
+
+const SizedBox(height: 10),
+
                 Row(
                   children: [
                     Expanded(
@@ -367,6 +413,8 @@ child: ElevatedButton(
           'mapsLink': _mapsLinkController.text.trim(),
           'singlePrice': _singlePriceController.text.trim(),
           'doublePrice': _doublePriceController.text.trim(),
+          'singleRoomSize': _singleRoomSizeController.text.trim(),
+          'doubleRoomSize': _doubleRoomSizeController.text.trim(),
           'facilities': _selectedFacilities.toList(),
           'shops': _shopsController.text.trim(),
           'hospital': _hospitalController.text.trim(),
