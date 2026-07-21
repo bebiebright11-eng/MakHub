@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import '6_room_list_screen.dart';
 
 class FloorsScreen extends StatelessWidget {
-  const FloorsScreen({super.key});
+  final String hostelId;
+  final String hostelName;
+
+  const FloorsScreen({
+    super.key,
+    required this.hostelId,
+    required this.hostelName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,12 +53,18 @@ class FloorsScreen extends StatelessWidget {
             ],
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => RoomListScreen(floorName: title)),
-              );
-            },
+           onPressed: () {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => RoomListScreen(
+        hostelId: hostelId,
+        floorId: title,
+        floorName: title,
+      ),
+    ),
+  );
+},
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2563EB),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
