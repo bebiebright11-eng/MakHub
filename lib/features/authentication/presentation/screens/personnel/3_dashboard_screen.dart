@@ -8,12 +8,6 @@ import '14_profile_screen.dart';
 import '4_hostel_details_screen.dart';
 import '13_notifications_screen.dart';
 
-/// The main dashboard screen for the hostel personnel application.
-///
-/// This screen provides a high-level overview of hostel operations, including
-/// statistics for rooms, quick actions for management tasks, and a list of
-/// recent activities. It uses a [BottomNavigationBar] to navigate between
-/// different sections of the app.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -22,7 +16,11 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  /// The index of the currently selected page in the bottom navigation bar.
+  @override
+  void initState() {
+    super.initState();
+    AppState().fetchStats();
+  }
   int _currentIndex = 0;
 
   /// The list of widgets representing the different pages accessible via
