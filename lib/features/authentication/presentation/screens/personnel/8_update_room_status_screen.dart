@@ -1,34 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UpdateRoomStatusScreen extends StatefulWidget {
-  final String roomNumber;
-  final bool isDouble;
-  const UpdateRoomStatusScreen({super.key, required this.roomNumber, this.isDouble = false});
+  final String hostelId;
+  final String floorId;
+  final String roomId;
+  const UpdateRoomStatusScreen({super.key, required this.roomId, required this.hostelId, required this.floorId});
 
   @override
   State<UpdateRoomStatusScreen> createState() => _UpdateRoomStatusScreenState();
 }
 
 class _UpdateRoomStatusScreenState extends State<UpdateRoomStatusScreen> {
-  String _availability = 'Occupied';
-  late String _occupancy;
+  String _availability = 'Available';
+  int _occupancy = 1;
+  int _capacity = 1;
+  String _roomNumber = '';
+  bool _isloading = true;
 
   @override
   void initState() {
     super.initState();
-    _occupancy = widget.isDouble ? '1/2' : '1/1';
+    _loadRoomData();
+  }
+
+  Future<void> _loadRoomData() async {
+    try {
+      final roomSnapshot = await FirebaseFirestore.instance
+          .collection('hostels')
+          .doc(widget.hostelId)
+          .collection('floors')
+          .doc(widget.floorId)
+          .collection('rooms')
+          .doc(widget.roomId)
+          .get();
+
+      if (roomSnapshot.exists) {
+        final data = roomSnapshot.data()!;
+        setState(() {
+          _availability = data['status'] ?? 'Available';
+          _occupancy = data['occupied'] ?? 1;
+          _capacity = data['capacity'] ?? 1;
+          _roomNumber = data['roomNumber'] ?? '';
+          _isloading = false;
+        });
+      } 
+    } catch (e) {  
+      setState(() => _isloading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Update Room ${widget.roomNumber}', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('Update Room $_roomNumber', style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: Padding(
+      body: _isloading
+          ? const Center(child: CircularProgressIndicator())
+      : Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,15 +72,30 @@ class _UpdateRoomStatusScreenState extends State<UpdateRoomStatusScreen> {
             const SizedBox(height: 24),
             const Text('Occupancy', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            if (widget.isDouble)
-              _buildChoiceChipGroup(['0/2', '1/2', '2/2'], _occupancy, (val) => setState(() => _occupancy = val))
-            else
-              _buildChoiceChipGroup(['0/1', '1/1'], _occupancy, (val) => setState(() => _occupancy = val)),
+            _buildChoiceChipGroup(
+              List.generate(_capacity+1, (i) => '$i/$_capacity'),
+              '$_occupancy/$_capacity',
+              (val) => setState(() => _occupancy = int.parse(val.split('/')[0])),
+
+           ),
+
             const Spacer(),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  await FirebaseFirestore.instance
+                      .collection('hostels')
+                      .doc(widget.hostelId)
+                      .collection('floors')
+                      .doc(widget.floorId)
+                      .collection('rooms')
+                      .doc(widget.roomId)
+                      .update({
+                    'status': _availability,
+                    'occupied': _occupancy,
+                  });
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Room status updated instantly across all platforms!'),

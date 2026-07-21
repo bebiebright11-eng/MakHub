@@ -1,15 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '7_room_details_screen.dart';
 
-class RoomListScreen extends StatelessWidget {
+class RoomListScreen extends StatefulWidget {
+  final String hostelId;
+  final String floorId;
   final String floorName;
-  const RoomListScreen({super.key, required this.floorName});
+
+  const RoomListScreen({
+    super.key,
+    required this.hostelId,
+    required this.floorId,
+    required this.floorName,
+  });
+
+  @override
+  State<RoomListScreen> createState() => _RoomListScreenState();
+}
+
+class _RoomListScreenState extends State<RoomListScreen> {
+  String _selectedFilter = 'All';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(floorName, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(widget.floorName, style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
@@ -33,25 +49,62 @@ class RoomListScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                _filterChip('All', true),
-                _filterChip('Available', false),
-                _filterChip('Occupied', false),
-                _filterChip('Reserved', false),
-                _filterChip('Single', false),
-                _filterChip('Double', false),
+                _filterChip('All'),
+                _filterChip('Available'),
+                _filterChip('Occupied'),
+                _filterChip('Reserved'),
               ],
             ),
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
-                _roomCard(context, '101', 'Available', 'Single', '0/1'),
-                _roomCard(context, '102', 'Occupied', 'Single', '1/1'),
-                _roomCard(context, '103', 'Available', 'Double', '1/2'),
-                _roomCard(context, '104', 'Reserved', 'Double', '0/2'),
-              ],
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('hostels')
+                  .doc(widget.hostelId)
+                  .collection('floors')
+                  .doc(widget.floorId)
+                  .collection('rooms')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text('No rooms found on this floor.'));
+                }
+
+                var roomDocs = snapshot.data!.docs;
+
+                // Apply the selected filter chip
+                if (_selectedFilter != 'All') {
+                  roomDocs = roomDocs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return data['status'] == _selectedFilter;
+                  }).toList();
+                }
+
+                if (roomDocs.isEmpty) {
+                  return Center(child: Text('No $_selectedFilter rooms on this floor.'));
+                }
+
+                return ListView(
+                  padding: const EdgeInsets.all(20),
+                  children: roomDocs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return _roomCard(
+                      context,
+                      roomId: doc.id,
+                      number: data['roomNumber'] ?? '',
+                      status: data['status'] ?? 'Unknown',
+                      type: data['roomType'] ?? '',
+                      capacity: data['capacity'] ?? 0,
+                      occupied: data['occupied'] ?? 0,
+                    );
+                  }).toList(),
+                );
+              },
             ),
           ),
         ],
@@ -59,19 +112,31 @@ class RoomListScreen extends StatelessWidget {
     );
   }
 
-  Widget _filterChip(String label, bool isSelected) {
+  Widget _filterChip(String label) {
+    final isSelected = _selectedFilter == label;
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
-      child: Chip(
-        label: Text(label),
-        backgroundColor: isSelected ? const Color(0xFF2563EB) : Colors.grey.shade100,
-        labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black, fontSize: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedFilter = label),
+        child: Chip(
+          label: Text(label),
+          backgroundColor: isSelected ? const Color(0xFF2563EB) : Colors.grey.shade100,
+          labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black, fontSize: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+        ),
       ),
     );
   }
 
-  Widget _roomCard(BuildContext context, String number, String status, String type, String occupancy) {
+  Widget _roomCard(
+    BuildContext context, {
+    required String roomId,
+    required String number,
+    required String status,
+    required String type,
+    required int capacity,
+    required int occupied,
+  }) {
     Color statusColor;
     switch (status) {
       case 'Available': statusColor = Colors.green; break;
@@ -81,7 +146,16 @@ class RoomListScreen extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => RoomDetailsScreen(roomNumber: number))),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RoomDetailsScreen(
+            hostelId: widget.hostelId,
+            floorId: widget.floorId,
+            roomId: roomId,
+          ),
+        ),
+      ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
@@ -97,7 +171,7 @@ class RoomListScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Room $number', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text('$type • $occupancy', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                Text('$type • $occupied/$capacity', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
               ],
             ),
             Container(
