@@ -5,11 +5,13 @@ import 'receipt_screen.dart';
 
 class StudentBookingDetailsScreen extends StatefulWidget {
   final String hostelId;
+  final String floorId;
   final String roomId;
 
   const StudentBookingDetailsScreen({
     super.key,
     required this.hostelId,
+    required this.floorId,
     required this.roomId,
   });
 

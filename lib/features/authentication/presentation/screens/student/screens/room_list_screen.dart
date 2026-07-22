@@ -12,11 +12,14 @@ class StudentRoomListScreen extends StatefulWidget {
 }
 class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
 
-  late final Stream<QuerySnapshot> _roomsStream = FirebaseFirestore.instance
-    .collection('rooms')
-    .where('hostelId', isEqualTo: widget.hostelId)
-    .where('floorId', isEqualTo: widget.floorId)
-    .snapshots();
+  late final Stream<QuerySnapshot> _roomsStream =
+    FirebaseFirestore.instance
+        .collection("hostels")
+        .doc(widget.hostelId)
+        .collection("floors")
+        .doc(widget.floorId)
+        .collection("rooms")
+        .snapshots();
 
   @override
   Widget build(BuildContext context) {
@@ -55,15 +58,19 @@ class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
             padding: const EdgeInsets.all(24),
             children: roomDocs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
-              final availability = data['availability'] ?? 'unavailable';
+              final status = data['status'] ?? 'Unavailable';
               return _buildRoomCard(
                 context,
                 'Room ${data['roomNumber'] ?? ''}',
                 data['roomType'] ?? '',
                 data['roomType'] ?? '',
-                availability,
-                data['occupancy']?.toString() ?? '',
-                availability == 'available' ? Colors.green : Colors.orange,
+                status,
+                "${data['occupied'] ?? 0}/${data['capacity'] ?? 0}",
+                status == "Available"
+    ? Colors.green
+    : status == "Reserved"
+        ? Colors.orange
+        : Colors.red,
                 doc.id,
               );
             }).toList(),
@@ -126,7 +133,11 @@ class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
             width: double.infinity,
             height: 48,
             child: ElevatedButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => StudentRoomDetailsScreen(hostelId: widget.hostelId,roomId: roomId))),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => StudentRoomDetailsScreen(
+    hostelId: widget.hostelId,
+    floorId: widget.floorId,
+    roomId: roomId,
+))),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

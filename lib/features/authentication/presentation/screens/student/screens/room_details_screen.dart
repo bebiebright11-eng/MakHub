@@ -4,19 +4,30 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StudentRoomDetailsScreen extends StatefulWidget {
   final String hostelId;
+  final String floorId;
   final String roomId;
 
-  const StudentRoomDetailsScreen({super.key, required this.hostelId, required this.roomId});
+  const StudentRoomDetailsScreen({
+    super.key,
+    required this.hostelId,
+    required this.floorId,
+    required this.roomId,
+  });
 
   @override
   State<StudentRoomDetailsScreen> createState() => _StudentRoomDetailsScreenState();
 }
 
 class _StudentRoomDetailsScreenState extends State<StudentRoomDetailsScreen> {
-  late final Stream<DocumentSnapshot> _roomStream = FirebaseFirestore.instance
-      .collection('rooms')
-      .doc(widget.roomId)
-      .snapshots();
+late final Stream<DocumentSnapshot> _roomStream =
+    FirebaseFirestore.instance
+        .collection("hostels")
+        .doc(widget.hostelId)
+        .collection("floors")
+        .doc(widget.floorId)
+        .collection("rooms")
+        .doc(widget.roomId)
+        .snapshots();
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +44,7 @@ class _StudentRoomDetailsScreenState extends State<StudentRoomDetailsScreen> {
           }
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
-          final availability = data['availability'] ?? 'unavailable';
+          final availability = data['status'] ?? 'Unavailable';
 
           return SingleChildScrollView(
             child: Column(
@@ -93,7 +104,7 @@ class _StudentRoomDetailsScreenState extends State<StudentRoomDetailsScreen> {
   
 
   Widget _buildHeader(BuildContext context, Map<String, dynamic> data) {
-    final roomPhoto = data['roomPhoto'] as String?;
+    final roomPhoto = data['imageUrl']?.toString() ?? '';
     return Stack(
       children: [
         Container(
@@ -141,10 +152,20 @@ class _StudentRoomDetailsScreenState extends State<StudentRoomDetailsScreen> {
   }
 
   Widget _buildRoomDetails(Map<String, dynamic> data) {
-    final selfContained = data['selfContained'] == true ? 'Yes' : 'No';
-    final nearBalcony = data['nearBalcony'] == true ? 'Yes' : 'No';
-    final bathroomDistance = data['bathroomDistance']?.toString() ?? 'N/A';
-    final windowView = data['windowView']?.toString() ?? 'N/A';
+
+  final features = data['features'] as Map<String, dynamic>? ?? {};
+
+  final selfContained =
+      features['Self-contained'] == true ? 'Yes' : 'No';
+
+  final nearBalcony =
+      features['Near Balcony'] == true ? 'Yes' : 'No';
+
+  final bathroomDistance =
+      features['Bathroom Distance']?.toString() ?? 'N/A';
+
+  final windowView =
+      features['Window View'] == true ? 'Yes' : 'No';
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -226,7 +247,11 @@ class _StudentRoomDetailsScreenState extends State<StudentRoomDetailsScreen> {
         width: double.infinity,
         height: 56,
         child: ElevatedButton(
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => StudentBookingDetailsScreen(hostelId: widget.hostelId, roomId: widget.roomId))),
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => StudentBookingDetailsScreen(
+    hostelId: widget.hostelId,
+    floorId: widget.floorId,
+    roomId: widget.roomId,
+))),
           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
           child: const Text('Book Room', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
         ),
