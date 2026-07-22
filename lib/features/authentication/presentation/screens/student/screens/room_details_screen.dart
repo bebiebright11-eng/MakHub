@@ -153,7 +153,11 @@ late final Stream<DocumentSnapshot> _roomStream =
 
   Widget _buildRoomDetails(Map<String, dynamic> data) {
 
-  final features = data['features'] as Map<String, dynamic>? ?? {};
+  Map<String, dynamic> features = {};
+
+if (data['features'] is Map<String, dynamic>) {
+  features = data['features'] as Map<String, dynamic>;
+}
 
   final selfContained =
       features['Self-contained'] == true ? 'Yes' : 'No';
