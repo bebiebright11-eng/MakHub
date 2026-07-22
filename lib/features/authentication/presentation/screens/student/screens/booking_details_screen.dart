@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'receipt_screen.dart';
+import 'payment_screen.dart';
 
 class StudentBookingDetailsScreen extends StatefulWidget {
   final String hostelId;
@@ -25,10 +26,21 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
   final _friendNameController = TextEditingController();
   final _friendPhoneController = TextEditingController();
 
-  late final Stream<DocumentSnapshot> _hostelStream =
-      FirebaseFirestore.instance.collection('hostels').doc(widget.hostelId).snapshots();
+    late final Stream<DocumentSnapshot> _hostelStream =
+      FirebaseFirestore.instance
+          .collection('hostels')
+          .doc(widget.hostelId)
+          .snapshots();
+
   late final Stream<DocumentSnapshot> _roomStream =
-      FirebaseFirestore.instance.collection('rooms').doc(widget.roomId).snapshots();
+    FirebaseFirestore.instance
+        .collection("hostels")
+        .doc(widget.hostelId)
+        .collection("floors")
+        .doc(widget.floorId)
+        .collection("rooms")
+        .doc(widget.roomId)
+        .snapshots();
 
   @override
   void dispose() {
@@ -377,7 +389,16 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
         width: double.infinity,
         height: 56,
         child: ElevatedButton(
-          onPressed: _isSaving ? null : _createBooking,
+          onPressed: () {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const StudentPaymentScreen(
+        bookingId: "test_booking",
+      ),
+    ),
+  );
+},
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF2563EB),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
