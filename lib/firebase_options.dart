@@ -17,29 +17,17 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -58,5 +46,42 @@ class DefaultFirebaseOptions {
     messagingSenderId: '65841628745',
     projectId: 'makhub-f2223',
     storageBucket: 'makhub-f2223.firebasestorage.app',
+  );
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBd8hnJxAO9nODc7PcOcTrwCW-u1EdvmcA',
+    appId: '1:65841628745:web:b39fd11f2c29dbea142198',
+    messagingSenderId: '65841628745',
+    projectId: 'makhub-f2223',
+    authDomain: 'makhub-f2223.firebaseapp.com',
+    storageBucket: 'makhub-f2223.firebasestorage.app',
+    measurementId: 'G-2L5XN06C98',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyAE5MDURcO1Iy6U-Qju2iGnh1NclGIKfhA',
+    appId: '1:65841628745:ios:5b07d63bd5a01012142198',
+    messagingSenderId: '65841628745',
+    projectId: 'makhub-f2223',
+    storageBucket: 'makhub-f2223.firebasestorage.app',
+    iosBundleId: 'com.example.makhub',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyAE5MDURcO1Iy6U-Qju2iGnh1NclGIKfhA',
+    appId: '1:65841628745:ios:5b07d63bd5a01012142198',
+    messagingSenderId: '65841628745',
+    projectId: 'makhub-f2223',
+    storageBucket: 'makhub-f2223.firebasestorage.app',
+    iosBundleId: 'com.example.makhub',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyBd8hnJxAO9nODc7PcOcTrwCW-u1EdvmcA',
+    appId: '1:65841628745:web:e63e696a95bfafda142198',
+    messagingSenderId: '65841628745',
+    projectId: 'makhub-f2223',
+    authDomain: 'makhub-f2223.firebaseapp.com',
+    storageBucket: 'makhub-f2223.firebasestorage.app',
+    measurementId: 'G-F20XDW17WY',
   );
 }

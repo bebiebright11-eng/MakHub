@@ -1,8 +1,79 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '10_payment_details_screen.dart';
 
-class PendingPaymentsScreen extends StatelessWidget {
+class PendingPaymentsScreen extends StatefulWidget {
   const PendingPaymentsScreen({super.key});
+
+  @override
+  State<PendingPaymentsScreen> createState() => _PendingPaymentsScreenState();
+}
+
+class _PendingPaymentsScreenState extends State<PendingPaymentsScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  Future<String?> _getPersonnelHostelId() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+
+    DocumentSnapshot doc = await FirebaseFirestore.instance
+        .collection('personnel')
+        .doc(user.uid)
+        .get();
+
+    if (!doc.exists) {
+      doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+    }
+
+    if (!doc.exists) return null;
+    final data = doc.data() as Map<String, dynamic>?;
+    return (data?['hostelId'] ?? data?['hostelID']) as String?;
+  }
+
+  Future<void> _confirmPayment(String paymentDocId, String bookingId) async {
+    try {
+      // 1. Update Payment status
+      await FirebaseFirestore.instance
+          .collection('payments')
+          .doc(paymentDocId)
+          .update({'paymentStatus': 'confirmed'});
+
+      // 2. If bookingId exists, update corresponding Booking status
+      if (bookingId.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('bookings')
+            .doc(bookingId)
+            .update({'bookingStatus': 'confirmed'});
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Payment confirmed successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to confirm payment: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,39 +83,138 @@ class PendingPaymentsScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
-        actions: [
-          TextButton(onPressed: () {}, child: const Text('Confirm All')),
-        ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search Booking ID',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                filled: true,
-                fillColor: Colors.grey.shade100,
+      body: FutureBuilder<String?>(
+        future: _getPersonnelHostelId(),
+        builder: (context, hostelSnapshot) {
+          if (hostelSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final hostelId = hostelSnapshot.data;
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val.trim().toLowerCase();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search Booking ID or Name',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                  ),
+                ),
               ),
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              children: [
-                _paymentCard(context, 'BK-2048', 'John Doe', 'Elite Residency', 'Room 312', 'UGX 50,000', '2m ago'),
-                _paymentCard(context, 'BK-2045', 'Sarah Smith', 'Elite Residency', 'Room 105', 'UGX 50,000', '15m ago'),
-              ],
-            ),
-          ),
-        ],
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('payments')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(child: Text('No payment records found.'));
+                    }
+
+                    // Filter client-side defensively for status, hostelId, and search query
+                    final docs = snapshot.data!.docs.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+
+                      // Check status (pending)
+                      final status = (data['paymentStatus'] ?? data['status'] ?? 'pending').toString().toLowerCase();
+                      if (status != 'pending') return false;
+
+                      // Scope by hostelId if available on doc
+                      final docHostelId = data['hostelId'] ?? data['hostelID'];
+                      if (hostelId != null && docHostelId != null && docHostelId != hostelId) {
+                        return false;
+                      }
+
+                      // Apply search filter
+                      if (_searchQuery.isNotEmpty) {
+                        final bookingId = (data['bookingId'] ?? data['paymentId'] ?? doc.id).toString().toLowerCase();
+                        final studentName = (data['studentName'] ?? data['userName'] ?? '').toString().toLowerCase();
+                        return bookingId.contains(_searchQuery) || studentName.contains(_searchQuery);
+                      }
+
+                      return true;
+                    }).toList();
+
+                    if (docs.isEmpty) {
+                      return const Center(child: Text('No pending payments to verify.'));
+                    }
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: docs.length,
+                      itemBuilder: (context, index) {
+                        final doc = docs[index];
+                        final data = doc.data() as Map<String, dynamic>;
+
+                        final paymentDocId = doc.id;
+                        final bookingId = (data['bookingId'] ?? data['paymentId'] ?? paymentDocId).toString();
+                        final studentName = (data['studentName'] ?? data['userName'] ?? 'Student').toString();
+                        final hostelName = (data['hostelName'] ?? 'Hostel').toString();
+                        final roomNumber = (data['roomNumber'] ?? data['roomId'] ?? 'N/A').toString();
+                        final amount = data['amount'] != null ? 'UGX ${data['amount']}' : 'UGX 50,000';
+
+                        return _paymentCard(
+                          context,
+                          paymentDocId: paymentDocId,
+                          bookingId: bookingId,
+                          name: studentName,
+                          hostel: hostelName,
+                          room: roomNumber,
+                          amount: amount,
+                          time: 'Pending',
+                          data: data,
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _paymentCard(BuildContext context, String id, String name, String hostel, String room, String amount, String time) {
+  Widget _paymentCard(
+    BuildContext context, {
+    required String paymentDocId,
+    required String bookingId,
+    required String name,
+    required String hostel,
+    required String room,
+    required String amount,
+    required String time,
+    required Map<String, dynamic> data,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -59,14 +229,21 @@ class PendingPaymentsScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('ID: $id', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
-              Text(time, style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+              Text('ID: $bookingId', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text('Pending', style: TextStyle(color: Colors.orange.shade800, fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text('$hostel • $room', style: TextStyle(color: Colors.grey.shade600)),
+          Text('$hostel • Room $room', style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -75,13 +252,21 @@ class PendingPaymentsScreen extends StatelessWidget {
               Row(
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PaymentDetailsScreen(bookingId: id))),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PaymentDetailsScreen(bookingId: bookingId),
+                      ),
+                    ),
                     child: const Text('View Details'),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white),
+                    onPressed: () => _confirmPayment(paymentDocId, bookingId),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                    ),
                     child: const Text('Confirm'),
                   ),
                 ],
