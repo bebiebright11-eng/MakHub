@@ -70,6 +70,7 @@ class _StudentPaymentScreenState extends State<StudentPaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print("Booking ID received: ${widget.bookingId}");
     return Scaffold(
       appBar: AppBar(
         title: const Text("Payment"),

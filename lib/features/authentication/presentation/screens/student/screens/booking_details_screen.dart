@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'receipt_screen.dart';
 import 'payment_screen.dart';
 
 class StudentBookingDetailsScreen extends StatefulWidget {
@@ -84,9 +83,13 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
 
       if (!mounted) return;
       Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => StudentReceiptScreen(bookingId: bookingRef.id)),
-      );
+  context,
+  MaterialPageRoute(
+    builder: (context) => StudentPaymentScreen(
+      bookingId: bookingRef.id,
+    ),
+  ),
+);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -389,16 +392,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
         width: double.infinity,
         height: 56,
         child: ElevatedButton(
-          onPressed: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const StudentPaymentScreen(
-        bookingId: "test_booking",
-      ),
-    ),
-  );
-},
+          onPressed: _isSaving ? null : _createBooking,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF2563EB),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
