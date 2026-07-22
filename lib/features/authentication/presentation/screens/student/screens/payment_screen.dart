@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'booking_status_screen.dart';
+import 'payment_screen.dart';
 
 class StudentPaymentScreen extends StatefulWidget {
   final String bookingId;
