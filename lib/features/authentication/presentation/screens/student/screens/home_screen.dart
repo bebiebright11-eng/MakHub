@@ -106,17 +106,14 @@ void dispose() {
     if (!mounted) return;
 
     Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => StudentActiveBookingScreen(
-          bookingId: bookingDoc.id,
-          hostelName: hostelName,
-          roomNumber: roomId,
-          bookingStatus: bookingData['bookingStatus'] ?? 'Pending',
-        ),
-      ),
-    );
-  }
+  context,
+  MaterialPageRoute(
+    builder: (context) => StudentActiveBookingScreen(
+      bookingId: bookingDoc.id,
+    ),
+  ),
+);
+}
 
 
   List<QueryDocumentSnapshot> _filterHostels(List<QueryDocumentSnapshot> docs) {
