@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:makhub/core/constants/payment_constants.dart';
+import 'student_receipt_screen.dart';
 
 class StudentBookingInformationScreen extends StatefulWidget {
   final String bookingId;
@@ -49,6 +52,71 @@ class _StudentBookingInformationScreenState
     if (widget.status == "Pending") return Colors.orange;
     return Colors.red;
   }
+
+  String remainingBalance = "";
+  bool isLoading = true;
+  String amountPaid = "";
+
+Future<void> _loadRemainingBalance() async {
+  try {
+    final bookingDoc = await FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(widget.bookingId)
+        .get();
+
+    final booking = bookingDoc.data()!;
+
+    final hostelId = booking['hostelId'];
+    final floorId = booking['floorId'];
+    final roomId = booking['roomId'];
+
+    final hostelDoc = await FirebaseFirestore.instance
+        .collection('hostels')
+        .doc(hostelId)
+        .get();
+
+    final roomDoc = await FirebaseFirestore.instance
+        .collection('hostels')
+        .doc(hostelId)
+        .collection('floors')
+        .doc(floorId)
+        .collection('rooms')
+        .doc(roomId)
+        .get();
+
+    print(hostelDoc.data());
+    print(roomDoc.data());
+
+    final roomType = roomDoc['roomType'];
+
+    int roomPrice = 0;
+
+    if (roomType == "Single") {
+      roomPrice = int.parse(hostelDoc['singlePrice']);
+    } else {
+      roomPrice = int.parse(hostelDoc['doublePrice']);
+    }
+
+    final balance = roomPrice - PaymentConstants.bookingFee;
+
+    setState(() {
+      remainingBalance = "UGX $balance";
+      amountPaid = "UGX ${PaymentConstants.bookingFee}";
+      isLoading = false;
+
+      print("Amount Paid: $amountPaid");
+    });
+  } catch (e) {
+    print("ERROR: $e");
+  }
+}
+
+
+@override
+void initState() {
+  super.initState();
+  _loadRemainingBalance();
+}
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +192,10 @@ class _StudentBookingInformationScreenState
                   const SizedBox(height: 10),
                   _infoRow("Reporting Date", widget.reportingDate),
                   const SizedBox(height: 10),
-                  _infoRow("Remaining Balance", widget.remainingBalance),
+                  _infoRow(
+                    "Remaining Balance",
+                    isLoading ? "Loading..." : remainingBalance,
+                  ),
                 ],
               ),
             ),
@@ -142,7 +213,11 @@ class _StudentBookingInformationScreenState
               ),
               child: Column(
                 children: [
-                  _infoRow("Amount Paid", widget.amountPaid, valueColor: Colors.green),
+                  _infoRow(
+                    "Amount Paid",
+                    "UGX ${PaymentConstants.bookingFee}",
+                    valueColor: Colors.green,
+                  ),
                   const SizedBox(height: 10),
                   _infoRow("Payment Method", widget.paymentMethod),
                 ],
@@ -181,23 +256,65 @@ class _StudentBookingInformationScreenState
 
             const SizedBox(height: 28),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // Contact hostel logic goes here later
-                },
-                icon: const Icon(Icons.call),
-                label: const Text("Contact Hostel"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
+Row(
+  children: [
+    // View Receipt Button
+    Expanded(
+      child: OutlinedButton(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StudentReceiptScreen(
+          bookingId: widget.bookingId,
+        ),
+      ),
+    );
+  },
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          side: const BorderSide(color: Colors.blue),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text(
+          "View Receipt",
+          style: TextStyle(
+            color: Colors.blue,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    ),
+
+    const SizedBox(width: 12),
+
+    // Contact Hostel Button
+    Expanded(
+      child: ElevatedButton(
+        onPressed: () {
+          // Contact hostel logic
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text(
+          "Contact Hostel",
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+    ),
+  ],
+),
+
+const SizedBox(height: 20),
+
           ],
         ),
       ),

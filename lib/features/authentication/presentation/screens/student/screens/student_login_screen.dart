@@ -4,6 +4,7 @@ import 'forgot_password_screen.dart';
 import 'home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'student_main_screen.dart';
 
 class StudentLoginScreen extends StatefulWidget {
   const StudentLoginScreen({super.key});
@@ -178,9 +179,10 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => const StudentHomeScreen(),
+        builder: (_) => const StudentMainScreen(),
       ),
     );
+
   } on FirebaseAuthException catch (e) {
     if (!mounted) return;
 
