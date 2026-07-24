@@ -5,7 +5,9 @@ import 'hostel_details_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
+import 'search_screen.dart';
 import 'active_booking_screen.dart';
+import '/algorithms/search_algorithm.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -74,21 +76,15 @@ void dispose() {
       ),
     );
   }
-  Future<void> _goToActiveBooking(BuildContext context) async {
+Future<void> _goToActiveBooking(BuildContext context) async {
+    debugPrint("Booking tab tapped");
+
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    debugPrint("Current user: ${user?.uid ?? 'NULL - not logged in'}");
 
-    final bookingQuery = await FirebaseFirestore.instance
-        .collection('bookings')
-        .where('studentId', isEqualTo: user.uid)
-        .orderBy('bookingDate', descending: true)
-        .limit(1)
-        .get();
-
-    if (bookingQuery.docs.isEmpty) {
-      if (!mounted) return;
+    if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("You don't have any bookings yet.")),
+        const SnackBar(content: Text("You're not logged in.")),
       );
       return;
     }
@@ -115,45 +111,48 @@ void dispose() {
 }
 
 
-  List<QueryDocumentSnapshot> _filterHostels(List<QueryDocumentSnapshot> docs) {
-    return docs.where((doc) {
+  List<QueryDocumentSnapshot> _filterHostels(
+    List<QueryDocumentSnapshot> docs) {
+
+    List<QueryDocumentSnapshot> searched =
+        SearchAlgorithm.searchHostels(
+      hostels: docs,
+      query: _searchText,
+    );
+
+    return searched.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
 
-      final hostelName = (data['hostelName'] ?? '').toString().toLowerCase();
-      final location = (data['location'] ?? '').toString().toLowerCase();
-      final hostelType = (data['type'] ?? '').toString().toLowerCase();
+      final hostelType =
+          (data['type'] ?? '').toString().toLowerCase();
+
       final singlePrice = (data['singlePrice'] ?? '')
           .toString()
           .replaceAll(RegExp(r'[^0-9]'), '');
 
-      bool matchesSearch =
-          hostelName.contains(_searchText) || location.contains(_searchText);
-
-      bool matchesFilter = true;
       switch (_selectedFilter) {
         case "Girls":
-          matchesFilter = hostelType == "girls";
-          break;
-        case "Boys":
-          matchesFilter = hostelType == "boys";
-          break;
-        case "Single":
-          matchesFilter = singlePrice.isNotEmpty;
-          break;
-        case "Budget":
-          if (singlePrice.isNotEmpty) {
-            matchesFilter = int.parse(singlePrice) <= 500000;
-          }
-          break;
-        default:
-          matchesFilter = true;
-      }
+          return hostelType == "girls";
 
-      return matchesSearch && matchesFilter;
+        case "Boys":
+          return hostelType == "boys";
+
+        case "Single":
+          return singlePrice.isNotEmpty;
+
+        case "Budget":
+          if (singlePrice.isEmpty) return false;
+          return int.parse(singlePrice) <= 500000;
+
+        default:
+          return true;
+      }
     }).toList();
   }
 
 
+  
+  
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
@@ -633,7 +632,7 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
                       backgroundColor: const Color(0xFF2563EB),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('View Details', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: const Text('View Details', style: TextStyle(color: Color.fromARGB(255, 40, 104, 132), fontWeight: FontWeight.bold)),
                   ),
                 )
               ],
@@ -663,5 +662,53 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
     );
   }
 
-  
+  Widget _buildBottomNav() {
+    return BottomNavigationBar(
+      type: BottomNavigationBarType.fixed,
+      currentIndex: 0,
+      selectedItemColor: const Color(0xFF2563EB),
+      unselectedItemColor: Colors.grey,
+      onTap: (index){
+        if (index == 0) return;
+        if (index == 1){
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const StudentSearchScreen(),
+            ),
+          );
+          return;
+        }
+        if (index==2){
+          _goToActiveBooking(context);
+          return;
+        }
+        if (index==3){
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const StudentNotificationsScreen(),
+            ),
+          );
+          return;
+        }
+        if (index==4){
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const StudentProfileScreen(),
+            ),
+          );
+          return;
+        }
+      },
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
+        BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Booking'),
+        BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: 'Notifications'),
+        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+      ],
+    );
+  }
 }

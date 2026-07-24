@@ -1,77 +1,116 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class StudentProfileScreen extends StatelessWidget {
-  final String studentName;
-  final String admissionNumber;
-  final String university;
-  final String course;
-  final String phoneNumber;
-  final String email;
 
-  const StudentProfileScreen({
-    super.key,
-    this.studentName = "Kwame Asante",
-    this.admissionNumber = "GHA-2048-8912",
-    this.university = "Makerere University",
-    this.course = "Computer Science",
-    this.phoneNumber = "+233 24 000 0000",
-    this.email = "kwame.asante@student.mak.ac.ug",
-  });
+class StudentProfileScreen extends StatefulWidget {
+  const StudentProfileScreen({super.key});
 
   @override
+  State<StudentProfileScreen> createState() => _StudentProfileScreenState();
+}
+
+class _StudentProfileScreenState extends State<StudentProfileScreen> {
+  final User? user = FirebaseAuth.instance.currentUser;
+
+  late final Stream<DocumentSnapshot> studentStream =
+      FirebaseFirestore.instance
+          .collection('students')
+          .doc(user!.uid)
+          .snapshots();
+          
+    @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Profile"),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: Colors.blue.shade50,
-                    child: const Icon(Icons.person, size: 44, color: Colors.blue),
+      body: StreamBuilder<DocumentSnapshot>(
+  stream: studentStream,
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (!snapshot.hasData || !snapshot.data!.exists) {
+      return const Center(
+        child: Text("Student data not found"),
+      );
+    }
+
+    final data = snapshot.data!.data() as Map<String, dynamic>;
+
+    final studentName = data['fullName'] ?? '';
+    final admissionNumber = data['admissionNumber'] ?? '';
+    final university = data['university'] ?? '';
+    final course = data['course'] ?? '';
+    final phoneNumber = data['phoneNumber'] ?? '';
+    final email = data['email'] ?? '';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundColor: Colors.blue.shade50,
+                  child: const Icon(
+                    Icons.person,
+                    size: 44,
+                    color: Colors.blue,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    studentName,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  studentName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
-                  Text(
-                    admissionNumber,
-                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                Text(
+                  admissionNumber,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            const SizedBox(height: 28),
+          const SizedBox(height: 28),
 
-            _infoTile(Icons.school, "University", university),
-            const SizedBox(height: 10),
-            _infoTile(Icons.book, "Course", course),
-            const SizedBox(height: 10),
-            _infoTile(Icons.phone, "Phone Number", phoneNumber),
-            const SizedBox(height: 10),
-            _infoTile(Icons.email, "Email", email),
+          _infoTile(Icons.school, "University", university),
+          const SizedBox(height: 10),
 
-            const SizedBox(height: 28),
+          _infoTile(Icons.book, "Course", course),
+          const SizedBox(height: 10),
 
-            _menuRow(Icons.edit, "Edit Profile", () {
-              // Edit Profile screen goes here later
-            }),
-            _menuRow(Icons.lock, "Change Password", () {
-              // Change Password screen goes here later
-            }),
-          ],
-        ),
+          _infoTile(Icons.phone, "Phone Number", phoneNumber),
+          const SizedBox(height: 10),
+
+          _infoTile(Icons.email, "Email", email),
+
+          const SizedBox(height: 28),
+
+          _menuRow(Icons.edit, "Edit Profile", () {}),
+
+          _menuRow(Icons.lock, "Change Password", () {}),
+        ],
       ),
+    );
+  },
+),
+
+
     );
   }
 
