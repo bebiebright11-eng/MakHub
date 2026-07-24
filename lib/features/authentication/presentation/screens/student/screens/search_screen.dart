@@ -1,4 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '/algorithms/search_algorithm.dart';
+import 'hostel_details_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'active_booking_screen.dart';
+import 'notifications_screen.dart';
+import 'profile_screen.dart';
+import 'home_screen.dart';
 
 class StudentSearchScreen extends StatefulWidget {
   const StudentSearchScreen({super.key});
@@ -8,6 +16,22 @@ class StudentSearchScreen extends StatefulWidget {
 }
 
 class _StudentSearchScreenState extends State<StudentSearchScreen> {
+  final Stream<QuerySnapshot> _hostelsStream =
+    FirebaseFirestore.instance
+        .collection('hostels')
+        .snapshots();
+
+  final TextEditingController _searchController =
+      TextEditingController();
+
+  String _searchText = "";
+  String _selectedFilter = "";
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,9 +56,18 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchText = value.toLowerCase();
+                    });
+                  },
                   decoration: InputDecoration(
                     hintText: 'Search hostels by name or location',
-                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 13,
+                    ),
                     border: InputBorder.none,
                   ),
                 ),
@@ -44,41 +77,217 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
           ),
         ),
       ),
-      body: Column(
+      body: StreamBuilder<QuerySnapshot>(
+    stream: _hostelsStream,
+    builder: (context, snapshot) {
+
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return const Center(
+          child: Text("No hostels found"),
+        );
+      }
+
+      final hostelDocs = _filterHostels(snapshot.data!.docs);
+
+      return Column(
         children: [
+          
           _buildFilterBar(),
+
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 12,
+            ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
               children: [
-                const Text('18 hostels found', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(
+                  "${hostelDocs.length} hostels found",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+
                 Row(
                   children: [
-                    const Icon(Icons.swap_vert, size: 16, color: Colors.grey),
+                    const Icon(
+                      Icons.swap_vert,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+
                     const SizedBox(width: 4),
-                    Text('Sort: Nearest', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
+
+                    Text(
+                      "Sort: Nearest",
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
+
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              children: [
-                _buildHostelItem('Nsibirwa Hostel', '0.4 km', '700K', '4.8', ['Wi-Fi', 'Shuttle', 'Kitchen']),
-                _buildHostelItem('Olympia Suites', '0.9 km', '950K', '4.6', ['Wi-Fi', 'Pool', 'Laundry']),
-                _buildHostelItem('Akamwesi Court', '1.2 km', '820K', '4.9', ['Wi-Fi', 'Reading', 'Single']),
-              ],
+            child: ListView.builder(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24),
+
+              itemCount: hostelDocs.length,
+
+              itemBuilder: (context, index) {
+
+                final data = hostelDocs[index].data()
+                    as Map<String, dynamic>;
+
+                return _buildHostelItem(
+                  hostelDocs[index].id,
+                  data["hostelName"] ?? "",
+                  data["location"] ?? "",
+                  data["singlePrice"] ?? "",
+                  "4.5",
+                  List<String>.from(data["facilities"] ?? []),
+                );
+              },
             ),
           ),
         ],
-      ),
+      );
+    },
+  ),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
 
+  Future<void> _goToActiveBooking(BuildContext context) async {
+  debugPrint("Booking tab tapped");
+
+  final user = FirebaseAuth.instance.currentUser;
+
+  if (user == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("You're not logged in.")),
+    );
+    return;
+  }
+
+  try {
+    final bookingQuery = await FirebaseFirestore.instance
+        .collection('bookings')
+        .where('studentId', isEqualTo: user.uid)
+        .orderBy('bookingDate', descending: true)
+        .limit(1)
+        .get();
+
+    if (bookingQuery.docs.isEmpty) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("You don't have any bookings yet."),
+        ),
+      );
+      return;
+    }
+
+    final bookingDoc = bookingQuery.docs.first;
+    final bookingData = bookingDoc.data();
+
+    final hostelId = bookingData['hostelId'] ?? '';
+    final roomId = bookingData['roomId'] ?? '';
+
+    final hostelDoc = await FirebaseFirestore.instance
+        .collection('hostels')
+        .doc(hostelId)
+        .get();
+
+    final hostelName =
+        hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StudentActiveBookingScreen(
+          bookingId: bookingDoc.id,
+          hostelName: hostelName,
+          roomNumber: roomId,
+          bookingStatus:
+              bookingData['bookingStatus'] ?? 'Pending',
+        ),
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Something went wrong: $e")),
+    );
+  }
+}
+  List<QueryDocumentSnapshot> _filterHostels(
+    List<QueryDocumentSnapshot> docs) {
+
+    List<QueryDocumentSnapshot> searched =
+        SearchAlgorithm.searchHostels(
+      hostels: docs,
+      query: _searchText,
+    );
+
+    return searched.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+
+      final hostelType =
+          (data['type'] ?? '').toString().toLowerCase();
+
+      final singlePrice = (data['singlePrice'] ?? '')
+          .toString()
+          .replaceAll(RegExp(r'[^0-9]'), '');
+
+      final doublePrice = (data['doublePrice'] ?? '')
+          .toString()
+          .replaceAll(RegExp(r'[^0-9]'), '');
+
+      switch (_selectedFilter) {
+        case "Girls":
+          return hostelType == "girls";
+
+        case "Boys":
+          return hostelType == "boys";
+
+        case "Single":
+          return singlePrice.isNotEmpty;
+
+        case "Double":
+          return doublePrice.isNotEmpty;
+
+        case "Budget":
+          final single =
+              singlePrice.isEmpty ? 999999999 : int.parse(singlePrice);
+          
+          final doubleRoom =
+              doublePrice.isEmpty ? 999999999 : int.parse(doublePrice);
+
+          return single <= 500000 || doubleRoom <= 500000;    
+        default:
+          return true;
+      }
+    }).toList();
+  }
+  
   Widget _buildFilterBar() {
     return Container(
       height: 40,
@@ -87,37 +296,76 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 24),
         children: [
-          _buildMiniChip('Budget', Icons.account_balance_wallet_outlined, true),
-          _buildMiniChip('Distance', Icons.location_on_outlined, false),
-          _buildMiniChip('Girls', Icons.female_outlined, true),
-          _buildMiniChip('Boys', Icons.male_outlined, false),
-          _buildMiniChip('Single', Icons.person_outline, false),
-          _buildMiniChip('Double', Icons.people_outline, true),
+          _buildMiniChip('Budget', Icons.account_balance_wallet_outlined),
+          _buildMiniChip('Distance', Icons.location_on_outlined),
+          _buildMiniChip('Girls', Icons.female_outlined),
+          _buildMiniChip('Boys', Icons.male_outlined),
+          _buildMiniChip('Single', Icons.person_outline),
+          _buildMiniChip('Double', Icons.people_outline),
         ],
       ),
     );
   }
 
-  Widget _buildMiniChip(String label, IconData icon, bool isActive) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: isActive ? const Color(0xFF2563EB) : Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isActive ? const Color(0xFF2563EB) : Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: isActive ? Colors.white : Colors.black, size: 14),
-          const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: isActive ? Colors.white : Colors.black, fontSize: 12)),
-        ],
+  Widget _buildMiniChip(
+      String label,
+      IconData icon,) {
+
+    final filterValue = label;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (_selectedFilter == filterValue) {
+            _selectedFilter = "";
+          } else {
+            _selectedFilter = filterValue;
+          }
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 4,
+        ),
+        decoration: BoxDecoration(
+          color: _selectedFilter == filterValue
+              ? const Color(0xFF2563EB)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: _selectedFilter == filterValue
+                ? const Color(0xFF2563EB)
+                : Colors.grey.shade200,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: _selectedFilter == filterValue
+                  ? Colors.white
+                  : Colors.black,
+              size: 14,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: _selectedFilter == filterValue
+                    ? Colors.white
+                    : Colors.black,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildHostelItem(String name, String distance, String price, String rating, List<String> features) {
+  Widget _buildHostelItem(String hostelId, String name, String distance, String price, String rating, List<String> features) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
@@ -186,7 +434,14 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
                     SizedBox(
                       height: 36,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder :(_) => HostelDetailsScreen(hostelId: hostelId,),
+                            ),
+                          );
+                        },
                         style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                         child: const Text('View', style: TextStyle(color: Colors.white, fontSize: 13)),
                       ),
@@ -234,12 +489,64 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
       currentIndex: 1,
       selectedItemColor: const Color(0xFF2563EB),
       unselectedItemColor: Colors.grey,
+      onTap: (index) {
+        if (index == 0) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder:(_) => const StudentHomeScreen(),
+               ),
+            );
+        }
+
+        if (index == 1) {
+          return; 
+        }
+        if(index == 2){
+          _goToActiveBooking(context);
+          return;
+        }
+        if (index == 3) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const StudentNotificationsScreen(),
+            ),
+          );
+          return;
+        }
+        if (index == 4) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                const StudentProfileScreen(),
+            ),
+          );
+          return;
+        }
+      },
       items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-        BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Booking'),
-        BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: 'Alerts'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          label: 'Home',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.search),
+          label: 'Search',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.calendar_today_outlined),
+          label: 'Booking',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.notifications_outlined),
+          label: 'Alerts',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline),
+          label: 'Profile',
+        ),
       ],
     );
   }
