@@ -660,7 +660,7 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
                       backgroundColor: const Color(0xFF2563EB),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('View Details', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: const Text('View Details', style: TextStyle(color: Color.fromARGB(255, 40, 104, 132), fontWeight: FontWeight.bold)),
                   ),
                 )
               ],
