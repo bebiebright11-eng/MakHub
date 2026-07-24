@@ -5,7 +5,9 @@ import 'hostel_details_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
+import 'search_screen.dart';
 import 'active_booking_screen.dart';
+import '/algorithms/search_algorithm.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -75,89 +77,110 @@ void dispose() {
       bottomNavigationBar: _buildBottomNav(),
     );
   }
-  Future<void> _goToActiveBooking(BuildContext context) async {
+Future<void> _goToActiveBooking(BuildContext context) async {
+    debugPrint("Booking tab tapped");
+
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    debugPrint("Current user: ${user?.uid ?? 'NULL - not logged in'}");
 
-    final bookingQuery = await FirebaseFirestore.instance
-        .collection('bookings')
-        .where('studentId', isEqualTo: user.uid)
-        .orderBy('bookingDate', descending: true)
-        .limit(1)
-        .get();
-
-    if (bookingQuery.docs.isEmpty) {
-      if (!mounted) return;
+    if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("You don't have any bookings yet.")),
+        const SnackBar(content: Text("You're not logged in.")),
       );
       return;
     }
 
-    final bookingDoc = bookingQuery.docs.first;
-    final bookingData = bookingDoc.data();
-    final hostelId = bookingData['hostelId'] ?? '';
-    final roomId = bookingData['roomId'] ?? '';
+    try {
+      final bookingQuery = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('studentId', isEqualTo: user.uid)
+          .orderBy('bookingDate', descending: true)
+          .limit(1)
+          .get();
 
-    // Look up the real hostel name and room number using their IDs
-    final hostelDoc = await FirebaseFirestore.instance.collection('hostels').doc(hostelId).get();
-    final hostelName = hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
+      debugPrint("Bookings found: ${bookingQuery.docs.length}");
 
-    if (!mounted) return;
+      if (bookingQuery.docs.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("You don't have any bookings yet.")),
+        );
+        return;
+      }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => StudentActiveBookingScreen(
-          bookingId: bookingDoc.id,
-          hostelName: hostelName,
-          roomNumber: roomId,
-          bookingStatus: bookingData['bookingStatus'] ?? 'Pending',
+      final bookingDoc = bookingQuery.docs.first;
+      final bookingData = bookingDoc.data();
+      final hostelId = bookingData['hostelId'] ?? '';
+      final roomId = bookingData['roomId'] ?? '';
+
+      final hostelDoc = await FirebaseFirestore.instance.collection('hostels').doc(hostelId).get();
+      final hostelName = hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => StudentActiveBookingScreen(
+            bookingId: bookingDoc.id,
+            hostelName: hostelName,
+            roomNumber: roomId,
+            bookingStatus: bookingData['bookingStatus'] ?? 'Pending',
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint("ERROR in _goToActiveBooking: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Something went wrong: $e")),
+      );
+    }
   }
 
 
-  List<QueryDocumentSnapshot> _filterHostels(List<QueryDocumentSnapshot> docs) {
-    return docs.where((doc) {
+  List<QueryDocumentSnapshot> _filterHostels(
+    List<QueryDocumentSnapshot> docs) {
+
+    List<QueryDocumentSnapshot> searched =
+        SearchAlgorithm.searchHostels(
+      hostels: docs,
+      query: _searchText,
+    );
+
+    return searched.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
 
-      final hostelName = (data['hostelName'] ?? '').toString().toLowerCase();
-      final location = (data['location'] ?? '').toString().toLowerCase();
-      final hostelType = (data['type'] ?? '').toString().toLowerCase();
+      final hostelType =
+          (data['type'] ?? '').toString().toLowerCase();
+
       final singlePrice = (data['singlePrice'] ?? '')
           .toString()
           .replaceAll(RegExp(r'[^0-9]'), '');
 
-      bool matchesSearch =
-          hostelName.contains(_searchText) || location.contains(_searchText);
-
-      bool matchesFilter = true;
       switch (_selectedFilter) {
         case "Girls":
-          matchesFilter = hostelType == "girls";
-          break;
-        case "Boys":
-          matchesFilter = hostelType == "boys";
-          break;
-        case "Single":
-          matchesFilter = singlePrice.isNotEmpty;
-          break;
-        case "Budget":
-          if (singlePrice.isNotEmpty) {
-            matchesFilter = int.parse(singlePrice) <= 500000;
-          }
-          break;
-        default:
-          matchesFilter = true;
-      }
+          return hostelType == "girls";
 
-      return matchesSearch && matchesFilter;
+        case "Boys":
+          return hostelType == "boys";
+
+        case "Single":
+          return singlePrice.isNotEmpty;
+
+        case "Budget":
+          if (singlePrice.isEmpty) return false;
+          return int.parse(singlePrice) <= 500000;
+
+        default:
+          return true;
+      }
     }).toList();
   }
 
 
+  
+  
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
@@ -676,7 +699,13 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
       onTap: (index){
         if (index == 0) return;
         if (index == 1){
-              return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const StudentSearchScreen(),
+            ),
+          );
+          return;
         }
         if (index==2){
           _goToActiveBooking(context);
