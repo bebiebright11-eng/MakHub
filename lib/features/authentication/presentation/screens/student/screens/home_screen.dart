@@ -101,6 +101,37 @@ Future<void> _goToActiveBooking(BuildContext context) async {
 
     if (!mounted) return;
 
+<<<<<<< HEAD
+      final bookingDoc = bookingQuery.docs.first;
+      final bookingData = bookingDoc.data();
+      final hostelId = bookingData['hostelId'] ?? '';
+      final roomId = bookingData['roomId'] ?? '';
+
+      final hostelDoc = await FirebaseFirestore.instance.collection('hostels').doc(hostelId).get();
+      final hostelName = hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => StudentActiveBookingScreen(
+            bookingId: bookingDoc.id,
+            hostelName: hostelName,
+            roomNumber: roomId,
+            bookingStatus: bookingData['bookingStatus'] ?? 'Pending',
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint("ERROR in _goToActiveBooking: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Something went wrong: $e")),
+      );
+    }
+  }
+=======
     Navigator.push(
   context,
   MaterialPageRoute(
@@ -110,6 +141,7 @@ Future<void> _goToActiveBooking(BuildContext context) async {
   ),
 );
 }
+>>>>>>> 0c636a0a75f6ab0b96e97841eac29017b12ea472
 
 
   List<QueryDocumentSnapshot> _filterHostels(
@@ -633,7 +665,7 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
                       backgroundColor: const Color(0xFF2563EB),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('View Details', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: const Text('View Details', style: TextStyle(color: Color.fromARGB(255, 40, 104, 132), fontWeight: FontWeight.bold)),
                   ),
                 )
               ],
