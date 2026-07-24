@@ -90,24 +90,18 @@ Future<void> _goToActiveBooking(BuildContext context) async {
       return;
     }
 
-    try {
-      final bookingQuery = await FirebaseFirestore.instance
-          .collection('bookings')
-          .where('studentId', isEqualTo: user.uid)
-          .orderBy('bookingDate', descending: true)
-          .limit(1)
-          .get();
+    final bookingDoc = bookingQuery.docs.first;
+    final bookingData = bookingDoc.data();
+    final hostelId = bookingData['hostelId'] ?? '';
+    final roomId = bookingData['roomId'] ?? '';
 
-      debugPrint("Bookings found: ${bookingQuery.docs.length}");
+    // Look up the real hostel name and room number using their IDs
+    final hostelDoc = await FirebaseFirestore.instance.collection('hostels').doc(hostelId).get();
+    final hostelName = hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
 
-      if (bookingQuery.docs.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("You don't have any bookings yet.")),
-        );
-        return;
-      }
+    if (!mounted) return;
 
+<<<<<<< HEAD
       final bookingDoc = bookingQuery.docs.first;
       final bookingData = bookingDoc.data();
       final hostelId = bookingData['hostelId'] ?? '';
@@ -137,6 +131,17 @@ Future<void> _goToActiveBooking(BuildContext context) async {
       );
     }
   }
+=======
+    Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (context) => StudentActiveBookingScreen(
+      bookingId: bookingDoc.id,
+    ),
+  ),
+);
+}
+>>>>>>> 0c636a0a75f6ab0b96e97841eac29017b12ea472
 
 
   List<QueryDocumentSnapshot> _filterHostels(
