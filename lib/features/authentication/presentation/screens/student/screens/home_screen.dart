@@ -90,53 +90,26 @@ Future<void> _goToActiveBooking(BuildContext context) async {
       return;
     }
 
-    try {
-      final bookingQuery = await FirebaseFirestore.instance
-          .collection('bookings')
-          .where('studentId', isEqualTo: user.uid)
-          .orderBy('bookingDate', descending: true)
-          .limit(1)
-          .get();
+    final bookingDoc = bookingQuery.docs.first;
+    final bookingData = bookingDoc.data();
+    final hostelId = bookingData['hostelId'] ?? '';
+    final roomId = bookingData['roomId'] ?? '';
 
-      debugPrint("Bookings found: ${bookingQuery.docs.length}");
+    // Look up the real hostel name and room number using their IDs
+    final hostelDoc = await FirebaseFirestore.instance.collection('hostels').doc(hostelId).get();
+    final hostelName = hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
 
-      if (bookingQuery.docs.isEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("You don't have any bookings yet.")),
-        );
-        return;
-      }
+    if (!mounted) return;
 
-      final bookingDoc = bookingQuery.docs.first;
-      final bookingData = bookingDoc.data();
-      final hostelId = bookingData['hostelId'] ?? '';
-      final roomId = bookingData['roomId'] ?? '';
-
-      final hostelDoc = await FirebaseFirestore.instance.collection('hostels').doc(hostelId).get();
-      final hostelName = hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
-
-      if (!mounted) return;
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => StudentActiveBookingScreen(
-            bookingId: bookingDoc.id,
-            hostelName: hostelName,
-            roomNumber: roomId,
-            bookingStatus: bookingData['bookingStatus'] ?? 'Pending',
-          ),
-        ),
-      );
-    } catch (e) {
-      debugPrint("ERROR in _goToActiveBooking: $e");
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Something went wrong: $e")),
-      );
-    }
-  }
+    Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (context) => StudentActiveBookingScreen(
+      bookingId: bookingDoc.id,
+    ),
+  ),
+);
+}
 
 
   List<QueryDocumentSnapshot> _filterHostels(

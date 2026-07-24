@@ -73,6 +73,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
       final bookingRef = await FirebaseFirestore.instance.collection('bookings').add({
         'studentId': user.uid,
         'hostelId': widget.hostelId,
+        'floorId': widget.floorId,
         'roomId': widget.roomId,
         'bookingStatus': 'pending',
         'bookingDate': FieldValue.serverTimestamp(),
