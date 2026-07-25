@@ -45,32 +45,54 @@ class RecommendationAlgorithm {
                       .replaceAll(RegExp(r'[^0-9]'), '')) ??
               0;
 
-      // Budget
+      // Budget (supports either old fixed buckets OR a real numeric range)
       String budget = preferences['maxBudget'] ?? "";
 
-      if (budget == "below300000" && roomPrice <= 300000) {
-        score += 25;
+      int? minBudget = preferences['minBudget'] is int
+          ? preferences['minBudget']
+          : int.tryParse((preferences['minBudget'] ?? '').toString());
+
+      int? maxBudget = preferences['maxBudgetValue'] is int
+          ? preferences['maxBudgetValue']
+          : int.tryParse((preferences['maxBudgetValue'] ?? '').toString());
+
+      if (minBudget != null || maxBudget != null) {
+        // New numeric range path
+        final withinMin = minBudget == null || roomPrice >= minBudget;
+        final withinMax = maxBudget == null || roomPrice <= maxBudget;
+
+        if (withinMin && withinMax) {
+          score += 25;
+        }
+      } else {
+        // Old fixed-bucket path (kept for backward compatibility)
+        if (budget == "below300000" && roomPrice <= 300000) {
+          score += 25;
+        }
+
+        if (budget == "300000-500000" &&
+            roomPrice >= 300000 &&
+            roomPrice <= 500000) {
+          score += 25;
+        }
+
+        if (budget == "above500000" && roomPrice > 500000) {
+          score += 25;
+        }
       }
 
-      if (budget == "300000-500000" &&
-          roomPrice >= 300000 &&
-          roomPrice <= 500000) {
-        score += 25;
-      }
+      // Preferred Location ("Any" or empty means no location filter/scoring)
+      final preferredLocation =
+          (preferences['preferredLocation'] ?? '').toString().toLowerCase();
 
-      if (budget == "above500000" && roomPrice > 500000) {
-        score += 25;
-      }
+      final isAnyLocation = preferredLocation.isEmpty ||
+          preferredLocation.contains('any');
 
-      // Preferred Location
-      if ((data['location'] ?? '')
-          .toString()
-          .toLowerCase()
-          .contains(
-            (preferences['preferredLocation'] ?? '')
-                .toString()
-                .toLowerCase(),
-          )) {
+      if (!isAnyLocation &&
+          (data['location'] ?? '')
+              .toString()
+              .toLowerCase()
+              .contains(preferredLocation)) {
         score += 20;
       }
 
