@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'preference_screen.dart';
 
 
 class StudentProfileScreen extends StatefulWidget {
@@ -15,7 +16,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   late final Stream<DocumentSnapshot> studentStream =
       FirebaseFirestore.instance
-          .collection('students')
+          .collection('users')
           .doc(user!.uid)
           .snapshots();
           
@@ -102,6 +103,17 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           const SizedBox(height: 28),
 
           _menuRow(Icons.edit, "Edit Profile", () {}),
+
+          _menuRow(
+            Icons.tune,
+              'Hostel Preferences',
+            (){
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) =>const StudentPreferenceScreen(),),
+              );
+            },
+          ),
 
           _menuRow(Icons.lock, "Change Password", () {}),
         ],
