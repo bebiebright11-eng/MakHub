@@ -20,6 +20,7 @@ class RoomListScreen extends StatefulWidget {
 
 class _RoomListScreenState extends State<RoomListScreen> {
   String _selectedFilter = 'All';
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
@@ -30,121 +31,141 @@ class _RoomListScreenState extends State<RoomListScreen> {
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: TextField(
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              onChanged: (value) => setState(() => _searchQuery = value.trim()),
               decoration: InputDecoration(
-                hintText: 'Search Room Number',
+                hintText: "Search rooms...",
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
                 filled: true,
                 fillColor: Colors.grey.shade100,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
-          ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
+            const SizedBox(height: 16),
+            Row(
               children: [
-                _filterChip('All'),
-                _filterChip('Available'),
-                _filterChip('Occupied'),
-                _filterChip('Reserved'),
+                _filterTab('All'),
+                const SizedBox(width: 8),
+                _filterTab('Available'),
+                const SizedBox(width: 8),
+                _filterTab('Occupied'),
+                const SizedBox(width: 8),
+                _filterTab('Reserved'),
               ],
             ),
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('hostels')
-                  .doc(widget.hostelId)
-                  .collection('floors')
-                  .doc(widget.floorId)
-                  .collection('rooms')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+            const SizedBox(height: 16),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('hostels')
+                    .doc(widget.hostelId)
+                    .collection('floors')
+                    .doc(widget.floorId)
+                    .collection('rooms')
+                    .orderBy('roomNumber')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('No rooms found on this floor.'));
-                }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text('No rooms found on this floor.'));
+                  }
 
-                var roomDocs = snapshot.data!.docs;
+                  var roomDocs = snapshot.data!.docs;
 
-                // Apply the selected filter chip
-                if (_selectedFilter != 'All') {
-                  roomDocs = roomDocs.where((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    return data['status'] == _selectedFilter;
-                  }).toList();
-                }
+                  if (_selectedFilter != 'All') {
+                    roomDocs = roomDocs.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return data['status'] == _selectedFilter;
+                    }).toList();
+                  }
 
-                if (roomDocs.isEmpty) {
-                  return Center(child: Text('No $_selectedFilter rooms on this floor.'));
-                }
+                  if (_searchQuery.isNotEmpty) {
+                    roomDocs = roomDocs.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final number = (data['roomNumber'] ?? '').toString().toLowerCase();
+                      return number.contains(_searchQuery.toLowerCase());
+                    }).toList();
+                  }
 
-                return ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: roomDocs.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    return _roomCard(
-                      context,
-                      roomId: doc.id,
-                      number: data['roomNumber'] ?? '',
-                      status: data['status'] ?? 'Unknown',
-                      type: data['roomType'] ?? '',
-                      capacity: data['capacity'] ?? 0,
-                      occupied: data['occupied'] ?? 0,
-                    );
-                  }).toList(),
-                );
-              },
+                  if (roomDocs.isEmpty) {
+                    return const Center(child: Text('No rooms match this search/filter.'));
+                  }
+
+                  return GridView.builder(
+                    itemCount: roomDocs.length,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.4,
+                    ),
+                    itemBuilder: (context, index) {
+                      final doc = roomDocs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+
+                      return _tappableRoomCard(
+                        context,
+                        roomId: doc.id,
+                        number: (data['roomNumber'] ?? '').toString(),
+                        status: data['status'] ?? 'Unknown',
+                        type: data['roomType'] ?? '',
+                        occupancy: '${data['occupied'] ?? 0}/${data['capacity'] ?? 0}',
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _filterChip(String label) {
-    final isSelected = _selectedFilter == label;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8.0),
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedFilter = label),
-        child: Chip(
-          label: Text(label),
-          backgroundColor: isSelected ? const Color(0xFF2563EB) : Colors.grey.shade100,
-          labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black, fontSize: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          ],
         ),
       ),
     );
   }
 
-  Widget _roomCard(
+  Widget _filterTab(String label) {
+    final selected = _selectedFilter == label;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedFilter = label),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF2563EB) : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: selected ? Colors.white : Colors.black,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tappableRoomCard(
     BuildContext context, {
     required String roomId,
     required String number,
     required String status,
     required String type,
-    required int capacity,
-    required int occupied,
+    required String occupancy,
   }) {
-    Color statusColor;
-    switch (status) {
-      case 'Available': statusColor = Colors.green; break;
-      case 'Occupied': statusColor = Colors.red; break;
-      case 'Reserved': statusColor = Colors.orange; break;
-      default: statusColor = Colors.grey;
-    }
-
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -156,31 +177,56 @@ class _RoomListScreenState extends State<RoomListScreen> {
           ),
         ),
       ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Room $number', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text('$type • $occupied/$capacity', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-              ],
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-              child: Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
-            ),
-          ],
-        ),
+      child: _roomCard(number: number, status: status, type: type, occupancy: occupancy),
+    );
+  }
+
+  Widget _roomCard({
+    required String number,
+    required String status,
+    required String type,
+    required String occupancy,
+  }) {
+    Color statusColor;
+    if (status == "Available") {
+      statusColor = Colors.green;
+    } else if (status == "Occupied") {
+      statusColor = Colors.red;
+    } else {
+      statusColor = Colors.orange;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Room $number", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(status, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text("Type", style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+          Text(type, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          const SizedBox(height: 6),
+          Text("Occupancy", style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+          Text(occupancy, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        ],
       ),
     );
   }

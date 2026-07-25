@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '6_room_list_screen.dart';
 
 class FloorsScreen extends StatelessWidget {
@@ -20,19 +21,39 @@ class FloorsScreen extends StatelessWidget {
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          _floorCard(context, 'Ground Floor', 8),
-          _floorCard(context, 'First Floor', 6),
-          _floorCard(context, 'Second Floor', 3),
-          _floorCard(context, 'Third Floor', 1),
-        ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('hostels')
+            .doc(hostelId)
+            .collection('floors')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('No floors found for this hostel'));
+          }
+
+          final floorDocs = snapshot.data!.docs;
+
+          return ListView(
+            padding: const EdgeInsets.all(20),
+            children: floorDocs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final floorName = data['floorName'] ?? 'Unnamed Floor';
+              final availableRooms = data['availableRooms'] ?? 0;
+
+              return _floorCard(context, doc.id, floorName, availableRooms);
+            }).toList(),
+          );
+        },
       ),
     );
   }
 
-  Widget _floorCard(BuildContext context, String title, int availableRooms) {
+  Widget _floorCard(BuildContext context, String floorId, String title, int availableRooms) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
@@ -53,18 +74,18 @@ class FloorsScreen extends StatelessWidget {
             ],
           ),
           ElevatedButton(
-           onPressed: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => RoomListScreen(
-        hostelId: hostelId,
-        floorId: title,
-        floorName: title,
-      ),
-    ),
-  );
-},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RoomListScreen(
+                    hostelId: hostelId,
+                    floorId: floorId,
+                    floorName: title,
+                  ),
+                ),
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2563EB),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

@@ -22,17 +22,25 @@ String hostelName = "";
 
 
   Future<void> fetchStats() async {
-    // Collection group query: searches every 'rooms' subcollection,
-    // no matter which hostel or floor it's nested under.
-    final roomsSnapshot =
-        await FirebaseFirestore.instance.collectionGroup('rooms').get();
+    // Collection group query, filtered to only this personnel's hostel
+    // via each room document's parent path.
+    final roomsSnapshot = await FirebaseFirestore.instance
+        .collectionGroup('rooms')
+        .get();
 
-    int total = roomsSnapshot.docs.length;
+    int total = 0;
     int available = 0;
     int occupied = 0;
     int reserved = 0;
 
     for (var doc in roomsSnapshot.docs) {
+      // Each room's path looks like: hostels/{hostelId}/floors/{floorId}/rooms/{roomId}
+      final belongsToThisHostel =
+          doc.reference.path.contains('hostels/$hostelId/');
+
+      if (!belongsToThisHostel) continue;
+
+      total++;
       final status = doc.data()['status'] ?? '';
       if (status == 'Available') {
         available++;
@@ -42,12 +50,34 @@ String hostelName = "";
         reserved++;
       }
     }
-    
 
     totalRooms = total;
     availableRooms = available;
     occupiedRooms = occupied;
     reservedRooms = reserved;
+
+    // Pending payments scoped to this hostel
+    final pendingPaymentsSnapshot = await FirebaseFirestore.instance
+        .collection('payments')
+        .where('paymentStatus', isEqualTo: 'pending')
+        .get();
+
+    int pendingCount = 0;
+    for (var paymentDoc in pendingPaymentsSnapshot.docs) {
+      final bookingId = paymentDoc.data()['bookingId'];
+      if (bookingId == null) continue;
+
+      final bookingDoc = await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(bookingId)
+          .get();
+
+      if (bookingDoc.exists && bookingDoc.data()?['hostelId'] == hostelId) {
+        pendingCount++;
+      }
+    }
+
+    pendingPayments = pendingCount;
 
     notifyListeners();
   }
