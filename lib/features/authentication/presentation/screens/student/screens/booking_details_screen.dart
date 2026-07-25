@@ -172,13 +172,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
       ),
       // We combine both components layout-wise into the bottom parameter 
       // so that they stack nicely and don't conflict with the virtual keyboard.
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildBottomAction(),
-          _buildBottomNav(),
-        ],
-      ),
+      bottomNavigationBar: _buildBottomAction(),
     );
   }
 

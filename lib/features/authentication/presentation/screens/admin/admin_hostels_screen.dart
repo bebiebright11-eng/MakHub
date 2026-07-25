@@ -258,7 +258,7 @@ ElevatedButton.icon(
       builder: (context) => AlertDialog(
         title: const Text("Delete Hostel"),
         content: Text(
-          "Are you sure you want to delete ${data['hostelName']}?",
+          "Are you sure you want to delete ${data['hostelName']}? This will also delete all its floors and rooms.",
         ),
         actions: [
           TextButton(
@@ -281,16 +281,49 @@ ElevatedButton.icon(
     );
 
     if (confirm == true) {
-      await FirebaseFirestore.instance
-          .collection('hostels')
-          .doc(hostel.id)
-          .delete();
+      try {
+        final firestore = FirebaseFirestore.instance;
+        final hostelRef = firestore.collection('hostels').doc(hostel.id);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Hostel deleted successfully"),
-        ),
-      );
+        final floorsSnapshot = await hostelRef.collection('floors').get();
+
+        final List<DocumentReference> refsToDelete = [];
+
+        for (final floorDoc in floorsSnapshot.docs) {
+          final roomsSnapshot =
+              await floorDoc.reference.collection('rooms').get();
+
+          for (final roomDoc in roomsSnapshot.docs) {
+            refsToDelete.add(roomDoc.reference);
+          }
+
+          refsToDelete.add(floorDoc.reference);
+        }
+
+        refsToDelete.add(hostelRef);
+
+        const batchLimit = 500;
+        for (var i = 0; i < refsToDelete.length; i += batchLimit) {
+          final chunk = refsToDelete.skip(i).take(batchLimit);
+          final batch = firestore.batch();
+          for (final ref in chunk) {
+            batch.delete(ref);
+          }
+          await batch.commit();
+        }
+
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Hostel deleted successfully"),
+          ),
+        );
+      } catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to delete hostel: $e")),
+        );
+      }
     }
   },
   style: ElevatedButton.styleFrom(

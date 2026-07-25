@@ -142,6 +142,69 @@ class _AdminManageFloorsScreenState
     );
   }
 
+Future<void> _confirmAndDeleteFloor(
+  BuildContext context, {
+  required String floorId,
+  required String floorName,
+}) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Delete Floor?'),
+      content: Text(
+        'Are you sure you want to delete "$floorName"? This will also delete all its rooms and cannot be undone.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed != true) return;
+
+  try {
+    final floorRef = _firestore
+        .collection('hostels')
+        .doc(widget.hostelId)
+        .collection('floors')
+        .doc(floorId);
+
+    final roomsSnapshot = await floorRef.collection('rooms').get();
+
+    final List<DocumentReference> refsToDelete = [
+      for (final roomDoc in roomsSnapshot.docs) roomDoc.reference,
+      floorRef,
+    ];
+
+    const batchLimit = 500;
+    for (var i = 0; i < refsToDelete.length; i += batchLimit) {
+      final chunk = refsToDelete.skip(i).take(batchLimit);
+      final batch = _firestore.batch();
+      for (final ref in chunk) {
+        batch.delete(ref);
+      }
+      await batch.commit();
+    }
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('"$floorName" and its rooms were deleted.')),
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to delete floor: $e')),
+    );
+  }
+}
 
 
 int _countRooms(String range) {
@@ -293,9 +356,11 @@ Row(
 
     Expanded(
       child: OutlinedButton.icon(
-        onPressed: () {
-          // TODO: Delete Floor
-        },
+        onPressed: () => _confirmAndDeleteFloor(
+          context,
+          floorId: floorId,
+          floorName: name,
+        ),
         icon: const Icon(Icons.delete),
         label: const Text("Delete"),
         style: OutlinedButton.styleFrom(
