@@ -7,9 +7,9 @@ import 'student_receipt_screen.dart';
 
 class StudentBookingInformationScreen extends StatefulWidget {
   final String bookingId;
-  final String hostelName;
-  final String roomNumber;
-  final String floor;
+  final String hostelId;
+  final String roomId;
+  final String floorId;
   final String bookingDate;
   final String reportingDate;
   final String remainingBalance;
@@ -20,9 +20,9 @@ class StudentBookingInformationScreen extends StatefulWidget {
   const StudentBookingInformationScreen({
     super.key,
     required this.bookingId,
-    required this.hostelName,
-    required this.roomNumber,
-    this.floor = "First Floor",
+    required this.hostelId,
+    required this.roomId,
+    required this.floorId,
     this.bookingDate = "12 Jul 2026",
     this.reportingDate = "12 Sep 2026",
     this.remainingBalance = "GHS 1,000",
@@ -30,6 +30,7 @@ class StudentBookingInformationScreen extends StatefulWidget {
     this.paymentMethod = "Mobile Money",
     this.status = "Confirmed",
   });
+  // ...
 
   @override
   State<StudentBookingInformationScreen> createState() =>
@@ -53,41 +54,38 @@ class _StudentBookingInformationScreenState
     return Colors.red;
   }
 
-  String remainingBalance = "";
+String remainingBalance = "";
   bool isLoading = true;
   String amountPaid = "";
+  String hostelName = "";
+  String roomNumber = "";
+  String floor = "";
 
 Future<void> _loadRemainingBalance() async {
   try {
-    final bookingDoc = await FirebaseFirestore.instance
-        .collection('bookings')
-        .doc(widget.bookingId)
-        .get();
-
-    final booking = bookingDoc.data()!;
-
-    final hostelId = booking['hostelId'];
-    final floorId = booking['floorId'];
-    final roomId = booking['roomId'];
-
     final hostelDoc = await FirebaseFirestore.instance
         .collection('hostels')
-        .doc(hostelId)
+        .doc(widget.hostelId)
+        .get();
+
+    final floorDoc = await FirebaseFirestore.instance
+        .collection('hostels')
+        .doc(widget.hostelId)
+        .collection('floors')
+        .doc(widget.floorId)
         .get();
 
     final roomDoc = await FirebaseFirestore.instance
         .collection('hostels')
-        .doc(hostelId)
+        .doc(widget.hostelId)
         .collection('floors')
-        .doc(floorId)
+        .doc(widget.floorId)
         .collection('rooms')
-        .doc(roomId)
+        .doc(widget.roomId)
         .get();
 
-    print(hostelDoc.data());
-    print(roomDoc.data());
-
-    final roomType = roomDoc['roomType'];
+    final roomData = roomDoc.data();
+    final roomType = roomData?['roomType'];
 
     int roomPrice = 0;
 
@@ -102,15 +100,18 @@ Future<void> _loadRemainingBalance() async {
     setState(() {
       remainingBalance = "UGX $balance";
       amountPaid = "UGX ${PaymentConstants.bookingFee}";
+      hostelName = hostelDoc['hostelName'] ?? 'Unknown Hostel';
+      roomNumber = roomData?['roomNumber']?.toString() ?? 'N/A';
+      floor = floorDoc['floorName']?.toString() ?? 'N/A';
       isLoading = false;
-
-      print("Amount Paid: $amountPaid");
     });
   } catch (e) {
-    print("ERROR: $e");
+    print("ERROR in _loadRemainingBalance: $e");
+    setState(() {
+      isLoading = false;
+    });
   }
 }
-
 
 @override
 void initState() {
@@ -120,12 +121,7 @@ void initState() {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Booking Information"),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
+    return SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,13 +160,13 @@ void initState() {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _infoRow("Booking ID", widget.bookingId),
+                 _infoRow("Booking ID", widget.bookingId),
                   const SizedBox(height: 10),
-                  _infoRow("Hostel", widget.hostelName),
+                  _infoRow("Hostel", isLoading ? "Loading..." : hostelName),
                   const SizedBox(height: 10),
-                  _infoRow("Room", widget.roomNumber),
+                  _infoRow("Room", isLoading ? "Loading..." : roomNumber),
                   const SizedBox(height: 10),
-                  _infoRow("Floor", widget.floor),
+                  _infoRow("Floor", isLoading ? "Loading..." : floor),
                 ],
               ),
             ),
@@ -317,47 +313,7 @@ const SizedBox(height: 20),
 
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: 2,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
-        onTap: (index) {
-          if (index == 2) return; // already on Booking
-
-          if (index == 3) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const StudentNotificationsScreen(),
-              ),
-            );
-            return;
-          }
-
-          if (index == 4) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const StudentProfileScreen(),
-              ),
-            );
-            return;
-          }
-
-          // Home and Search aren't reachable from here yet
-          Navigator.pop(context);
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: "Booking"),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: "Notifications"),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profile"),
-        ],
-      ),
-    );
+      );
   }
 
   Widget _infoRow(String label, String value, {Color? valueColor}) {

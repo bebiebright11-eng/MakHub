@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'hostel_details_screen.dart';
 import 'package:flutter/gestures.dart';
-import 'notifications_screen.dart';
-import 'profile_screen.dart';
-import 'search_screen.dart';
-import 'active_booking_screen.dart';
 import '/algorithms/search_algorithm.dart';
 
 class StudentHomeScreen extends StatefulWidget {
@@ -76,39 +71,7 @@ void dispose() {
       ),
     );
   }
-Future<void> _goToActiveBooking(BuildContext context) async {
-    debugPrint("Booking tab tapped");
 
-    final user = FirebaseAuth.instance.currentUser;
-    debugPrint("Current user: ${user?.uid ?? 'NULL - not logged in'}");
-
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("You're not logged in.")),
-      );
-      return;
-    }
-
-    final bookingDoc = bookingQuery.docs.first;
-    final bookingData = bookingDoc.data();
-    final hostelId = bookingData['hostelId'] ?? '';
-    final roomId = bookingData['roomId'] ?? '';
-
-    // Look up the real hostel name and room number using their IDs
-    final hostelDoc = await FirebaseFirestore.instance.collection('hostels').doc(hostelId).get();
-    final hostelName = hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
-
-    if (!mounted) return;
-
-    Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => StudentActiveBookingScreen(
-      bookingId: bookingDoc.id,
-    ),
-  ),
-);
-}
 
 
   List<QueryDocumentSnapshot> _filterHostels(
@@ -661,54 +624,8 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
       ),
     );
   }
-
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 0,
-      selectedItemColor: const Color(0xFF2563EB),
-      unselectedItemColor: Colors.grey,
-      onTap: (index){
-        if (index == 0) return;
-        if (index == 1){
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const StudentSearchScreen(),
-            ),
-          );
-          return;
-        }
-        if (index==2){
-          _goToActiveBooking(context);
-          return;
-        }
-        if (index==3){
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const StudentNotificationsScreen(),
-            ),
-          );
-          return;
-        }
-        if (index==4){
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const StudentProfileScreen(),
-            ),
-          );
-          return;
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-        BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Booking'),
-        BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: 'Notifications'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-      ],
-    );
-  }
 }
+
+  
+
+      

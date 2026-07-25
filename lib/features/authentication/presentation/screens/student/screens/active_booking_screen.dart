@@ -25,6 +25,9 @@ class _StudentActiveBookingScreenState extends State<StudentActiveBookingScreen>
 
 String hostelName = '';
 String roomNumber = '';
+String hostelId = '';
+String floorId = '';
+String roomId = '';
 bool isLoadingDetails = true;
 
 Future<void> _loadBookingDetails() async {
@@ -37,27 +40,32 @@ Future<void> _loadBookingDetails() async {
 
   final booking = bookingDoc.data()!;
 
-  final hostelId = booking['hostelId'];
-  final floorId = booking['floorId'];
-  final roomId = booking['roomId'];
+  final fetchedHostelId = booking['hostelId'];
+  final fetchedFloorId = booking['floorId'];
+  final fetchedRoomId = booking['roomId'];
 
   final hostelDoc = await FirebaseFirestore.instance
       .collection('hostels')
-      .doc(hostelId)
+      .doc(fetchedHostelId)
       .get();
 
   final roomDoc = await FirebaseFirestore.instance
       .collection('hostels')
-      .doc(hostelId)
+      .doc(fetchedHostelId)
       .collection('floors')
-      .doc(floorId)
+      .doc(fetchedFloorId)
       .collection('rooms')
-      .doc(roomId)
+      .doc(fetchedRoomId)
       .get();
+
+  final roomData = roomDoc.data();
 
   setState(() {
     hostelName = hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
-    roomNumber = roomDoc.data()?['roomNumber'] ?? 'Unknown Room';
+    roomNumber = roomData?['roomNumber']?.toString() ?? 'Unknown Room';
+    hostelId = fetchedHostelId;
+    floorId = fetchedFloorId;
+    roomId = fetchedRoomId;
     isLoadingDetails = false;
   });
 }
@@ -203,8 +211,9 @@ return StreamBuilder<DocumentSnapshot>(
                     MaterialPageRoute(
                       builder: (context) => StudentBookingInformationScreen(
                         bookingId: widget.bookingId,
-                        hostelName:hostelName,
-                        roomNumber:roomNumber,
+                        hostelId: hostelId,
+                        roomId: roomId,
+                        floorId: floorId,
                       ),
                     ),
                   );
