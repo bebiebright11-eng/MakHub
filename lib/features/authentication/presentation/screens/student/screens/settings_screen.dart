@@ -1,11 +1,73 @@
 import 'package:flutter/material.dart';
- import 'active_booking_screen.dart';
- import 'notifications_screen.dart';
- import 'help_center_screen.dart';
- import 'profile_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'active_booking_screen.dart';
+import 'notifications_screen.dart';
+import 'help_center_screen.dart';
+import 'profile_screen.dart';
 
 class StudentMenuScreen extends StatelessWidget {
   const StudentMenuScreen({super.key});
+
+  Future<void> _goToMyBooking(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("You're not logged in.")),
+      );
+      return;
+    }
+
+    try {
+      final bookingQuery = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('studentId', isEqualTo: user.uid)
+          .orderBy('bookingDate', descending: true)
+          .limit(1)
+          .get();
+
+      if (bookingQuery.docs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("You don't have any bookings yet.")),
+        );
+        return;
+      }
+
+      final bookingDoc = bookingQuery.docs.first;
+      final bookingData = bookingDoc.data();
+
+      final hostelId = bookingData['hostelId'] ?? '';
+      final roomId = bookingData['roomId'] ?? '';
+      final floorId = bookingData['floorId'] ?? '';
+
+      final hostelDoc = await FirebaseFirestore.instance
+          .collection('hostels')
+          .doc(hostelId)
+          .get();
+
+      final hostelName = hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StudentActiveBookingScreen(
+            bookingId: bookingDoc.id,
+            hostelName: hostelName,
+            roomNumber: roomId,
+            bookingStatus: bookingData['bookingStatus'] ?? 'Pending',
+            hostelId: hostelId,
+            roomId: roomId,
+            floorId: floorId,
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Something went wrong: $e")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,16 +88,7 @@ class StudentMenuScreen extends StatelessWidget {
             );
           }),
           _menuRow(Icons.book_online, "My Booking", () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const StudentActiveBookingScreen(
-                  bookingId: "BK-2048",
-                  hostelName: "Sunrise Hostel",
-                  roomNumber: "101A",
-                ),
-              ),
-            );
+            _goToMyBooking(context);
           }),
           _menuRow(Icons.notifications, "Notifications", () {
             Navigator.push(

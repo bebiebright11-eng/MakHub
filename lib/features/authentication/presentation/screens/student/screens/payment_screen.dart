@@ -25,8 +25,12 @@ class _StudentPaymentScreenState
 
   bool _isSaving = false;
   String hostelName = "";
-String floorNumber = "";
-String roomNumber = "";
+  String floorNumber = "";
+  String roomNumber = "";
+  String hostelId = "";
+  String floorId = "";
+  String roomId = "";
+
 
 bool isLoadingDetails = true;
 
@@ -47,9 +51,9 @@ Future<void> _loadBookingDetails() async {
 
   final booking = bookingDoc.data()!;
 
-  final hostelId = booking['hostelId'];
-final floorId = booking['floorId'];
-final roomId = booking['roomId'];
+  hostelId = booking['hostelId'] ?? '';
+  floorId = booking['floorId'] ?? '';
+  roomId = booking['roomId'] ?? '';
 
 print("BOOKING DATA:");
 print(booking);
@@ -161,6 +165,9 @@ print("roomId = ${booking['roomId']}");
       bookingId: widget.bookingId,
       hostelName:hostelName,
       roomNumber: roomNumber,
+      hostelId: hostelId,
+      floorId: floorId,
+      roomId: roomId,
     ),
   ),
 );
