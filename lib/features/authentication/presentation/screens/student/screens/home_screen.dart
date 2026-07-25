@@ -85,9 +85,13 @@ void dispose() {
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
               SliverToBoxAdapter(child: _buildHostelList(recommendedDocs)),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
-              SliverToBoxAdapter(child: _buildSectionHeader("All Hostels")),
-              SliverToBoxAdapter(child: const SizedBox(height: 12)),
-              SliverToBoxAdapter(child: _buildAllHostelsList(filteredDocs)),
+              for (var location in ["Kikumi", "Near Main Gate", "Kikoni"])
+                if (_hostelsForLocation(filteredDocs, location).isNotEmpty) ...[
+                  SliverToBoxAdapter(child: _buildSectionHeader("Hostels near $location")),
+                  SliverToBoxAdapter(child: const SizedBox(height: 12)),
+                  SliverToBoxAdapter(child: _buildHostelList(_hostelsForLocation(filteredDocs, location))),
+                  SliverToBoxAdapter(child: const SizedBox(height: 20)),
+                ],
               SliverToBoxAdapter(child: const SizedBox(height: 30)),
             ],
           );
@@ -325,28 +329,20 @@ Widget _buildCategoryChips() {
 
   return SizedBox(
     height: 58,
-    child: Scrollbar(
+    child: ListView.builder(
       controller: _chipsScrollController,
-      thumbVisibility: true,
-      trackVisibility: true,
-      interactive: true,
-      thickness: 8,
-      radius: const Radius.circular(8),
-      child: ListView.builder(
-        controller: _chipsScrollController,
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          final label = categories[index]["label"] as String;
-          final icon = categories[index]["icon"] as IconData;
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: _buildChip(label, icon),
-          );
-        },
-      ),
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: categories.length,
+      itemBuilder: (context, index) {
+        final label = categories[index]["label"] as String;
+        final icon = categories[index]["icon"] as IconData;
+        return Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: _buildChip(label, icon),
+        );
+      },
     ),
   );
 }
@@ -407,14 +403,27 @@ Widget _buildChip(String label, IconData icon) {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          TextButton(
-            onPressed: () {},
-            child: const Text('See all', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: Colors.black,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.arrow_forward, color: Colors.white, size: 16),
           ),
         ],
       ),
     );
   }
+
+
+List<QueryDocumentSnapshot> _hostelsForLocation(
+    List<QueryDocumentSnapshot> docs, String location) {
+  return docs.where((doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return (data['location'] ?? '') == location;
+  }).toList();
+}
 
 Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
     if (hostelDocs.isEmpty) {
@@ -427,35 +436,27 @@ Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
     }
 
     return SizedBox(
-      height: 400,
-      child: Scrollbar(
+      height: 260,
+      child: ListView.builder(
         controller: _hostelsScrollController,
-        thumbVisibility: true,
-        trackVisibility: true,
-        interactive: true,
-        thickness: 8,
-        radius: const Radius.circular(8),
-        child: ListView.builder(
-          controller: _hostelsScrollController,
-          physics: const BouncingScrollPhysics(),
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          itemCount: hostelDocs.length,
-          itemBuilder: (context, index) {
-            final data = hostelDocs[index].data() as Map<String, dynamic>;
-            return Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: _buildHostelCard(
-                hostelId: hostelDocs[index].id,
-                name: data['hostelName'] ?? 'Unnamed Hostel',
-                distance: data['location'] ?? '',
-                singlePrice: data['singlePrice'] ?? '0',
-                doublePrice: data['doublePrice'] ?? '0',
-                rating: '4.5',
-              ),
-            );
-          },
-        ),
+        physics: const BouncingScrollPhysics(),
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        itemCount: hostelDocs.length,
+        itemBuilder: (context, index) {
+          final data = hostelDocs[index].data() as Map<String, dynamic>;
+          return Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: _buildHostelCard(
+              hostelId: hostelDocs[index].id,
+              name: data['hostelName'] ?? 'Unnamed Hostel',
+              distance: data['location'] ?? '',
+              singlePrice: data['singlePrice'] ?? '0',
+              doublePrice: data['doublePrice'] ?? '0',
+              rating: '4.5',
+            ),
+          );
+        },
       ),
     );
   }
@@ -597,131 +598,92 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
     );
   }
 
-
-
-  Widget _buildHostelCard({
-
-
-    required String hostelId,
-    required String name,
-    required String distance,
-    required String singlePrice,
-    required String doublePrice,
-    required String rating,
-  }) {
-    return Container(
-    width: 280,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 4))],
-      ),
+Widget _buildHostelCard({
+  required String hostelId,
+  required String name,
+  required String distance,
+  required String singlePrice,
+  required String doublePrice,
+  required String rating,
+}) {
+  return GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HostelDetailsScreen(hostelId: hostelId),
+        ),
+      );
+    },
+    child: SizedBox(
+      width: 170,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Stack(
             children: [
-              Container(
-                height: 140,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
-              ),
-              Positioned(
-                top: 12,
-                left: 12,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF97316),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.star, color: Colors.white, size: 14),
-                      const SizedBox(width: 4),
-                      Text(rating, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                    ],
+                  height: 170,
+                  width: 170,
+                  color: Colors.grey.shade200,
+                  child: const Center(
+                    child: Icon(Icons.image, size: 32, color: Colors.grey),
                   ),
                 ),
               ),
               Positioned(
-                top: 12,
-                right: 12,
+                top: 10,
+                right: 10,
                 child: Container(
                   padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                  child: const Icon(Icons.favorite_border, color: Color(0xFFF97316), size: 18),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.favorite_border, size: 16, color: Colors.black87),
                 ),
-              )
+              ),
             ],
           ),
-          // ===== UPDATED: mainAxisSize.min + ellipsis protection added below =====
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined, color: Colors.grey, size: 14),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        distance,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _buildPriceOption('Single', singlePrice),
-                    const SizedBox(width: 12),
-                    _buildPriceOption('Double', doublePrice),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => HostelDetailsScreen(hostelId: hostelId),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('View Details', style: TextStyle(color: Color.fromARGB(255, 40, 104, 132), fontWeight: FontWeight.bold)),
-                  ),
-                )
-              ],
-            ),
-          )
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.star, size: 13, color: Colors.black87),
+              const SizedBox(width: 2),
+              Text(rating, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            distance,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'UGX $singlePrice · single',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildPriceOption(String type, String price) {
     return Expanded(
