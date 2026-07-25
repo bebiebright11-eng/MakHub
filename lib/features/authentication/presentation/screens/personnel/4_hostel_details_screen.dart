@@ -9,16 +9,55 @@ class HostelDetailsScreen extends StatefulWidget {
 }
 
 class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
-  
+  late Future<DocumentSnapshot?> _hostelFuture;
+  String? _hostelId;
+
+  @override
+  void initState() {
+    super.initState();
+    _hostelFuture = _getHostelForPersonnel();
+  }
+
   Future<DocumentSnapshot?> _getHostelForPersonnel() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return null;
 
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    final hostelId = userDoc.data()?['hostelID'] as String?;
+    final personnelQuery = await FirebaseFirestore.instance
+        .collection('personnel')
+        .where('firebaseUid', isEqualTo: user.uid)
+        .limit(1)
+        .get();
+
+    if (personnelQuery.docs.isEmpty) return null;
+
+    final hostelId = personnelQuery.docs.first.data()['hostelId'] as String?;
     if (hostelId == null) return null;
 
+    _hostelId = hostelId;
+
     return FirebaseFirestore.instance.collection('hostels').doc(hostelId).get();
+  }
+
+  Future<void> _pickReportingDate(DateTime? currentDate) async {
+    if (_hostelId == null) return;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: currentDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 730)),
+    );
+
+    if (picked == null) return;
+
+    await FirebaseFirestore.instance
+        .collection('hostels')
+        .doc(_hostelId)
+        .update({'reportingDate': Timestamp.fromDate(picked)});
+
+    setState(() {
+      _hostelFuture = _getHostelForPersonnel();
+    });
   }
 
   @override
@@ -31,7 +70,7 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
         elevation: 0,
       ),
      body: FutureBuilder<DocumentSnapshot?>(
-        future: _getHostelForPersonnel(),
+        future: _hostelFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -115,8 +154,42 @@ const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.
 
                 const Text('Pricing', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
-                _priceRow('Single Room', 'UGX ${data['singleRoomPrice'] ?? 0} / Semester'),
-                _priceRow('Double Room', 'UGX ${data['doubleRoomPrice'] ?? 0} / Semester'),
+                _priceRow('Single Room', 'UGX ${data['singlePrice'] ?? 0} / Semester'),
+                _priceRow('Double Room', 'UGX ${data['doublePrice'] ?? 0} / Semester'),
+                const SizedBox(height: 24),
+
+                const Text('Reporting Date', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                Builder(
+                  builder: (context) {
+                    final reportingTimestamp = data['reportingDate'] as Timestamp?;
+                    final reportingDate = reportingTimestamp?.toDate();
+
+                    return Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            reportingDate != null
+                                ? '${reportingDate.day}/${reportingDate.month}/${reportingDate.year}'
+                                : 'Not set',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          TextButton.icon(
+                            onPressed: () => _pickReportingDate(reportingDate),
+                            icon: const Icon(Icons.edit_calendar, size: 18),
+                            label: const Text('Change'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 24),
 
                 const Text('Hostel Rules', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),

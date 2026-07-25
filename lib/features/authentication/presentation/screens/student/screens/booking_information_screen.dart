@@ -60,6 +60,7 @@ String remainingBalance = "";
   String hostelName = "";
   String roomNumber = "";
   String floor = "";
+  String reportingDate = "Not set";
 
 Future<void> _loadRemainingBalance() async {
   try {
@@ -97,12 +98,17 @@ Future<void> _loadRemainingBalance() async {
 
     final balance = roomPrice - PaymentConstants.bookingFee;
 
+    final reportingTimestamp = hostelDoc.data()?['reportingDate'] as Timestamp?;
+
     setState(() {
       remainingBalance = "UGX $balance";
       amountPaid = "UGX ${PaymentConstants.bookingFee}";
       hostelName = hostelDoc['hostelName'] ?? 'Unknown Hostel';
       roomNumber = roomData?['roomNumber']?.toString() ?? 'N/A';
       floor = floorDoc['floorName']?.toString() ?? 'N/A';
+      reportingDate = reportingTimestamp != null
+          ? "${reportingTimestamp.toDate().day}/${reportingTimestamp.toDate().month}/${reportingTimestamp.toDate().year}"
+          : "Not set";
       isLoading = false;
     });
   } catch (e) {
@@ -186,7 +192,7 @@ void initState() {
                 children: [
                   _infoRow("Booking Date", widget.bookingDate),
                   const SizedBox(height: 10),
-                  _infoRow("Reporting Date", widget.reportingDate),
+                  _infoRow("Reporting Date", isLoading ? "Loading..." : reportingDate),
                   const SizedBox(height: 10),
                   _infoRow(
                     "Remaining Balance",

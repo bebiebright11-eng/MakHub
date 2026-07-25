@@ -1,5 +1,6 @@
 // ignore_for_file: file_names, deprecated_member_use
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import '../../state/app_state.dart';
 import '5_floors_screen.dart';
 import '9_payments_screen.dart';
@@ -16,54 +17,106 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  int _currentIndex = 0;
+  bool _showBottomBar = true;
+
+  final List<GlobalKey<NavigatorState>> _navigatorKeys =
+      List.generate(5, (_) => GlobalKey<NavigatorState>());
+
   @override
   void initState() {
     super.initState();
     AppState().fetchStats();
   }
-  int _currentIndex = 0;
 
-  /// The list of widgets representing the different pages accessible via
-  /// the bottom navigation bar.
-  final List<Widget> _pages = [
-    const _DashboardContent(),
-    FloorsScreen(
-      hostelId: AppState().hostelId,
-      hostelName: AppState().hostelName,
-    ),
-    const PendingPaymentsScreen(),
-    const ReportingStudentsScreen(),
-    const ProfileScreen(),
-  ];
+  Widget _buildTab(int index, Widget rootScreen) {
+    return Navigator(
+      key: _navigatorKeys[index],
+      onGenerateRoute: (settings) =>
+          MaterialPageRoute(builder: (_) => rootScreen),
+    );
+  }
+
+  void _onTap(int index) {
+    if (index == _currentIndex) {
+      _navigatorKeys[index].currentState?.popUntil((r) => r.isFirst);
+    } else {
+      setState(() => _currentIndex = index);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF2563EB),
-        unselectedItemColor: Colors.grey.shade500,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-        unselectedLabelStyle: const TextStyle(fontSize: 12),
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.apartment_outlined), label: 'Rooms'),
-          BottomNavigationBarItem(icon: Icon(Icons.credit_card_outlined), label: 'Payments'),
-          BottomNavigationBarItem(icon: Icon(Icons.group_outlined), label: 'Students'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-        ],
+    return WillPopScope(
+      onWillPop: () async {
+        final isFirstRouteInTab =
+            !(await _navigatorKeys[_currentIndex].currentState!.maybePop());
+        if (isFirstRouteInTab && _currentIndex != 0) {
+          _onTap(0);
+          return false;
+        }
+        return isFirstRouteInTab;
+      },
+      child: Scaffold(
+        body: NotificationListener<UserScrollNotification>(
+          onNotification: (notification) {
+            if (notification.direction == ScrollDirection.reverse) {
+              if (_showBottomBar) setState(() => _showBottomBar = false);
+            } else if (notification.direction == ScrollDirection.forward) {
+              if (!_showBottomBar) setState(() => _showBottomBar = true);
+            }
+            return true;
+          },
+          child: IndexedStack(
+            index: _currentIndex,
+            children: [
+              _buildTab(0, const _DashboardContent()),
+              _buildTab(
+                1,
+                FloorsScreen(
+                  hostelId: AppState().hostelId,
+                  hostelName: AppState().hostelName,
+                ),
+              ),
+              _buildTab(2, const PendingPaymentsScreen()),
+              _buildTab(3, const ReportingStudentsScreen()),
+              _buildTab(4, const ProfileScreen()),
+            ],
+          ),
+        ),
+        bottomNavigationBar: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          height: _showBottomBar ? 70 : 0,
+          child: Wrap(
+            children: [
+              BottomNavigationBar(
+                currentIndex: _currentIndex,
+                onTap: _onTap,
+                type: BottomNavigationBarType.fixed,
+                selectedItemColor: const Color(0xFF2563EB),
+                unselectedItemColor: Colors.grey.shade500,
+                selectedLabelStyle:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                unselectedLabelStyle: const TextStyle(fontSize: 12),
+                showUnselectedLabels: true,
+                items: const [
+                  BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Dashboard'),
+                  BottomNavigationBarItem(icon: Icon(Icons.apartment_outlined), label: 'Rooms'),
+                  BottomNavigationBarItem(icon: Icon(Icons.credit_card_outlined), label: 'Payments'),
+                  BottomNavigationBarItem(icon: Icon(Icons.group_outlined), label: 'Students'),
+                  BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
 /// The main content of the Dashboard tab.
-///
-/// Displays header, statistics grid, quick actions, and recent activity.
+/// UNCHANGED from your original file — no edits needed here.
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent();
 
@@ -75,7 +128,6 @@ class _DashboardContent extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -98,8 +150,6 @@ class _DashboardContent extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
-
-            // STATISTICS GRID
             ListenableBuilder(
               listenable: AppState(),
               builder: (context, child) {
@@ -123,8 +173,6 @@ class _DashboardContent extends StatelessWidget {
               },
             ),
             const SizedBox(height: 28),
-
-            // QUICK ACTIONS
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -142,28 +190,26 @@ class _DashboardContent extends StatelessWidget {
               childAspectRatio: 1.15,
               children: [
                 _quickAction(
-  'Manage Rooms',
-  Icons.apartment,
-  const Color(0xFFDBEAFE),
-  const Color(0xFF2563EB),
-  () => Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => FloorsScreen(
-        hostelId: AppState().hostelId,
-        hostelName: AppState().hostelName,
-      ),
-    ),
-  ),
-),
+                  'Manage Rooms',
+                  Icons.apartment,
+                  const Color(0xFFDBEAFE),
+                  const Color(0xFF2563EB),
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FloorsScreen(
+                        hostelId: AppState().hostelId,
+                        hostelName: AppState().hostelName,
+                      ),
+                    ),
+                  ),
+                ),
                 _quickAction('Payment\nConfirmations', Icons.credit_card, const Color(0xFFFED7AA), const Color(0xFFF97316), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PendingPaymentsScreen()))),
                 _quickAction('Reporting\nStudents', Icons.person_add_alt, const Color(0xFFDBEAFE), const Color(0xFF2563EB), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportingStudentsScreen()))),
                 _quickAction('Hostel Details', Icons.info_outline, const Color(0xFFD1FAE5), const Color(0xFF10B981), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HostelDetailsScreen()))),
               ],
             ),
             const SizedBox(height: 28),
-
-            // RECENT ACTIVITY
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -181,13 +227,6 @@ class _DashboardContent extends StatelessWidget {
     );
   }
 
-  /// Builds a statistic card widget.
-  ///
-  /// [title] - The description of the statistic.
-  /// [count] - The numerical value to display.
-  /// [icon] - The icon representing the statistic.
-  /// [bgColor] - The background color for the icon container.
-  /// [iconColor] - The color of the icon.
   Widget _statCard(String title, String count, IconData icon, Color bgColor, Color iconColor) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -210,13 +249,6 @@ class _DashboardContent extends StatelessWidget {
     );
   }
 
-  /// Builds a quick action button widget.
-  ///
-  /// [title] - The label for the action.
-  /// [icon] - The icon for the action.
-  /// [bgColor] - The background color for the icon container.
-  /// [iconColor] - The color of the icon.
-  /// [onTap] - The callback function when the action is tapped.
   Widget _quickAction(String title, IconData icon, Color bgColor, Color iconColor, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
@@ -235,14 +267,6 @@ class _DashboardContent extends StatelessWidget {
     );
   }
 
-  /// Builds a list item for recent activity.
-  ///
-  /// [title] - The headline of the activity.
-  /// [time] - The relative time when the activity occurred.
-  /// [subtitle] - Further details about the activity.
-  /// [icon] - The icon representing the type of activity.
-  /// [bgColor] - The background color for the icon container.
-  /// [iconColor] - The color of the icon.
   Widget _activityItem(String title, String time, String subtitle, IconData icon, Color bgColor, Color iconColor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
