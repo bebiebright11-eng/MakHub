@@ -3,6 +3,9 @@ import 'package:flutter/rendering.dart';
 import 'home_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
+import 'booking_information_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StudentMainScreen extends StatefulWidget {
   const StudentMainScreen({super.key});
@@ -19,8 +22,6 @@ class _StudentMainScreenState
   bool _showBottomBar = true;
 
 
-
-
 final List<Widget> pages = [
   const StudentHomeScreen(),
 
@@ -31,17 +32,48 @@ final List<Widget> pages = [
     ),
   ),
 
-  const Center(
-    child: Text(
-      "Booking Screen",
-      style: TextStyle(fontSize: 22),
-    ),
+  FutureBuilder<QuerySnapshot>(
+    future: FirebaseFirestore.instance
+        .collection('bookings')
+        .where(
+          'studentId',
+          isEqualTo: FirebaseAuth.instance.currentUser!.uid,
+        )
+        .limit(1)
+        .get(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return const Center(
+          child: Text(
+            "You have not booked any room yet.",
+            style: TextStyle(fontSize: 18),
+          ),
+        );
+      }
+
+      final booking = snapshot.data!.docs.first;
+      final data = booking.data() as Map<String, dynamic>;
+
+      return StudentBookingInformationScreen(
+        bookingId: booking.id,
+        hostelId: data['hostelId'],
+        roomId: data['roomId'],
+        floorId: data['floorId'],
+      );
+    },
   ),
 
   const StudentNotificationsScreen(),
 
   const StudentProfileScreen(),
 ];
+
 
 
 

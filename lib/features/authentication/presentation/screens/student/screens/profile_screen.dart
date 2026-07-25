@@ -15,7 +15,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   late final Stream<DocumentSnapshot> studentStream =
       FirebaseFirestore.instance
-          .collection('students')
+          .collection('users')
           .doc(user!.uid)
           .snapshots();
           
