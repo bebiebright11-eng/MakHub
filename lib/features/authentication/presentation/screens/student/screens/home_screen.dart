@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'hostel_details_screen.dart';
 import 'package:flutter/gestures.dart';
+import 'notifications_screen.dart';
+import 'profile_screen.dart';
+import 'search_screen.dart';
+import 'active_booking_screen.dart';
 import '/algorithms/search_algorithm.dart';
+import '/algorithms/recommendation_algorithm.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -38,9 +44,21 @@ void dispose() {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _hostelsStream,
-        builder: (context, snapshot) {
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _loadPreferences(),
+        builder: (context, preferenceSnapshot) {
+
+          if (!preferenceSnapshot.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          final preferences = preferenceSnapshot.data!;
+
+          return StreamBuilder<QuerySnapshot>(
+            stream: _hostelsStream,
+            builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -51,6 +69,12 @@ void dispose() {
 
           final filteredDocs = _filterHostels(snapshot.data!.docs);
 
+          final recommendedDocs =
+              RecommendationAlgorithm.recommendHostels(
+            hostels: filteredDocs,
+            preferences: preferences,
+          );
+
           return CustomScrollView(
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
@@ -59,7 +83,7 @@ void dispose() {
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
               SliverToBoxAdapter(child: _buildSectionHeader("Recommended Hostels")),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
-              SliverToBoxAdapter(child: _buildHostelList(filteredDocs)),
+              SliverToBoxAdapter(child: _buildHostelList(recommendedDocs)),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
               for (var location in ["Kikumi", "Near Main Gate", "Kikoni"])
                 if (_hostelsForLocation(filteredDocs, location).isNotEmpty) ...[
@@ -72,11 +96,104 @@ void dispose() {
             ],
           );
         },
+      );
+    },
+  ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+  Future<void> _goToActiveBooking(BuildContext context) async {
+  final user = FirebaseAuth.instance.currentUser;
+
+  if (user == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("You're not logged in.")),
+    );
+    return;
+  }
+
+  try {
+    final bookingQuery = await FirebaseFirestore.instance
+        .collection('bookings')
+        .where('studentId', isEqualTo: user.uid)
+        .orderBy('bookingDate', descending: true)
+        .limit(1)
+        .get();
+
+    if (bookingQuery.docs.isEmpty) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("You don't have any bookings yet."),
+        ),
+      );
+      return;
+    }
+
+    final bookingDoc = bookingQuery.docs.first;
+
+    final bookingData = bookingDoc.data();
+
+    final hostelId = bookingData['hostelId'] ?? '';
+    final roomId = bookingData['roomId'] ?? '';
+    final floorId = bookingData['floorId'] ?? '';
+
+    final hostelDoc = await FirebaseFirestore.instance
+        .collection('hostels')
+        .doc(hostelId)
+        .get();
+
+    final hostelName =
+        hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StudentActiveBookingScreen(
+          bookingId: bookingDoc.id,
+          hostelName: hostelName,
+          roomNumber: roomId,
+          bookingStatus:
+              bookingData['bookingStatus'] ?? 'Pending',
+          hostelId: hostelId,
+          roomId: roomId,  
+          floorId: floorId,   
+        ),
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Something went wrong: $e"),
       ),
     );
   }
+}
+  Future<Map<String, dynamic>> _loadPreferences() async {
+  final user = FirebaseAuth.instance.currentUser;
 
+  if (user == null) {
+    return {};
+  }
 
+  final doc = await FirebaseFirestore.instance
+      .collection("users")
+      .doc(user.uid)
+      .get();
+
+  if (!doc.exists) {
+    return {};
+  }
+
+  return Map<String, dynamic>.from(
+    doc.data()?["preferences"] ?? {},
+  );
+}
 
   List<QueryDocumentSnapshot> _filterHostels(
     List<QueryDocumentSnapshot> docs) {
@@ -586,8 +703,54 @@ Widget _buildHostelCard({
       ),
     );
   }
+
+  Widget _buildBottomNav() {
+    return BottomNavigationBar(
+      type: BottomNavigationBarType.fixed,
+      currentIndex: 0,
+      selectedItemColor: const Color(0xFF2563EB),
+      unselectedItemColor: Colors.grey,
+      onTap: (index){
+        if (index == 0) return;
+        if (index == 1){
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const StudentSearchScreen(),
+            ),
+          );
+          return;
+        }
+        if (index==2){
+          _goToActiveBooking(context);
+          return;
+        }
+        if (index==3){
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const StudentNotificationsScreen(),
+            ),
+          );
+          return;
+        }
+        if (index==4){
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const StudentProfileScreen(),
+            ),
+          );
+          return;
+        }
+      },
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
+        BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Booking'),
+        BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: 'Notifications'),
+        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+      ],
+    );
+  }
 }
-
-  
-
-      

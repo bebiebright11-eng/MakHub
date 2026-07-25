@@ -207,6 +207,7 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
 
     final hostelId = bookingData['hostelId'] ?? '';
     final roomId = bookingData['roomId'] ?? '';
+    final floorId = bookingData['floorId'] ?? '';
 
     final hostelDoc = await FirebaseFirestore.instance
         .collection('hostels')
@@ -227,6 +228,10 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
           roomNumber: roomId,
           bookingStatus:
               bookingData['bookingStatus'] ?? 'Pending',
+          hostelId: hostelId,    
+          roomId: roomId,
+          floorId: floorId,
+
         ),
       ),
     );
