@@ -77,6 +77,25 @@ class _RoomListScreenState extends State<RoomListScreen> {
 
                 var roomDocs = snapshot.data!.docs;
 
+                // Sort rooms in memory to ensure they appear in ascending order
+                roomDocs.sort((a, b) {
+                  final aData = a.data() as Map<String, dynamic>;
+                  final bData = b.data() as Map<String, dynamic>;
+                  
+                  int aNum = aData['baseNumber'] ?? 0;
+                  int bNum = bData['baseNumber'] ?? 0;
+
+                  // Fallback: parse number from roomNumber string if baseNumber is 0
+                  if (aNum == 0 && aData['roomNumber'] != null) {
+                    aNum = int.tryParse(RegExp(r'\d+').firstMatch(aData['roomNumber'])?.group(0) ?? '0') ?? 0;
+                  }
+                  if (bNum == 0 && bData['roomNumber'] != null) {
+                    bNum = int.tryParse(RegExp(r'\d+').firstMatch(bData['roomNumber'])?.group(0) ?? '0') ?? 0;
+                  }
+
+                  return aNum.compareTo(bNum);
+                });
+
                 // Apply the selected filter chip
                 if (_selectedFilter != 'All') {
                   roomDocs = roomDocs.where((doc) {

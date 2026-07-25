@@ -98,7 +98,6 @@ class _AdminManageFloorsScreenState
         .collection("hostels")
         .doc(widget.hostelId)
         .collection("floors")
-        .orderBy("createdAt")
         .snapshots(),
     builder: (context, snapshot) {
 

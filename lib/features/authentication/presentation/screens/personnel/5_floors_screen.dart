@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '6_room_list_screen.dart';
 
 class FloorsScreen extends StatelessWidget {
@@ -15,31 +16,58 @@ class FloorsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Floors', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('$hostelName - Floors',
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          _floorCard(context, 'Ground Floor', 8),
-          _floorCard(context, 'First Floor', 6),
-          _floorCard(context, 'Second Floor', 3),
-          _floorCard(context, 'Third Floor', 1),
-        ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection("hostels")
+            .doc(hostelId)
+            .collection("floors")
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text("No floors found."));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(20),
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              final floor = snapshot.data!.docs[index];
+              final data = floor.data() as Map<String, dynamic>;
+
+              return _floorCard(
+                context,
+                floor.id,
+                data['floorName'] ?? 'Unnamed Floor',
+                data['availableRooms'] ?? 0,
+              );
+            },
+          );
+        },
       ),
     );
   }
 
-  Widget _floorCard(BuildContext context, String title, int availableRooms) {
+  Widget _floorCard(
+      BuildContext context, String floorId, String title, int availableRooms) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -47,29 +75,34 @@ class FloorsScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text('Available Rooms: $availableRooms', style: TextStyle(color: Colors.grey.shade600)),
+              Text('Available Rooms: $availableRooms',
+                  style: TextStyle(color: Colors.grey.shade600)),
             ],
           ),
           ElevatedButton(
-           onPressed: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => RoomListScreen(
-        hostelId: hostelId,
-        floorId: title,
-        floorName: title,
-      ),
-    ),
-  );
-},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RoomListScreen(
+                    hostelId: hostelId,
+                    floorId: floorId,
+                    floorName: title,
+                  ),
+                ),
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2563EB),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Manage Rooms', style: TextStyle(color: Colors.white)),
+            child:
+                const Text('Manage Rooms', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
