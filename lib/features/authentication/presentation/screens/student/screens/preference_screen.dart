@@ -24,9 +24,12 @@ class _StudentPreferenceScreenState
     "Wi-Fi",
     "Laundry",
     "Kitchen",
-    "Reading",
+    "Reading Room",
     "Shuttle",
-    "Pool",
+    "Swimming Pool",
+    "Security",
+    "DSTV",
+    "Pool Table",
   ];
   Future<void> _savePreferences() async {
   final user = FirebaseAuth.instance.currentUser;
