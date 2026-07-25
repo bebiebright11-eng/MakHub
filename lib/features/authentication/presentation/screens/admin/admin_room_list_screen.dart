@@ -74,7 +74,6 @@ class _AdminRoomListScreenState extends State<AdminRoomListScreen> {
         .collection("floors")
         .doc(widget.floorId)
         .collection("rooms")
-        .orderBy("roomNumber")
         .snapshots(),
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
@@ -89,7 +88,29 @@ class _AdminRoomListScreenState extends State<AdminRoomListScreen> {
         );
       }
 
-      final rooms = snapshot.data!.docs;
+      final rooms = snapshot.data!.docs.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return data['status'] == _selectedFilter;
+      }).toList();
+      
+      // Sort rooms in memory to ensure they appear in ascending order
+      rooms.sort((a, b) {
+        final aData = a.data() as Map<String, dynamic>;
+        final bData = b.data() as Map<String, dynamic>;
+        
+        int aNum = aData['baseNumber'] ?? 0;
+        int bNum = bData['baseNumber'] ?? 0;
+
+        // Fallback: parse number from roomNumber string if baseNumber is 0
+        if (aNum == 0 && aData['roomNumber'] != null) {
+          aNum = int.tryParse(RegExp(r'\d+').firstMatch(aData['roomNumber'])?.group(0) ?? '0') ?? 0;
+        }
+        if (bNum == 0 && bData['roomNumber'] != null) {
+          bNum = int.tryParse(RegExp(r'\d+').firstMatch(bData['roomNumber'])?.group(0) ?? '0') ?? 0;
+        }
+
+        return aNum.compareTo(bNum);
+      });
 
       return GridView.builder(
         itemCount: rooms.length,

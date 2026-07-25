@@ -16,16 +16,17 @@ class FloorsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Floors', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('$hostelName - Floors',
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('hostels')
+            .collection("hostels")
             .doc(hostelId)
-            .collection('floors')
+            .collection("floors")
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -33,34 +34,42 @@ class FloorsScreen extends StatelessWidget {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No floors found for this hostel'));
+            return const Center(child: Text("No floors found."));
           }
 
           final floorDocs = snapshot.data!.docs;
 
-          return ListView(
+          return ListView.builder(
             padding: const EdgeInsets.all(20),
-            children: floorDocs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              final floorName = data['floorName'] ?? 'Unnamed Floor';
-              final availableRooms = data['availableRooms'] ?? 0;
+            itemCount: floorDocs.length,
+            itemBuilder: (context, index) {
+              final floor = floorDocs[index];
+              final data = floor.data() as Map<String, dynamic>;
 
-              return _floorCard(context, doc.id, floorName, availableRooms);
-            }).toList(),
+              return _floorCard(
+                context,
+                floor.id,
+                data['floorName'] ?? 'Unnamed Floor',
+                data['availableRooms'] ?? 0,
+              );
+            },
           );
         },
       ),
     );
   }
 
-  Widget _floorCard(BuildContext context, String floorId, String title, int availableRooms) {
+  Widget _floorCard(
+      BuildContext context, String floorId, String title, int availableRooms) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -68,9 +77,12 @@ class FloorsScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text('Available Rooms: $availableRooms', style: TextStyle(color: Colors.grey.shade600)),
+              Text('Available Rooms: $availableRooms',
+                  style: TextStyle(color: Colors.grey.shade600)),
             ],
           ),
           ElevatedButton(
@@ -88,9 +100,11 @@ class FloorsScreen extends StatelessWidget {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2563EB),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Manage Rooms', style: TextStyle(color: Colors.white)),
+            child:
+                const Text('Manage Rooms', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
