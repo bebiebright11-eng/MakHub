@@ -96,8 +96,7 @@ class _StudentFloorSelectionScreenState
           );
         },
       ),
-      bottomNavigationBar: _buildBottomNav(),
-    );
+      );
   }
 
   Widget _buildFloorCard(BuildContext context, String floor, String rooms, int available, IconData icon, Color bgColor, Color iconColor, String floorId) {
@@ -174,19 +173,5 @@ class _StudentFloorSelectionScreenState
     );
   }
 
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 0,
-      selectedItemColor: const Color(0xFF2563EB),
-      unselectedItemColor: Colors.grey,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-        BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Booking'),
-        BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: 'Notifications'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-      ],
-    );
-  }
+
 }

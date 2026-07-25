@@ -2,52 +2,65 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StudentVerificationScreen extends StatelessWidget {
-  final String studentId; // Can be student ID, user ID, or booking ID
+  // Despite the name, this is actually the BOOKING document's ID,
+  // passed in from ReportingStudentsScreen as `docId`.
+  final String studentId;
 
   const StudentVerificationScreen({super.key, required this.studentId});
 
   Future<Map<String, dynamic>?> _fetchVerificationData() async {
-    // 1. Try fetching from 'bookings' collection
-    final bookingDoc = await FirebaseFirestore.instance
-        .collection('bookings')
-        .doc(studentId)
-        .get();
+    final firestore = FirebaseFirestore.instance;
 
-    if (bookingDoc.exists && bookingDoc.data() != null) {
-      final data = Map<String, dynamic>.from(bookingDoc.data()!);
-      data['docId'] = bookingDoc.id;
-      data['sourceCollection'] = 'bookings';
-      return data;
+    final bookingDoc = await firestore.collection('bookings').doc(studentId).get();
+    if (!bookingDoc.exists || bookingDoc.data() == null) {
+      return null;
     }
 
-    // 2. Try searching by studentId in 'bookings'
-    final bookingQuery = await FirebaseFirestore.instance
-        .collection('bookings')
-        .where('studentId', isEqualTo: studentId)
-        .limit(1)
-        .get();
+    final booking = bookingDoc.data()!;
+    final result = <String, dynamic>{
+      'docId': bookingDoc.id,
+      'sourceCollection': 'bookings',
+      'bookingStatus': booking['bookingStatus'],
+      'friendBooking': booking['friendBooking'] == true,
+    };
 
-    if (bookingQuery.docs.isNotEmpty) {
-      final data = Map<String, dynamic>.from(bookingQuery.docs.first.data());
-      data['docId'] = bookingQuery.docs.first.id;
-      data['sourceCollection'] = 'bookings';
-      return data;
+    // Resolve student name from users/{studentId}
+    final studentRef = booking['studentId'] as String?;
+    if (studentRef != null) {
+      final userDoc = await firestore.collection('users').doc(studentRef).get();
+      if (userDoc.exists) {
+        result['studentName'] = userDoc.data()?['fullName'];
+        result['admissionLetterUrl'] = userDoc.data()?['admissionLetterUrl'];
+      }
     }
 
-    // 3. Fallback: Search in 'users' or 'students' collection
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(studentId)
-        .get();
-
-    if (userDoc.exists && userDoc.data() != null) {
-      final data = Map<String, dynamic>.from(userDoc.data()!);
-      data['docId'] = userDoc.id;
-      data['sourceCollection'] = 'users';
-      return data;
+    // Resolve hostel name from hostels/{hostelId}
+    final hostelRef = booking['hostelId'] as String?;
+    if (hostelRef != null) {
+      final hostelDoc = await firestore.collection('hostels').doc(hostelRef).get();
+      if (hostelDoc.exists) {
+        result['hostelName'] = hostelDoc.data()?['hostelName'];
+      }
     }
 
-    return null;
+    // Resolve room number from hostels/{hostelId}/floors/{floorId}/rooms/{roomId}
+    final floorRef = booking['floorId'] as String?;
+    final roomRef = booking['roomId'] as String?;
+    if (hostelRef != null && floorRef != null && roomRef != null) {
+      final roomDoc = await firestore
+          .collection('hostels')
+          .doc(hostelRef)
+          .collection('floors')
+          .doc(floorRef)
+          .collection('rooms')
+          .doc(roomRef)
+          .get();
+      if (roomDoc.exists) {
+        result['roomNumber'] = roomDoc.data()?['roomNumber'];
+      }
+    }
+
+    return result;
   }
 
   Future<void> _processVerification(
@@ -58,8 +71,7 @@ class StudentVerificationScreen extends StatelessWidget {
   }) async {
     try {
       final status = isApproved ? 'checked_in' : 'verification_failed';
-      
-      // Update primary collection record
+
       await FirebaseFirestore.instance
           .collection(sourceCollection)
           .doc(docId)
@@ -114,20 +126,20 @@ class StudentVerificationScreen extends StatelessWidget {
           }
 
           if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text('Student or booking details not found.'));
+            return const Center(child: Text('Booking not found.'));
           }
 
           final data = snapshot.data!;
           final docId = data['docId'] as String;
           final sourceCollection = data['sourceCollection'] as String;
 
-          final studentName = (data['studentName'] ?? data['name'] ?? data['userName'] ?? 'John Doe').toString();
-          final bookingIdStr = (data['bookingId'] ?? data['docId'] ?? studentId).toString();
-          final hostelName = (data['hostelName'] ?? data['hostel'] ?? 'Elite Residency').toString();
-          final roomNumber = (data['roomNumber'] ?? data['room'] ?? 'N/A').toString();
-          final roommate = (data['friendName'] ?? data['roommate'] ?? data['friend'] ?? 'N/A').toString();
-          final admissionDocUrl = (data['admissionLetterUrl'] ?? data['documentUrl'] ?? data['admissionLetter']) as String?;
-          final isVerified = data['isVerified'] == true || data['admissionVerified'] == true;
+          final studentName = (data['studentName'] ?? 'Unknown Student').toString();
+          final hostelName = (data['hostelName'] ?? 'Unknown Hostel').toString();
+          final roomNumberRaw = (data['roomNumber'] ?? 'N/A').toString();
+          final roomNumber = roomNumberRaw.startsWith('Room') ? roomNumberRaw : 'Room $roomNumberRaw';
+          final friendBooking = data['friendBooking'] == true;
+          final admissionDocUrl = data['admissionLetterUrl'] as String?;
+          final bookingStatus = (data['bookingStatus'] ?? 'pending').toString();
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -155,11 +167,11 @@ class StudentVerificationScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      _infoRow('Booking ID', bookingIdStr),
+                      _infoRow('Booking ID', docId),
                       _infoRow('Hostel', hostelName),
                       _infoRow('Room', roomNumber),
-                      _infoRow('Admission Letter', isVerified ? 'Verified ✓' : 'Pending Review'),
-                      _infoRow('Friend (Double)', roommate),
+                      _infoRow('Status', bookingStatus),
+                      _infoRow('Booked with a friend', friendBooking ? 'Yes' : 'No'),
                     ],
                   ),
                 ),
@@ -198,7 +210,7 @@ class StudentVerificationScreen extends StatelessWidget {
                             children: [
                               Icon(Icons.file_present, size: 60, color: Colors.grey),
                               SizedBox(height: 8),
-                              Text('Admission Letter Preview', style: TextStyle(color: Colors.grey)),
+                              Text('No admission letter uploaded', style: TextStyle(color: Colors.grey)),
                             ],
                           ),
                         ),
