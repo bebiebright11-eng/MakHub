@@ -159,8 +159,6 @@ print("roomId = ${booking['roomId']}");
   MaterialPageRoute(
     builder: (_) => StudentActiveBookingScreen(
       bookingId: widget.bookingId,
-      hostelName:hostelName,
-      roomNumber: roomNumber,
     ),
   ),
 );

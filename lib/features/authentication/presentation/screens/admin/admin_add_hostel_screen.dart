@@ -13,7 +13,6 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
-  final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _distanceController = TextEditingController();
   final _walkingTimeController = TextEditingController();
@@ -28,6 +27,9 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
 
 
   String _selectedType = "Mixed";
+
+  final List<String> _locations = ["Kikumi", "Near Main Gate", "Kikoni"];
+  String? _selectedLocation;
   final Set<String> _selectedFacilities = {};
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -47,7 +49,6 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _locationController.dispose();
     _descriptionController.dispose();
     _distanceController.dispose();
     _walkingTimeController.dispose();
@@ -137,9 +138,17 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
                 ),
 
                 _fieldLabel("Location"),
-                TextFormField(
-                  controller: _locationController,
-                  decoration: _decoration("e.g. Near Main Gate"),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedLocation,
+                  decoration: _decoration("Select location"),
+                  items: _locations.map((loc) {
+                    return DropdownMenuItem(value: loc, child: Text(loc));
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() => _selectedLocation = value);
+                  },
+                  validator: (value) =>
+                      value == null ? "Please select a location" : null,
                 ),
 
                 _fieldLabel("Description"),
@@ -342,7 +351,7 @@ child: ElevatedButton(
       try {
         await _firestore.collection('hostels').add({
           'hostelName': _nameController.text.trim(),
-          'location': _locationController.text.trim(),
+          'location': _selectedLocation,
           'description': _descriptionController.text.trim(),
           'type': _selectedType,
           'distance': _distanceController.text.trim(),
