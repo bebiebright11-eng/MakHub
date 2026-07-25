@@ -9,6 +9,9 @@ import 'search_screen.dart';
 import 'active_booking_screen.dart';
 import '/algorithms/search_algorithm.dart';
 import '/algorithms/recommendation_algorithm.dart';
+import 'guided_search_screen.dart';
+import '../widgets/hostel_card.dart';
+import 'describe_search_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -234,7 +237,58 @@ void dispose() {
     }).toList();
   }
 
-
+void _openSearchOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "How would you like to search?",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.edit_note, color: Color(0xFF2563EB)),
+                title: const Text("Describe what you want"),
+                subtitle: const Text("Type a sentence describing your ideal hostel"),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DescribeSearchScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.checklist, color: Color(0xFF2563EB)),
+                title: const Text("Guided search"),
+                subtitle: const Text("Answer a few quick questions"),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const GuidedSearchScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
   
   
   Widget _buildHeader() {
@@ -281,19 +335,19 @@ void dispose() {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: TextField(
-  controller: _searchController,
-  onChanged: (value) {
-    setState(() {
-      _searchText = value.toLowerCase();
-    });
-  },
-  decoration: const InputDecoration(
-    border: InputBorder.none,
-    hintText: "Search by hostel name or location",
-    prefixIcon: Icon(Icons.search),
-  ),
-),
+                  child: GestureDetector(
+                    onTap: _openSearchOptions,
+                    child: const AbsorbPointer(
+                      child: TextField(
+                        enabled: false,
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          hintText: "Start your search",
+                          prefixIcon: Icon(Icons.search),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -446,16 +500,16 @@ Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
         itemBuilder: (context, index) {
           final data = hostelDocs[index].data() as Map<String, dynamic>;
           return Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: _buildHostelCard(
-              hostelId: hostelDocs[index].id,
-              name: data['hostelName'] ?? 'Unnamed Hostel',
-              distance: data['location'] ?? '',
-              singlePrice: data['singlePrice'] ?? '0',
-              doublePrice: data['doublePrice'] ?? '0',
-              rating: '4.5',
-            ),
-          );
+              padding: const EdgeInsets.only(right: 16),
+              child: HostelCard(
+                hostelId: hostelDocs[index].id,
+                name: data['hostelName'] ?? 'Unnamed Hostel',
+                distance: data['location'] ?? '',
+                singlePrice: data['singlePrice'] ?? '0',
+                doublePrice: data['doublePrice'] ?? '0',
+                rating: '4.5',
+              ),
+            );
         },
       ),
     );
@@ -597,93 +651,6 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
       ),
     );
   }
-
-Widget _buildHostelCard({
-  required String hostelId,
-  required String name,
-  required String distance,
-  required String singlePrice,
-  required String doublePrice,
-  required String rating,
-}) {
-  return GestureDetector(
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HostelDetailsScreen(hostelId: hostelId),
-        ),
-      );
-    },
-    child: SizedBox(
-      width: 170,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  height: 170,
-                  width: 170,
-                  color: Colors.grey.shade200,
-                  child: const Center(
-                    child: Icon(Icons.image, size: 32, color: Colors.grey),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 10,
-                right: 10,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.favorite_border, size: 16, color: Colors.black87),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-              ),
-              const SizedBox(width: 4),
-              const Icon(Icons.star, size: 13, color: Colors.black87),
-              const SizedBox(width: 2),
-              Text(rating, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            distance,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'UGX $singlePrice · single',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
 
   Widget _buildPriceOption(String type, String price) {
     return Expanded(

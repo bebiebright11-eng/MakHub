@@ -159,13 +159,19 @@ print("roomId = ${booking['roomId']}");
       );
 
       Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (_) => StudentActiveBookingScreen(
-      bookingId: widget.bookingId,
-    ),
-  ),
-);
+        context,
+        MaterialPageRoute(
+          builder: (_) => StudentActiveBookingScreen(
+            bookingId: widget.bookingId,
+            hostelName: hostelName,
+            roomNumber: roomNumber,
+            hostelId: hostelId,
+            roomId: roomId,
+            floorId: floorId,
+            bookingStatus: "Payment Received",
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
 
