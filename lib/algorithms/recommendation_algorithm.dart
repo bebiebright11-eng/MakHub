@@ -1,123 +1,127 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Holds a hostel document alongside its match percentage (0–100).
+class HostelRecommendation {
+  final QueryDocumentSnapshot doc;
+
+  /// Match percentage shown to the student, e.g. 95.
+  final int matchPercent;
+
+  const HostelRecommendation({required this.doc, required this.matchPercent});
+}
+
+/// Scores every hostel against the student's saved preferences and returns
+/// a ranked list with a match-percentage attached to each entry.
+///
+/// Scoring breakdown (max 100 points):
+///   +30  Hostel type matches preference (Girls / Boys / Mixed)
+///   +25  Budget: room price falls within the student's range
+///   +20  Location matches preference
+///   +15  Security rating ≥ student's minimum (or ≥ 3 if none set)
+///   +10  Room type available (Single / Double price field is set)
+///   +2   Each matching facility  (uncapped, can push past 100 → clipped)
 class RecommendationAlgorithm {
-  static List<QueryDocumentSnapshot> recommendHostels({
+
+  static List<HostelRecommendation> recommendHostels({
     required List<QueryDocumentSnapshot> hostels,
     required Map<String, dynamic> preferences,
   }) {
-    List<MapEntry<QueryDocumentSnapshot, int>> scoredHostels = [];
+    final List<MapEntry<QueryDocumentSnapshot, int>> scored = [];
 
-    for (var hostel in hostels) {
+    for (final hostel in hostels) {
       final data = hostel.data() as Map<String, dynamic>;
       int score = 0;
 
-      // Hostel Type
-      if ((data['type'] ?? '')
-          .toString()
-          .toLowerCase()==
-          ( preferences['preferredType'] ?? '')
-          .toString()
-          .toLowerCase()) {
+      // ── 1. Hostel type (+30) ──────────────────────────────────────────────
+      final hostelType = (data['type'] ?? '').toString().toLowerCase();
+      final preferredType =
+          (preferences['preferredType'] ?? '').toString().toLowerCase();
+      if (preferredType.isNotEmpty && hostelType == preferredType) {
         score += 30;
       }
 
-      // Room Type
-      if (preferences['roomType'] == "Single" &&
-          (data['singlePrice'] ?? '').toString().isNotEmpty) {
-        score += 25;
-      }
+      // ── 2. Budget (+25) ───────────────────────────────────────────────────
+      final roomType = preferences['roomType']?.toString() ?? 'Single';
+      final roomPrice = _parsePrice(
+        roomType == 'Double' ? data['doublePrice'] : data['singlePrice'],
+      );
 
-      if (preferences['roomType'] == "Double" &&
-          (data['doublePrice'] ?? '').toString().isNotEmpty) {
-        score += 25;
-      }
-
-      // Get the correct room price based on selected room type
-      int roomPrice = preferences['roomType'] == "Double"
-          ? int.tryParse(
-                  (data['doublePrice'] ?? "0")
-                      .toString()
-                      .replaceAll(RegExp(r'[^0-9]'), '')) ??
-              0
-          : int.tryParse(
-                  (data['singlePrice'] ?? "0")
-                      .toString()
-                      .replaceAll(RegExp(r'[^0-9]'), '')) ??
-              0;
-
-      // Budget (supports either old fixed buckets OR a real numeric range)
-      String budget = preferences['maxBudget'] ?? "";
-
-      int? minBudget = preferences['minBudget'] is int
-          ? preferences['minBudget']
-          : int.tryParse((preferences['minBudget'] ?? '').toString());
-
-      int? maxBudget = preferences['maxBudgetValue'] is int
-          ? preferences['maxBudgetValue']
-          : int.tryParse((preferences['maxBudgetValue'] ?? '').toString());
+      final int? minBudget = _parseInt(preferences['minBudget']);
+      final int? maxBudget = _parseInt(preferences['maxBudgetValue']);
+      final String budgetBucket = preferences['maxBudget']?.toString() ?? '';
 
       if (minBudget != null || maxBudget != null) {
-        // New numeric range path
         final withinMin = minBudget == null || roomPrice >= minBudget;
         final withinMax = maxBudget == null || roomPrice <= maxBudget;
-
-        if (withinMin && withinMax) {
-          score += 25;
-        }
-      } else {
-        // Old fixed-bucket path (kept for backward compatibility)
-        if (budget == "below300000" && roomPrice <= 300000) {
-          score += 25;
-        }
-
-        if (budget == "300000-500000" &&
+        if (withinMin && withinMax) score += 25;
+      } else if (budgetBucket.isNotEmpty) {
+        // Legacy bucket support
+        if (budgetBucket == 'below300000' && roomPrice <= 300000) { score += 25; }
+        if (budgetBucket == '300000-500000' &&
             roomPrice >= 300000 &&
-            roomPrice <= 500000) {
-          score += 25;
-        }
-
-        if (budget == "above500000" && roomPrice > 500000) {
-          score += 25;
-        }
+            roomPrice <= 500000) { score += 25; }
+        if (budgetBucket == 'above500000' && roomPrice > 500000) { score += 25; }
       }
 
-      // Preferred Location ("Any" or empty means no location filter/scoring)
+      // ── 3. Location (+20) ─────────────────────────────────────────────────
       final preferredLocation =
           (preferences['preferredLocation'] ?? '').toString().toLowerCase();
-
-      final isAnyLocation = preferredLocation.isEmpty ||
-          preferredLocation.contains('any');
-
-      if (!isAnyLocation &&
-          (data['location'] ?? '')
-              .toString()
-              .toLowerCase()
-              .contains(preferredLocation)) {
-        score += 20;
+      final isAnyLocation =
+          preferredLocation.isEmpty || preferredLocation.contains('any');
+      if (!isAnyLocation) {
+        final hostelLocation =
+            (data['location'] ?? '').toString().toLowerCase();
+        if (hostelLocation.contains(preferredLocation)) score += 20;
       }
 
-      // Preferred Facilities
-      List hostelFacilities = data['facilities'] ?? [];
-      List preferredFacilities = preferences['facilities'] ?? [];
+      // ── 4. Security rating (+15) ──────────────────────────────────────────
+      final int minSecurity = _parseInt(preferences['minSecurity']) ?? 3;
+      final int hostelSecurity =
+          _parseInt(data['securityRating']) ?? 0;
+      if (hostelSecurity >= minSecurity) score += 15;
 
-      for (String facility in preferredFacilities) {
-        if (hostelFacilities.contains(facility)) {
-          score += 5;
-        }
+      // ── 5. Room type availability (+10) ───────────────────────────────────
+      if (roomType == 'Single' &&
+          (data['singlePrice'] ?? '').toString().isNotEmpty) score += 10;
+      if (roomType == 'Double' &&
+          (data['doublePrice'] ?? '').toString().isNotEmpty) score += 10;
+
+      // ── 6. Facilities (+2 each) ───────────────────────────────────────────
+      final List hostelFacilities = data['facilities'] ?? [];
+      final List preferredFacilities = preferences['facilities'] ?? [];
+      for (final String facility in preferredFacilities) {
+        if (hostelFacilities.contains(facility)) score += 2;
       }
 
-      scoredHostels.add(MapEntry(hostel, score));
+      scored.add(MapEntry(hostel, score));
     }
 
-    for (var hostel in scoredHostels) {
-      final data = hostel.key.data() as Map<String, dynamic>;
+    scored.sort((a, b) => b.value.compareTo(a.value));
 
-      print(
-        "${data['hostelName']} -> Score: ${hostel.value}",
-      );
-    }
-      scoredHostels.sort((a, b) => b.value.compareTo(a.value));
+    // Convert raw scores to percentage relative to the top scorer so the
+    // numbers feel meaningful even when preferences are sparse.
+    final int topScore =
+        scored.isEmpty ? 1 : (scored.first.value > 0 ? scored.first.value : 1);
 
-    return scoredHostels.map((e) => e.key).toList();
+    return scored.map((entry) {
+      // Clamp to _maxBaseScore so perfect matches can't exceed 100%.
+      final rawPct = ((entry.value / topScore) * 100).round();
+      final pct = rawPct.clamp(0, 100);
+      return HostelRecommendation(doc: entry.key, matchPercent: pct);
+    }).toList();
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  static int _parsePrice(dynamic raw) =>
+      int.tryParse(
+        (raw ?? '0').toString().replaceAll(RegExp(r'[^0-9]'), ''),
+      ) ??
+      0;
+
+  static int? _parseInt(dynamic raw) {
+    if (raw is int) return raw;
+    if (raw == null) return null;
+    return int.tryParse(raw.toString().replaceAll(RegExp(r'[^0-9]'), ''));
   }
 }

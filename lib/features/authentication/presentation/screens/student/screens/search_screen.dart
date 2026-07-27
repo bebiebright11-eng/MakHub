@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '/algorithms/search_algorithm.dart';
+import '/algorithms/ranking_algorithm.dart';
 import 'hostel_details_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'active_booking_screen.dart';
@@ -72,7 +74,7 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
                   ),
                 ),
               ),
-              const Icon(Icons.tune, color: Color(0xFF2563EB), size: 20),
+              const Icon(Icons.tune, color: AppColors.primary, size: 20),
             ],
           ),
         ),
@@ -93,7 +95,29 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
         );
       }
 
-      final hostelDocs = _filterHostels(snapshot.data!.docs);
+      final filtered = _filterHostels(snapshot.data!.docs);
+
+      // Build text-score map so ranking can use it as a tie-breaker
+      final Map<String, int> textScores = {};
+      if (_searchText.isNotEmpty) {
+        final search = _searchText.toLowerCase().trim();
+        for (final doc in filtered) {
+          final data = doc.data() as Map<String, dynamic>;
+          int ts = 0;
+          final name = (data['hostelName'] ?? '').toString().toLowerCase();
+          final loc = (data['location'] ?? '').toString().toLowerCase();
+          if (name.startsWith(search)) ts += 50;
+          if (name.contains(search)) ts += 30;
+          if (loc.contains(search)) ts += 20;
+          textScores[doc.id] = ts;
+        }
+      }
+
+      final ranked = SearchRankingAlgorithm.rank(
+        hostels: filtered,
+        textScores: textScores,
+      );
+      final hostelDocs = ranked.map((r) => r.doc).toList();
 
       return Column(
         children: [
@@ -336,12 +360,12 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
         ),
         decoration: BoxDecoration(
           color: _selectedFilter == filterValue
-              ? const Color(0xFF2563EB)
+              ? AppColors.primary
               : Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: _selectedFilter == filterValue
-                ? const Color(0xFF2563EB)
+                ? AppColors.primary
                 : Colors.grey.shade200,
           ),
         ),
@@ -397,14 +421,14 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
                 left: 10,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: const Color(0xFFF97316), borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(8)),
                   child: Row(children: [const Icon(Icons.star, color: Colors.white, size: 10), const SizedBox(width: 4), Text(rating, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))]),
                 ),
               ),
               Positioned(
                 top: 10,
                 right: 10,
-                child: Container(padding: const EdgeInsets.all(4), decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: const Icon(Icons.favorite, color: Color(0xFFF97316), size: 16)),
+                child: Container(padding: const EdgeInsets.all(4), decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: const Icon(Icons.favorite, color: AppColors.accent, size: 16)),
               )
             ],
           ),
@@ -417,7 +441,7 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                    Row(children: [const Icon(Icons.location_on, size: 12, color: Color(0xFF2563EB)), const SizedBox(width: 4), Text(distance, style: const TextStyle(color: Colors.grey, fontSize: 11))]),
+                    Row(children: [const Icon(Icons.location_on, size: 12, color: AppColors.primary), const SizedBox(width: 4), Text(distance, style: const TextStyle(color: Colors.grey, fontSize: 11))]),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -433,7 +457,7 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('From', style: TextStyle(color: Colors.grey, fontSize: 10)),
-                        Text('UGX $price', style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 15)),
+                        Text('UGX $price', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15)),
                       ],
                     ),
                     SizedBox(
@@ -447,7 +471,7 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
                             ),
                           );
                         },
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                         child: const Text('View', style: TextStyle(color: Colors.white, fontSize: 13)),
                       ),
                     )
@@ -492,7 +516,7 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       currentIndex: 1,
-      selectedItemColor: const Color(0xFF2563EB),
+      selectedItemColor: AppColors.primary,
       unselectedItemColor: Colors.grey,
       onTap: (index) {
         if (index == 0) {
@@ -556,3 +580,5 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
     );
   }
 }
+
+

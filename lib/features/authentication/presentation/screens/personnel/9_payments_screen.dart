@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '/algorithms/payment_verification_algorithm.dart';
 import '10_payment_details_screen.dart';
 
 class PendingPaymentsScreen extends StatefulWidget {
@@ -37,21 +38,20 @@ class _PendingPaymentsScreenState extends State<PendingPaymentsScreen> {
 
   Future<void> _confirmPayment(String paymentDocId, String bookingId) async {
     try {
-      // 1. Update Payment status
-      await FirebaseFirestore.instance
-          .collection('payments')
-          .doc(paymentDocId)
-          .update({'paymentStatus': 'confirmed'});
-
-      // 2. If bookingId exists, update corresponding Booking status
-      if (bookingId.isNotEmpty) {
-        await FirebaseFirestore.instance
-            .collection('bookings')
-            .doc(bookingId)
-            .update({'bookingStatus': 'confirmed'});
-      }
+      final result = await PaymentVerificationAlgorithm.verify(paymentDocId);
 
       if (!mounted) return;
+
+      if (!result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.errorMessage ?? 'Verification failed.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Payment confirmed successfully!'),
@@ -243,7 +243,7 @@ class _PendingPaymentsScreenState extends State<PendingPaymentsScreen> {
           const SizedBox(height: 12),
           Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text('$hostel • Room $room', style: TextStyle(color: Colors.grey.shade600)),
+          Text('$hostel â€¢ Room $room', style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'room_list_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -89,7 +90,7 @@ class _StudentFloorSelectionScreenState
                 data['availableRooms'] ?? 0,
                 Icons.layers,
                 const Color(0xFFEFF6FF),
-                const Color(0xFF2563EB),
+                AppColors.primary,
                 doc.id, // pass floorId forward
               );
             }).toList(),
@@ -146,7 +147,7 @@ class _StudentFloorSelectionScreenState
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: available > 5 ? Colors.grey : const Color(0xFFF97316),
+                          color: available > 5 ? Colors.grey : AppColors.accent,
                         ),
                       ),
                     ),
@@ -162,7 +163,7 @@ class _StudentFloorSelectionScreenState
               MaterialPageRoute(
                 builder: (context) =>StudentRoomListScreen(hostelId: widget.hostelId, floorId: floorId))),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
+              backgroundColor: AppColors.primary,
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
@@ -175,3 +176,5 @@ class _StudentFloorSelectionScreenState
 
 
 }
+
+

@@ -1,5 +1,6 @@
 // ignore_for_file: file_names, deprecated_member_use
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -158,7 +159,7 @@ await FirebaseFirestore.instance
                       color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    child: const Icon(Icons.lock, color: Color(0xFF2563EB), size: 28),
+                    child: const Icon(Icons.lock, color: AppColors.primary, size: 28),
                   ),
                   const SizedBox(width: 16),
                   const Expanded(
@@ -237,7 +238,7 @@ const SizedBox(height: 16),
     children: [
       const Icon(
         Icons.info_outline,
-        color: Color(0xFF2563EB),
+        color: AppColors.primary,
       ),
 
       const SizedBox(width: 12),
@@ -263,10 +264,10 @@ const SizedBox(height: 16),
                 child: ElevatedButton(
                   onPressed: _activateAccount,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
+                    backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                     elevation: 4,
-                    shadowColor: const Color(0xFF2563EB).withOpacity(0.4),
+                    shadowColor: AppColors.primary.withOpacity(0.4),
                   ),
                   child: const Text('Activate Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
@@ -442,13 +443,13 @@ Widget _buildTextField({
                   child: LinearProgressIndicator(
                     value: _passwordStrength,
                     backgroundColor: Colors.grey.shade200,
-                    color: const Color(0xFF2563EB),
+                    color: AppColors.primary,
                     minHeight: 6,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              Text(_strengthText, style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+              Text(_strengthText, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 8),
@@ -461,3 +462,4 @@ Widget _buildTextField({
     );
   }
 }
+

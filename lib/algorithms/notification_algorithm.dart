@@ -1,0 +1,145 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// Writes in-app notifications to:
+///   users/{userId}/notifications/{docId}
+///
+/// Document schema (matches what NotificationsScreen reads):
+///   { title, subtitle, type, createdAt, isRead }
+///
+/// Notification types used across the app:
+///   'booking'  — booking created, confirmed, rejected
+///   'payment'  — payment received, confirmed
+///   'room'     — room released, room reserved
+///   'general'  — system messages
+class NotificationAlgorithm {
+  const NotificationAlgorithm._();
+
+  // ── Core writer ──────────────────────────────────────────────────────────
+
+  static Future<void> send({
+    required String userId,
+    required String title,
+    required String subtitle,
+    required String type,
+  }) async {
+    assert(userId.isNotEmpty, 'userId must not be empty');
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('notifications')
+        .add({
+      'title': title,
+      'subtitle': subtitle,
+      'type': type,
+      'createdAt': FieldValue.serverTimestamp(),
+      'isRead': false,
+    });
+  }
+
+  // ── Convenience methods ─────────────────────────────────────────────────
+
+  /// Notify student that their booking was received.
+  static Future<void> bookingSubmitted({
+    required String studentId,
+    required String bookingId,
+    required String hostelName,
+  }) =>
+      send(
+        userId: studentId,
+        title: 'Booking Submitted',
+        subtitle: 'Your booking for $hostelName (ID: $bookingId) is pending review.',
+        type: 'booking',
+      );
+
+  /// Notify student that their payment was received and booking is confirmed.
+  static Future<void> paymentReceived({
+    required String studentId,
+    required String bookingId,
+    required String amount,
+  }) =>
+      send(
+        userId: studentId,
+        title: 'Payment Received',
+        subtitle: 'Payment of $amount for booking $bookingId has been received.',
+        type: 'payment',
+      );
+
+  /// Notify student that personnel confirmed their payment.
+  static Future<void> bookingConfirmed({
+    required String studentId,
+    required String hostelName,
+    required String roomNumber,
+  }) =>
+      send(
+        userId: studentId,
+        title: 'Booking Confirmed ✓',
+        subtitle: 'Your room $roomNumber at $hostelName is confirmed. Welcome!',
+        type: 'booking',
+      );
+
+  /// Notify student that their booking was rejected.
+  static Future<void> bookingRejected({
+    required String studentId,
+    required String hostelName,
+    String reason = '',
+  }) =>
+      send(
+        userId: studentId,
+        title: 'Booking Rejected',
+        subtitle: reason.isNotEmpty
+            ? 'Your booking at $hostelName was rejected. Reason: $reason'
+            : 'Your booking at $hostelName was rejected. Please try again.',
+        type: 'booking',
+      );
+
+  /// Notify student that their booking was cancelled and room is released.
+  static Future<void> bookingCancelled({
+    required String studentId,
+    required String hostelName,
+  }) =>
+      send(
+        userId: studentId,
+        title: 'Booking Cancelled',
+        subtitle: 'Your booking at $hostelName has been cancelled and the room released.',
+        type: 'booking',
+      );
+
+  /// Notify a waiting student that a room they might want is now available.
+  static Future<void> roomNowAvailable({
+    required String studentId,
+    required String hostelName,
+    required String roomNumber,
+  }) =>
+      send(
+        userId: studentId,
+        title: 'Room Available 🏠',
+        subtitle: 'Room $roomNumber at $hostelName is now available. Book before it fills up!',
+        type: 'room',
+      );
+
+  /// Notify personnel that a new booking needs review.
+  static Future<void> newBookingForPersonnel({
+    required String personnelId,
+    required String bookingId,
+    required String studentName,
+  }) =>
+      send(
+        userId: personnelId,
+        title: 'New Booking',
+        subtitle: '$studentName submitted booking $bookingId. Please review.',
+        type: 'booking',
+      );
+
+  /// Notify personnel that a payment was submitted and needs confirmation.
+  static Future<void> paymentPendingForPersonnel({
+    required String personnelId,
+    required String bookingId,
+    required String amount,
+  }) =>
+      send(
+        userId: personnelId,
+        title: 'Payment Pending',
+        subtitle: 'Payment of $amount for booking $bookingId awaits your confirmation.',
+        type: 'payment',
+      );
+}

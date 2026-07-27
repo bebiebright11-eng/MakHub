@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_edit_room_screen.dart';
 
@@ -152,7 +153,7 @@ Widget build(BuildContext context) {
   width: double.infinity,
   padding: const EdgeInsets.all(18),
   decoration: BoxDecoration(
-    color: Colors.blue.shade50,
+    color: AppColors.primary.withOpacity(0.08),
     borderRadius: BorderRadius.circular(15),
   ),
   child: Column(
@@ -213,7 +214,7 @@ Widget build(BuildContext context) {
 
           const Icon(
             Icons.people,
-            color: Colors.blue,
+            color: AppColors.primary,
           ),
 
           const SizedBox(width: 6),
@@ -327,7 +328,7 @@ Container(
 
       const Icon(
         Icons.people,
-        color: Colors.blue,
+        color: AppColors.primary,
       ),
 
       const SizedBox(width: 12),
@@ -431,7 +432,7 @@ Container(
 
       const Icon(
         Icons.hotel,
-        color: Colors.blue,
+        color: AppColors.primary,
       ),
 
       const SizedBox(width: 12),
@@ -479,7 +480,7 @@ Row(
 
             const Icon(
               Icons.straighten,
-              color: Colors.blue,
+              color: AppColors.primary,
             ),
 
             const SizedBox(height: 10),
@@ -591,7 +592,7 @@ _selectedFeatures.isEmpty
               vertical: 10,
             ),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: AppColors.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -599,7 +600,7 @@ _selectedFeatures.isEmpty
               children: [
                 const Icon(
                   Icons.check_circle,
-                  color: Colors.blue,
+                  color: AppColors.primary,
                   size: 18,
                 ),
                 const SizedBox(width: 8),
@@ -634,7 +635,7 @@ SizedBox(
     icon: const Icon(Icons.edit),
     label: const Text("Edit Room"),
     style: ElevatedButton.styleFrom(
-      backgroundColor: Colors.blue,
+      backgroundColor: AppColors.primary,
       foregroundColor: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 16),
       shape: RoundedRectangleBorder(
@@ -653,3 +654,4 @@ const SizedBox(height: 20),
   );
 }
 }
+

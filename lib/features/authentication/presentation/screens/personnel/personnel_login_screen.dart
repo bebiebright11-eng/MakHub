@@ -1,5 +1,6 @@
 // ignore_for_file: file_names, deprecated_member_use, dead_code
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'activate_account_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -127,11 +128,11 @@ Navigator.pushReplacementNamed(context, '/dashboard');
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB),
+                      color: AppColors.primary,
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF2563EB).withOpacity(0.3),
+                          color: AppColors.primary.withOpacity(0.3),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         )
@@ -231,10 +232,10 @@ Navigator.pushReplacementNamed(context, '/dashboard');
                         child: ElevatedButton(
                           onPressed: _handleLogin,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
+                            backgroundColor: AppColors.primary,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             elevation: 4,
-                            shadowColor: const Color(0xFF2563EB).withOpacity(0.4),
+                            shadowColor: AppColors.primary.withOpacity(0.4),
                           ),
                           child: const Text('Login', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                         ),
@@ -256,7 +257,7 @@ Center(
     child: const Text(
       'Activate Account',
       style: TextStyle(
-        color: Color(0xFF2563EB),
+        color: AppColors.primary,
         fontWeight: FontWeight.w600,
         fontSize: 14,
       ),
@@ -270,7 +271,7 @@ Center(
                           onPressed: () {},
                           child: const Text(
                             'Forgot Password',
-                            style: TextStyle(color: Color(0xFFF97316), fontWeight: FontWeight.w600, fontSize: 14),
+                            style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600, fontSize: 14),
                           ),
                         ),
                       ),
@@ -304,9 +305,10 @@ Center(
       width: 8,
       height: 8,
       decoration: BoxDecoration(
-        color: isActive ? const Color(0xFF2563EB) : const Color(0xFF2563EB).withOpacity(0.3),
+        color: isActive ? AppColors.primary : AppColors.primary.withOpacity(0.3),
         shape: BoxShape.circle,
       ),
     );
   }
 }
+

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'student_register_screen.dart';
 
 class StudentLoginScreen extends StatefulWidget {
@@ -40,7 +41,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       width: double.infinity,
       padding: const EdgeInsets.only(top: 80, bottom: 40),
       decoration: const BoxDecoration(
-        color: Color(0xFF2563EB),
+        color: AppColors.primary,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: Column(
@@ -53,7 +54,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
               borderRadius: BorderRadius.circular(18),
             ),
             child: const Center(
-              child: Text('M', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+              child: Text('M', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.primary)),
             ),
           ),
           const SizedBox(height: 12),
@@ -78,7 +79,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
           _buildTextField(controller: _passwordController, label: 'Password', hint: 'Enter your password', icon: Icons.lock_outline, isPassword: true),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(onPressed: () {}, child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFF2563EB)))),
+            child: TextButton(onPressed: () {}, child: const Text('Forgot Password?', style: TextStyle(color: AppColors.primary))),
           ),
           const SizedBox(height: 8),
           _buildButton(text: 'Login', onPressed: () {}),
@@ -120,7 +121,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
         onPressed: onPressed,
         child: Text(text, style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600)),
       ),
@@ -132,9 +133,9 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       width: double.infinity,
       height: 50,
       child: OutlinedButton(
-        style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF2563EB)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.primary), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
         onPressed: onPressed,
-        child: Text(text, style: const TextStyle(fontSize: 16, color: Color(0xFF2563EB), fontWeight: FontWeight.w600)),
+        child: Text(text, style: const TextStyle(fontSize: 16, color: AppColors.primary, fontWeight: FontWeight.w600)),
       ),
     );
   }

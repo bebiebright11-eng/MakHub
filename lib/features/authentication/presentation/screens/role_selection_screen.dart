@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
@@ -19,7 +20,7 @@ class RoleSelectionScreen extends StatelessWidget {
                 height: 90,
                 width: 90,
                 decoration: BoxDecoration(
-                  color: Colors.blue,
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(25),
                 ),
                 child: const Icon(
@@ -114,7 +115,7 @@ class RoleSelectionScreen extends StatelessWidget {
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
-          foregroundColor: Colors.blue,
+          foregroundColor: AppColors.primary,
           elevation: 3,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
@@ -124,3 +125,4 @@ class RoleSelectionScreen extends StatelessWidget {
     );
   }
 }
+
