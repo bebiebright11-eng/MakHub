@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 
 class AdminProfileScreen extends StatelessWidget {
   const AdminProfileScreen({super.key});
@@ -42,8 +43,8 @@ class AdminProfileScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundColor: Colors.blue.shade50,
-                    child: const Icon(Icons.person, size: 32, color: Colors.blue),
+                    backgroundColor: AppColors.primary.withOpacity(0.08),
+                    child: const Icon(Icons.person, size: 32, color: AppColors.primary),
                   ),
                   const SizedBox(width: 14),
                   Column(
@@ -79,7 +80,7 @@ class AdminProfileScreen extends StatelessWidget {
 
             const Text(
               "Account Menu",
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.blue),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primary),
             ),
             const Text(
               "Manage your profile and app preferences",
@@ -112,7 +113,7 @@ class AdminProfileScreen extends StatelessWidget {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 4,
-        selectedItemColor: Colors.blue,
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
@@ -139,7 +140,7 @@ class AdminProfileScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blue, size: 20),
+          Icon(icon, color: AppColors.primary, size: 20),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,7 +165,7 @@ class AdminProfileScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blue, size: 20),
+          Icon(icon, color: AppColors.primary, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -175,3 +176,5 @@ class AdminProfileScreen extends StatelessWidget {
     );
   }
 }
+
+

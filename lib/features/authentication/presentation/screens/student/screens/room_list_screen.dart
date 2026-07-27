@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
+import '/algorithms/availability_prediction_algorithm.dart';
 import 'room_details_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -59,6 +61,7 @@ class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
             children: roomDocs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
               final status = data['status'] ?? 'Unavailable';
+              final prediction = AvailabilityPredictionAlgorithm.predict(data);
               return _buildRoomCard(
                 context,
                 'Room ${data['roomNumber'] ?? ''}',
@@ -67,11 +70,12 @@ class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
                 status,
                 "${data['occupied'] ?? 0}/${data['capacity'] ?? 0}",
                 status == "Available"
-    ? Colors.green
-    : status == "Reserved"
-        ? Colors.orange
-        : Colors.red,
+                    ? Colors.green
+                    : status == "Reserved"
+                        ? Colors.orange
+                        : Colors.red,
                 doc.id,
+                prediction,
               );
             }).toList(),
           );
@@ -81,7 +85,7 @@ class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
     );
   }
 
-  Widget _buildRoomCard(BuildContext context, String roomNumber, String roomType, String bedType, String status, String occupancy, Color statusColor, String roomId) {
+  Widget _buildRoomCard(BuildContext context, String roomNumber, String roomType, String bedType, String status, String occupancy, Color statusColor, String roomId, AvailabilityPrediction prediction) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(20),
@@ -98,7 +102,7 @@ class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(16)),
-                child: const Icon(Icons.bed_outlined, color: Color(0xFF2563EB)),
+                child: const Icon(Icons.bed_outlined, color: AppColors.primary),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -121,11 +125,49 @@ class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
             ],
           ),
           const SizedBox(height: 16),
+          // Availability prediction badge
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _urgencyColor(prediction.urgency).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      prediction.urgency == RoomUrgency.fullyBooked
+                          ? Icons.block
+                          : prediction.urgency == RoomUrgency.highDemand
+                              ? Icons.local_fire_department
+                              : prediction.urgency == RoomUrgency.fillingUp
+                                  ? Icons.timelapse
+                                  : Icons.check_circle_outline,
+                      size: 13,
+                      color: _urgencyColor(prediction.urgency),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      prediction.sublabel,
+                      style: TextStyle(
+                        color: _urgencyColor(prediction.urgency),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Row(
             children: [
               _buildSmallTag(bedType, Colors.grey.shade100, Colors.grey.shade700),
               const SizedBox(width: 8),
-              _buildSmallTag(status, const Color(0xFFFFF7ED), const Color(0xFFF97316)),
+              _buildSmallTag(status, const Color(0xFFFFF7ED), AppColors.accent),
             ],
           ),
           const SizedBox(height: 20),
@@ -139,7 +181,7 @@ class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
     roomId: roomId,
 ))),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
+                backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('View Room', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -158,11 +200,24 @@ class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
     );
   }
 
+  Color _urgencyColor(RoomUrgency urgency) {
+    switch (urgency) {
+      case RoomUrgency.available:
+        return Colors.green.shade600;
+      case RoomUrgency.fillingUp:
+        return Colors.orange.shade600;
+      case RoomUrgency.highDemand:
+        return Colors.red.shade600;
+      case RoomUrgency.fullyBooked:
+        return Colors.grey.shade600;
+    }
+  }
+
   Widget _buildBottomNav() {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       currentIndex: 0,
-      selectedItemColor: const Color(0xFF2563EB),
+      selectedItemColor: AppColors.primary,
       unselectedItemColor: Colors.grey,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -174,3 +229,5 @@ class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
     );
   }
 }
+
+

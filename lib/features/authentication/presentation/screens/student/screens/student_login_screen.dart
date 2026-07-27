@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'student_register_screen.dart';
 import 'forgot_password_screen.dart';
 import 'home_screen.dart';
@@ -35,11 +36,11 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB),
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF2563EB).withOpacity(0.3),
+                      color: AppColors.primary.withOpacity(0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     )
@@ -108,7 +109,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   ),
                   child: const Text(
                     'Forgot Password?',
-                    style: TextStyle(color: Color(0xFFF97316), fontWeight: FontWeight.bold),
+                    style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -198,7 +199,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
   }
 },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
+                    backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 4,
                   ),
@@ -247,9 +248,9 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.person_add_outlined, color: Color(0xFF2563EB)),
+                      Icon(Icons.person_add_outlined, color: AppColors.primary),
                       SizedBox(width: 8),
-                      Text('Create Account', style: TextStyle(color: Color(0xFF2563EB), fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text('Create Account', style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -307,7 +308,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2563EB)),
+          borderSide: const BorderSide(color: AppColors.primary),
         ),
       ),
     );
@@ -317,7 +318,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       currentIndex: 0,
-      selectedItemColor: const Color(0xFF2563EB),
+      selectedItemColor: AppColors.primary,
       unselectedItemColor: Colors.grey,
       showSelectedLabels: true,
       showUnselectedLabels: true,
@@ -331,3 +332,5 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     );
   }
 }
+
+

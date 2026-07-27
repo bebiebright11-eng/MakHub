@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'admin_register_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'forgot_password_screen.dart';
@@ -92,7 +93,7 @@ Future<void> _loginAdmin() async {
                   clipper: _HeaderClipper(),
                   child: Container(
                     width: double.infinity,
-                    color: Colors.blue,
+                    color: AppColors.primary,
                     padding: const EdgeInsets.only(top: 20, bottom: 50),
                     child: Column(
                       children: [
@@ -109,7 +110,7 @@ Future<void> _loginAdmin() async {
                               style: TextStyle(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue,
+                                color: AppColors.primary,
                               ),
                             ),
                           ),
@@ -241,7 +242,7 @@ Future<void> _loginAdmin() async {
 ElevatedButton(
   onPressed: _loginAdmin,
   style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.blue,
+    backgroundColor: AppColors.primary,
     foregroundColor: Colors.white,
     padding: const EdgeInsets.symmetric(vertical: 16),
     shape: RoundedRectangleBorder(
@@ -266,8 +267,8 @@ ElevatedButton(
                     );
                   },
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.blue,
-                    side: const BorderSide(color: Colors.blue),
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -309,3 +310,4 @@ class _HeaderClipper extends CustomClipper<Path> {
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
+

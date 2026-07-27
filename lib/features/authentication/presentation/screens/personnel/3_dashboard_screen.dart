@@ -8,6 +8,7 @@ import '11_reporting_screen.dart';
 import '14_profile_screen.dart';
 import '4_hostel_details_screen.dart';
 import '13_notifications_screen.dart';
+import '/core/constants/app_colors.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -93,7 +94,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 currentIndex: _currentIndex,
                 onTap: _onTap,
                 type: BottomNavigationBarType.fixed,
-                selectedItemColor: const Color(0xFF2563EB),
+                selectedItemColor: AppColors.primary,
                 unselectedItemColor: Colors.grey.shade500,
                 selectedLabelStyle:
                     const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
@@ -162,10 +163,10 @@ class _DashboardContent extends StatelessWidget {
                   mainAxisSpacing: 16,
                   childAspectRatio: 1.45,
                   children: [
-                    _statCard('Total Rooms', state.totalRooms.toString(), Icons.apartment, const Color(0xFFDBEAFE), const Color(0xFF2563EB)),
+                    _statCard('Total Rooms', state.totalRooms.toString(), Icons.apartment, const Color(0xFFDBEAFE), AppColors.primary),
                     _statCard('Available Rooms', state.availableRooms.toString(), Icons.check_circle, const Color(0xFFD1FAE5), const Color(0xFF10B981)),
-                    _statCard('Occupied Rooms', state.occupiedRooms.toString(), Icons.meeting_room, const Color(0xFFDBEAFE), const Color(0xFF2563EB)),
-                    _statCard('Pending Payment\nConfirmations', state.pendingPayments.toString(), Icons.receipt_long, const Color(0xFFFED7AA), const Color(0xFFF97316)),
+                    _statCard('Occupied Rooms', state.occupiedRooms.toString(), Icons.meeting_room, const Color(0xFFDBEAFE), AppColors.primary),
+                    _statCard('Pending Payment\nConfirmations', state.pendingPayments.toString(), Icons.receipt_long, const Color(0xFFFED7AA), AppColors.accent),
                     _statCard('Reserved Rooms', state.reservedRooms.toString(), Icons.bookmark, const Color(0xFFF3E8FF), const Color(0xFFA855F7)),
                     _statCard('Students Reporting\nToday', state.studentsReportingToday.toString(), Icons.group, const Color(0xFFCFFAFE), const Color(0xFF06B6D4)),
                   ],
@@ -193,7 +194,7 @@ class _DashboardContent extends StatelessWidget {
                   'Manage Rooms',
                   Icons.apartment,
                   const Color(0xFFDBEAFE),
-                  const Color(0xFF2563EB),
+                  AppColors.primary,
                   () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -204,8 +205,8 @@ class _DashboardContent extends StatelessWidget {
                     ),
                   ),
                 ),
-                _quickAction('Payment\nConfirmations', Icons.credit_card, const Color(0xFFFED7AA), const Color(0xFFF97316), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PendingPaymentsScreen()))),
-                _quickAction('Reporting\nStudents', Icons.person_add_alt, const Color(0xFFDBEAFE), const Color(0xFF2563EB), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportingStudentsScreen()))),
+                _quickAction('Payment\nConfirmations', Icons.credit_card, const Color(0xFFFED7AA), AppColors.accent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PendingPaymentsScreen()))),
+                _quickAction('Reporting\nStudents', Icons.person_add_alt, const Color(0xFFDBEAFE), AppColors.primary, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportingStudentsScreen()))),
                 _quickAction('Hostel Details', Icons.info_outline, const Color(0xFFD1FAE5), const Color(0xFF10B981), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HostelDetailsScreen()))),
               ],
             ),
@@ -218,8 +219,8 @@ class _DashboardContent extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            _activityItem('Latest booking confirmed', '2m ago', 'Booking ID BK-2048 for Room 312 was created successfully.', Icons.calendar_today, const Color(0xFFDBEAFE), const Color(0xFF2563EB)),
-            _activityItem('Latest payment confirmed', '18m ago', 'Payment for BK-2039 was verified and receipt generated.', Icons.attach_money, const Color(0xFFFED7AA), const Color(0xFFF97316)),
+            _activityItem('Latest booking confirmed', '2m ago', 'Booking ID BK-2048 for Room 312 was created successfully.', Icons.calendar_today, const Color(0xFFDBEAFE), AppColors.primary),
+            _activityItem('Latest payment confirmed', '18m ago', 'Payment for BK-2039 was verified and receipt generated.', Icons.attach_money, const Color(0xFFFED7AA), AppColors.accent),
             _activityItem('Latest room update', '41m ago', 'Room 104 changed from Reserved to Occupied in real time.', Icons.bed, const Color(0xFFD1FAE5), const Color(0xFF10B981)),
           ],
         ),

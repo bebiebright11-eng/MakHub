@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -58,13 +59,13 @@ class NotificationsScreen extends StatelessWidget {
         return {
           'icon': Icons.calendar_today,
           'bgColor': const Color(0xFFDBEAFE),
-          'iconColor': const Color(0xFF2563EB),
+          'iconColor': AppColors.primary,
         };
       case 'payment':
         return {
           'icon': Icons.receipt_long,
           'bgColor': const Color(0xFFFED7AA),
-          'iconColor': const Color(0xFFF97316),
+          'iconColor': AppColors.accent,
         };
       case 'student':
         return {
@@ -224,3 +225,4 @@ class NotificationsScreen extends StatelessWidget {
     );
   }
 }
+

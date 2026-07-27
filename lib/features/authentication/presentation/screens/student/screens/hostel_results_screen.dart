@@ -40,8 +40,11 @@ class HostelResultsScreen extends StatelessWidget {
           }
 
           // Split into top matches and "you might also like"
+          // ranked is List<HostelRecommendation> — keep it typed so we can
+          // show the matchPercent badge on each card.
           final topMatches = ranked.take(5).toList();
-          final moreOptions = ranked.length > 5 ? ranked.skip(5).toList() : [];
+          final moreOptions =
+              ranked.length > 5 ? ranked.skip(5).toList() : <HostelRecommendation>[];
 
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(vertical: 20),
@@ -50,20 +53,20 @@ class HostelResultsScreen extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text(
+                  child: const Text(
                     "Top Matches",
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...topMatches.map((doc) => _buildLargeHostelCard(context, doc)),
+                ...topMatches.map((r) => _buildLargeHostelCard(context, r.doc, matchPercent: r.matchPercent)),
                 if (moreOptions.isNotEmpty) ...[
                   const SizedBox(height: 24),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
+                    child: const Text(
                       "You might also like",
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -74,12 +77,12 @@ class HostelResultsScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       itemCount: moreOptions.length,
                       itemBuilder: (context, index) {
-                        final doc = moreOptions[index];
-                        final data = doc.data() as Map<String, dynamic>;
+                        final r = moreOptions[index];
+                        final data = r.doc.data() as Map<String, dynamic>;
                         return Padding(
                           padding: const EdgeInsets.only(right: 16),
                           child: HostelCard(
-                            hostelId: doc.id,
+                            hostelId: r.doc.id,
                             name: data['hostelName'] ?? 'Unnamed Hostel',
                             distance: data['location'] ?? '',
                             singlePrice: data['singlePrice'] ?? '0',
@@ -101,7 +104,7 @@ class HostelResultsScreen extends StatelessWidget {
   }
 }
 
-Widget _buildLargeHostelCard(BuildContext context, QueryDocumentSnapshot doc) {
+Widget _buildLargeHostelCard(BuildContext context, QueryDocumentSnapshot doc, {int matchPercent = 0}) {
     final data = doc.data() as Map<String, dynamic>;
     final name = data['hostelName'] ?? 'Unnamed Hostel';
     final distance = data['location'] ?? '';
@@ -135,6 +138,23 @@ Widget _buildLargeHostelCard(BuildContext context, QueryDocumentSnapshot doc) {
                     ),
                   ),
                 ),
+                // Match % badge
+                if (matchPercent > 0)
+                  Positioned(
+                    top: 14,
+                    left: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade600,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '$matchPercent% match',
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
                 Positioned(
                   top: 14,
                   right: 14,

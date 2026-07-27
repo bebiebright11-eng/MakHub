@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -170,7 +171,7 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
                       onSelected: (_) {
                         setState(() => _selectedType = type);
                       },
-                      selectedColor: Colors.blue,
+                      selectedColor: AppColors.primary,
                       labelStyle: TextStyle(
                         color: selected ? Colors.white : Colors.black,
                       ),
@@ -315,8 +316,8 @@ const SizedBox(height: 10),
                           }
                         });
                       },
-                      selectedColor: Colors.blue.shade50,
-                      checkmarkColor: Colors.blue,
+                      selectedColor: AppColors.primary.withOpacity(0.08),
+                      checkmarkColor: AppColors.primary,
                     );
                   }).toList(),
                 ),
@@ -387,7 +388,7 @@ child: ElevatedButton(
   },
 
   style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.blue,
+    backgroundColor: AppColors.primary,
     foregroundColor: Colors.white,
     padding: const EdgeInsets.symmetric(vertical: 16),
     shape: RoundedRectangleBorder(
@@ -428,7 +429,7 @@ child: ElevatedButton(
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blue),
+          Icon(icon, color: AppColors.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -451,3 +452,4 @@ child: ElevatedButton(
     );
   }
 }
+

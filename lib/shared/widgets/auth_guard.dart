@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../../features/authentication/presentation/screens/admin/admin_dashboard_screen.dart';
-import '../../features/authentication/presentation/screens/admin/admin_login_screen.dart';
+import '../../features/authentication/presentation/screens/role_selection_screen.dart';
 
 class AuthGuard extends StatelessWidget {
   final Widget child;
@@ -17,7 +16,8 @@ class AuthGuard extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      return const AdminLoginScreen();
+      // Return to role selection so each role can pick the right login
+      return const RoleSelectionScreen();
     }
 
     return child;

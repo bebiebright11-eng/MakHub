@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'hostel_details_screen.dart';
@@ -22,34 +23,50 @@ class StudentHomeScreen extends StatefulWidget {
 
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
-    final Stream<QuerySnapshot> _hostelsStream =
-    FirebaseFirestore.instance
-        .collection('hostels')
-        .snapshots();
-    String _searchText = "";
-    String _selectedFilter = "";
-final TextEditingController _searchController =
-    TextEditingController();
+  final Stream<QuerySnapshot> _hostelsStream =
+      FirebaseFirestore.instance.collection('hostels').snapshots();
 
-    final ScrollController _chipsScrollController = ScrollController();
-final ScrollController _hostelsScrollController = ScrollController();
+  late Future<Map<String, dynamic>> _preferencesFuture;
 
+  String _searchText = "";
+  String _selectedFilter = "";
 
-@override
-void dispose() {
-  _searchController.dispose();
-  _chipsScrollController.dispose();
-  _hostelsScrollController.dispose();
-  super.dispose();
-}
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _chipsScrollController = ScrollController();
+  final ScrollController _hostelsScrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _preferencesFuture = _loadPreferences();
+  }
+
+  /// Called whenever this screen comes back into focus (e.g. after
+  /// the student saves preferences and pops back from ProfileScreen).
+  void _refreshPreferences() {
+    setState(() {
+      _preferencesFuture = _loadPreferences();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _chipsScrollController.dispose();
+    _hostelsScrollController.dispose();
+    super.dispose();
+  }
   
 @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: FutureBuilder<Map<String, dynamic>>(
-        future: _loadPreferences(),
+        future: _preferencesFuture,
         builder: (context, preferenceSnapshot) {
+          if (preferenceSnapshot.hasError) {
+            return const Center(child: Text('Failed to load preferences'));
+          }
 
           if (!preferenceSnapshot.hasData) {
             return const Center(
@@ -62,21 +79,26 @@ void dispose() {
           return StreamBuilder<QuerySnapshot>(
             stream: _hostelsStream,
             builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+              if (snapshot.hasError) {
+                return const Center(child: Text('Failed to load hostels'));
+              }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No hostels available'));
-          }
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(child: Text('No hostels available'));
+              }
 
           final filteredDocs = _filterHostels(snapshot.data!.docs);
 
+          // recommendHostels returns List<HostelRecommendation>; unwrap to docs for _buildHostelList
           final recommendedDocs =
               RecommendationAlgorithm.recommendHostels(
             hostels: filteredDocs,
             preferences: preferences,
-          );
+          ).map((r) => r.doc).toList();
 
           return CustomScrollView(
             slivers: [
@@ -256,7 +278,7 @@ void _openSearchOptions() {
               ),
               const SizedBox(height: 20),
               ListTile(
-                leading: const Icon(Icons.edit_note, color: Color(0xFF2563EB)),
+                leading: const Icon(Icons.edit_note, color: AppColors.primary),
                 title: const Text("Describe what you want"),
                 subtitle: const Text("Type a sentence describing your ideal hostel"),
                 onTap: () {
@@ -270,7 +292,7 @@ void _openSearchOptions() {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.checklist, color: Color(0xFF2563EB)),
+                leading: const Icon(Icons.checklist, color: AppColors.primary),
                 title: const Text("Guided search"),
                 subtitle: const Text("Answer a few quick questions"),
                 onTap: () {
@@ -295,7 +317,7 @@ void _openSearchOptions() {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
       decoration: const BoxDecoration(
-        color: Color(0xFF2563EB),
+        color: AppColors.primary,
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(32),
           bottomRight: Radius.circular(32),
@@ -355,7 +377,7 @@ void _openSearchOptions() {
                 height: 56,
                 width: 56,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF97316),
+                  color: AppColors.accent,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(Icons.tune, color: Colors.white),
@@ -418,12 +440,12 @@ Widget _buildChip(String label, IconData icon) {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: isActive
-            ? const Color(0xFF2563EB)
+            ? AppColors.primary
             : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isActive
-              ? const Color(0xFF2563EB)
+              ? AppColors.primary
               : Colors.grey.shade200,
         ),
       ),
@@ -601,7 +623,7 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
                           style: const TextStyle(color: Colors.grey, fontSize: 11),
                         ),
                       ),
-                      const Icon(Icons.star, color: Color(0xFFF97316), size: 13),
+                      const Icon(Icons.star, color: AppColors.accent, size: 13),
                       const SizedBox(width: 2),
                       Text(rating, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
                     ],
@@ -614,7 +636,7 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
         'Single UGX $singlePrice',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 11),
+        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 11),
       ),
     ),
     const SizedBox(width: 10),
@@ -623,7 +645,7 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
         'Double UGX $doublePrice',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 11),
+        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 11),
       ),
     ),
   ],
@@ -640,7 +662,7 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
                     },
                     child: const Text(
                       'View Details',
-                      style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 12),
+                      style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
                     ),
                   ),
                 ],
@@ -664,7 +686,7 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(type, style: const TextStyle(color: Colors.grey, fontSize: 10)),
-            Text('UGX $price', style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 12)),
+            Text('UGX $price', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
           ],
         ),
       ),
@@ -675,7 +697,7 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       currentIndex: 0,
-      selectedItemColor: const Color(0xFF2563EB),
+      selectedItemColor: AppColors.primary,
       unselectedItemColor: Colors.grey,
       onTap: (index){
         if (index == 0) return;
@@ -707,7 +729,10 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
             MaterialPageRoute(
               builder: (context) => const StudentProfileScreen(),
             ),
-          );
+          ).then((_) {
+            // Refresh recommendations in case preferences were updated
+            _refreshPreferences();
+          });
           return;
         }
       },
@@ -721,3 +746,4 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
     );
   }
 }
+

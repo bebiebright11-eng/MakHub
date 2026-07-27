@@ -1,6 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '/algorithms/booking_conflict_algorithm.dart';
+import '/algorithms/matching_algorithm.dart';
+import '/algorithms/fraud_detection_algorithm.dart';
 import 'payment_screen.dart';
 
 class StudentBookingDetailsScreen extends StatefulWidget {
@@ -62,7 +66,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
         (_friendNameController.text.trim().isEmpty ||
             _friendPhoneController.text.trim().isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in your friend\'s details')),
+        const SnackBar(content: Text("Please fill in your friend's details")),
       );
       return;
     }
@@ -70,7 +74,52 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
     setState(() => _isSaving = true);
 
     try {
-      final bookingRef = await FirebaseFirestore.instance.collection('bookings').add({
+      // ── Friend verification (Me & Friend bookings) ───────────────────────
+      if (!_isOnlyMe) {
+        final matchResult = await StudentMatchingAlgorithm.verifyFriend(
+          friendName: _friendNameController.text.trim(),
+          friendPhone: _friendPhoneController.text.trim(),
+        );
+        if (!mounted) return;
+        if (!matchResult.found) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(matchResult.errorMessage ?? 'Friend not found.'),
+              backgroundColor: Colors.orange.shade700,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
+      }
+
+      // ── Conflict detection ───────────────────────────────────────────────
+      final conflict = await BookingConflictAlgorithm.check(
+        studentId: user.uid,
+        hostelId: widget.hostelId,
+        floorId: widget.floorId,
+        roomId: widget.roomId,
+      );
+
+      if (!mounted) return;
+
+      if (!conflict.allowed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(conflict.reason),
+            backgroundColor: Colors.red.shade600,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+
+      // ── Fraud detection (non-blocking — flags in background) ────────────
+      FraudDetectionAlgorithm.checkBooking(studentId: user.uid, phone: '');
+
+      // ── Create the booking ───────────────────────────────────────────────
+      final bookingRef =
+          await FirebaseFirestore.instance.collection('bookings').add({
         'studentId': user.uid,
         'hostelId': widget.hostelId,
         'floorId': widget.floorId,
@@ -84,13 +133,13 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
 
       if (!mounted) return;
       Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => StudentPaymentScreen(
-      bookingId: bookingRef.id,
-    ),
-  ),
-);
+        context,
+        MaterialPageRoute(
+          builder: (context) => StudentPaymentScreen(
+            bookingId: bookingRef.id,
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -146,7 +195,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(10)),
-                          child: const Text('Choose one', style: TextStyle(color: Color(0xFFF97316), fontSize: 11, fontWeight: FontWeight.bold)),
+                          child: const Text('Choose one', style: TextStyle(color: AppColors.accent, fontSize: 11, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -225,7 +274,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   const Text('Total Amount', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  Text('UGX $total', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF2563EB))),
+                  Text('UGX $total', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary)),
                 ],
               ),
             ],
@@ -235,7 +284,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Payable now', style: TextStyle(color: Colors.grey, fontSize: 13)),
-              Text('Secure booking confirmation', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 13)),
+              Text('Secure booking confirmation', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
             ],
           ),
         ],
@@ -262,12 +311,12 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFFEFF6FF) : Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: isSelected ? const Color(0xFF2563EB) : Colors.grey.shade100),
+            border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.shade100),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(isSelected ? Icons.check_circle : Icons.radio_button_unchecked, color: const Color(0xFF2563EB)),
+              Icon(isSelected ? Icons.check_circle : Icons.radio_button_unchecked, color: AppColors.primary),
               const SizedBox(height: 12),
               Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               const SizedBox(height: 4),
@@ -292,7 +341,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
         children: [
           const Row(
             children: [
-              Icon(Icons.people_outline, color: Color(0xFF2563EB)),
+              Icon(Icons.people_outline, color: AppColors.primary),
               SizedBox(width: 8),
               Text('Friend Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ],
@@ -324,7 +373,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
             ),
             child: Column(
               children: [
-                const Icon(Icons.description_outlined, color: Color(0xFF2563EB), size: 32),
+                const Icon(Icons.description_outlined, color: AppColors.primary, size: 32),
                 const SizedBox(height: 12),
                 const Text('Tap to upload document', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const Text('PDF, JPG or PNG required', style: TextStyle(color: Colors.grey, fontSize: 12)),
@@ -389,7 +438,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
         child: ElevatedButton(
           onPressed: _isSaving ? null : _createBooking,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2563EB),
+            backgroundColor: AppColors.primary,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
           child: _isSaving
@@ -415,7 +464,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       currentIndex: 2,
-      selectedItemColor: const Color(0xFF2563EB),
+      selectedItemColor: AppColors.primary,
       unselectedItemColor: Colors.grey,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
@@ -427,3 +476,4 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
     );
   }
 }
+
