@@ -88,6 +88,7 @@ class HostelResultsScreen extends StatelessWidget {
                             singlePrice: data['singlePrice'] ?? '0',
                             doublePrice: data['doublePrice'] ?? '0',
                             rating: '4.5',
+                            distanceFromCampus: data['distance']?.toString(),
                           ),
                         );
                       },
