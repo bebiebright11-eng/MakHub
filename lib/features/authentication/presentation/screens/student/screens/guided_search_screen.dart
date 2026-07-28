@@ -9,9 +9,17 @@ class GuidedSearchScreen extends StatefulWidget {
 }
 
 class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
+  // Step indices:
+  //  0 – Suggested Locations
+  //  1 – Distance from university  (NEW)
+  //  2 – Hostel Type
+  //  3 – Room Type
+  //  4 – Budget
+  //  5 – Facilities
   int _currentStep = 0;
 
   String? _selectedLocation;
+  String? _selectedDistance;
   String? _selectedHostelType;
   String? _selectedRoomType;
   final TextEditingController _minBudgetController = TextEditingController();
@@ -23,6 +31,15 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
     "Near Main Gate",
     "Kikumi",
     "Any around Makerere",
+  ];
+
+  // Distance-range options (label → stored value)
+  static const List<_DistanceOption> _distanceOptions = [
+    _DistanceOption(label: "Under 1 km",  value: "under_1km"),
+    _DistanceOption(label: "1 – 2 km",    value: "1_2km"),
+    _DistanceOption(label: "2 – 5 km",    value: "2_5km"),
+    _DistanceOption(label: "5 + km",       value: "5km_plus"),
+    _DistanceOption(label: "Any distance", value: ""),
   ];
 
   final List<String> _hostelTypes = ["Boys", "Girls", "Mixed"];
@@ -55,6 +72,7 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
     final preferences = {
       "preferredLocation":
           _selectedLocation == "Any around Makerere" ? "" : _selectedLocation,
+      "distanceRange": _selectedDistance ?? "",
       "preferredType": (_selectedHostelType ?? "").toLowerCase(),
       "roomType": _selectedRoomType,
       "minBudget": int.tryParse(_minBudgetController.text.trim()),
@@ -83,11 +101,12 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildLocationSection(),
-            if (_currentStep >= 1) _buildHostelTypeSection(),
-            if (_currentStep >= 2) _buildRoomTypeSection(),
-            if (_currentStep >= 3) _buildBudgetSection(),
-            if (_currentStep >= 4) _buildFacilitiesSection(),
-            if (_currentStep >= 4) ...[
+            if (_currentStep >= 1) _buildDistanceSection(),
+            if (_currentStep >= 2) _buildHostelTypeSection(),
+            if (_currentStep >= 3) _buildRoomTypeSection(),
+            if (_currentStep >= 4) _buildBudgetSection(),
+            if (_currentStep >= 5) _buildFacilitiesSection(),
+            if (_currentStep >= 5) ...[
               const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
@@ -169,7 +188,7 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
 
   Widget _buildLocationSection() {
     return _sectionWrapper(
-      title: "Location",
+      title: "Suggested Locations",
       summary: _selectedLocation,
       isActive: _currentStep == 0,
       onEdit: () => _goToStep(0),
@@ -192,12 +211,44 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
     );
   }
 
+  Widget _buildDistanceSection() {
+    final summary = _selectedDistance == null
+        ? null
+        : _distanceOptions
+            .firstWhere((o) => o.value == _selectedDistance,
+                orElse: () => const _DistanceOption(label: "Any distance", value: ""))
+            .label;
+
+    return _sectionWrapper(
+      title: "Distance from University",
+      summary: summary,
+      isActive: _currentStep == 1,
+      onEdit: () => _goToStep(1),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: _distanceOptions.map((option) {
+          return ChoiceChip(
+            label: Text(option.label),
+            selected: _selectedDistance == option.value,
+            onSelected: (_) {
+              setState(() {
+                _selectedDistance = option.value;
+                _currentStep = 2;
+              });
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildHostelTypeSection() {
     return _sectionWrapper(
       title: "Hostel Type",
       summary: _selectedHostelType,
-      isActive: _currentStep == 1,
-      onEdit: () => _goToStep(1),
+      isActive: _currentStep == 2,
+      onEdit: () => _goToStep(2),
       child: Wrap(
         spacing: 10,
         children: _hostelTypes.map((type) {
@@ -207,7 +258,7 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
             onSelected: (_) {
               setState(() {
                 _selectedHostelType = type;
-                _currentStep = 2;
+                _currentStep = 3;
               });
             },
           );
@@ -220,8 +271,8 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
     return _sectionWrapper(
       title: "Room Type",
       summary: _selectedRoomType,
-      isActive: _currentStep == 2,
-      onEdit: () => _goToStep(2),
+      isActive: _currentStep == 3,
+      onEdit: () => _goToStep(3),
       child: Wrap(
         spacing: 10,
         children: _roomTypes.map((type) {
@@ -231,7 +282,7 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
             onSelected: (_) {
               setState(() {
                 _selectedRoomType = type;
-                _currentStep = 3;
+                _currentStep = 4;
               });
             },
           );
@@ -249,8 +300,8 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
       summary: hasBudget
           ? "${_minBudgetController.text} - ${_maxBudgetController.text}"
           : null,
-      isActive: _currentStep == 3,
-      onEdit: () => _goToStep(3),
+      isActive: _currentStep == 4,
+      onEdit: () => _goToStep(4),
       child: Column(
         children: [
           Row(
@@ -283,7 +334,7 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                setState(() => _currentStep = 4);
+                setState(() => _currentStep = 5);
               },
               child: const Text("Next"),
             ),
@@ -323,4 +374,11 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
       ),
     );
   }
+}
+
+/// Immutable label/value pair for a distance-range chip.
+class _DistanceOption {
+  final String label;
+  final String value;
+  const _DistanceOption({required this.label, required this.value});
 }
