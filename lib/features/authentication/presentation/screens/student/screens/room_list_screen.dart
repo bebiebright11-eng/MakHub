@@ -81,7 +81,6 @@ class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
           );
         },
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -213,21 +212,6 @@ class _StudentRoomListScreenState extends State<StudentRoomListScreen> {
     }
   }
 
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 0,
-      selectedItemColor: AppColors.primary,
-      unselectedItemColor: Colors.grey,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-        BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Booking'),
-        BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: 'Notifications'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-      ],
-    );
-  }
 }
 
 

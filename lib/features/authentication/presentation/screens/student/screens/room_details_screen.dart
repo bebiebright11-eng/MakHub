@@ -96,7 +96,6 @@ late final Stream<DocumentSnapshot> _roomStream =
         },
       ),
       bottomSheet: _buildBottomAction(context),
-      bottomNavigationBar: _buildBottomNav(),
     );
 
   }
@@ -263,19 +262,4 @@ if (data['features'] is Map<String, dynamic>) {
     );
   }
 
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 0,
-      selectedItemColor: const Color(0xFF2563EB),
-      unselectedItemColor: Colors.grey,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-        BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Booking'),
-        BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: 'Notifications'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-      ],
-    );
-  }
 }

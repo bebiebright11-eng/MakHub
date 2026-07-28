@@ -6,9 +6,6 @@ import '/algorithms/ranking_algorithm.dart';
 import 'hostel_details_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'active_booking_screen.dart';
-import 'notifications_screen.dart';
-import 'profile_screen.dart';
-import 'home_screen.dart';
 
 class StudentSearchScreen extends StatefulWidget {
   const StudentSearchScreen({super.key});
@@ -191,7 +188,6 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
       );
     },
   ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -512,73 +508,6 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
     }
   }
 
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 1,
-      selectedItemColor: AppColors.primary,
-      unselectedItemColor: Colors.grey,
-      onTap: (index) {
-        if (index == 0) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder:(_) => const StudentHomeScreen(),
-               ),
-            );
-        }
-
-        if (index == 1) {
-          return; 
-        }
-        if(index == 2){
-          _goToActiveBooking(context);
-          return;
-        }
-        if (index == 3) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const StudentNotificationsScreen(),
-            ),
-          );
-          return;
-        }
-        if (index == 4) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                const StudentProfileScreen(),
-            ),
-          );
-          return;
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.search),
-          label: 'Search',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.calendar_today_outlined),
-          label: 'Booking',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.notifications_outlined),
-          label: 'Alerts',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          label: 'Profile',
-        ),
-      ],
-    );
-  }
 }
 
 
