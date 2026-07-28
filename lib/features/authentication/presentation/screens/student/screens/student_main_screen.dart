@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'home_screen.dart';
 import 'notifications_screen.dart';
-import 'profile_screen.dart';
+import 'settings_screen.dart';
 import 'booking_information_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -64,7 +64,7 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
         ),
         _bookingTab(),
         const StudentNotificationsScreen(),
-        const StudentProfileScreen(),
+        const StudentMenuScreen(),
       ];
 
   Widget _buildTab(int index) {
