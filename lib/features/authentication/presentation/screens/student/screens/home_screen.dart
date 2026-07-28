@@ -3,10 +3,6 @@ import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'hostel_details_screen.dart';
-import 'package:flutter/gestures.dart';
-import 'notifications_screen.dart';
-import 'profile_screen.dart';
-import 'search_screen.dart';
 import 'active_booking_screen.dart';
 import '/algorithms/search_algorithm.dart';
 import '/algorithms/recommendation_algorithm.dart';
@@ -35,6 +31,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   final ScrollController _chipsScrollController = ScrollController();
   final ScrollController _hostelsScrollController = ScrollController();
 
+  // Search-options dropdown overlay
+  final GlobalKey _searchBarKey = GlobalKey();
+  OverlayEntry? _searchOverlay;
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +54,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     _searchController.dispose();
     _chipsScrollController.dispose();
     _hostelsScrollController.dispose();
+    _removeSearchOverlay();
     super.dispose();
   }
   
@@ -124,7 +125,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       );
     },
   ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
   Future<void> _goToActiveBooking(BuildContext context) async {
@@ -259,56 +259,182 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     }).toList();
   }
 
-void _openSearchOptions() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "How would you like to search?",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+void _removeSearchOverlay() {
+    _searchOverlay?.remove();
+    _searchOverlay = null;
+  }
+
+  void _openSearchOptions() {
+    // If already open, close it (toggle behaviour).
+    if (_searchOverlay != null) {
+      _removeSearchOverlay();
+      return;
+    }
+
+    // Measure the search bar's position on screen.
+    final RenderBox? box =
+        _searchBarKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final Offset offset = box.localToGlobal(Offset.zero);
+    final double barBottom = offset.dy + box.size.height;
+
+    // Horizontal margins for the panel (12 px from each screen edge).
+    const double hMargin = 12.0;
+    // The panel aligns with the search bar's left edge, minus the margin
+    // so it floats a touch wider, capped to screen width.
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double panelLeft = (offset.dx - hMargin).clamp(hMargin, screenWidth - hMargin);
+    final double panelRight = hMargin;
+
+    _searchOverlay = OverlayEntry(
+      builder: (overlayContext) {
+        return Stack(
+          children: [
+            // ── barrier: dims the screen and dismisses on tap ──────────
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _removeSearchOverlay,
+                child: Container(color: Colors.black.withOpacity(0.25)),
               ),
-              const SizedBox(height: 20),
-              ListTile(
-                leading: const Icon(Icons.edit_note, color: AppColors.primary),
-                title: const Text("Describe what you want"),
-                subtitle: const Text("Type a sentence describing your ideal hostel"),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DescribeSearchScreen(),
-                    ),
-                  );
-                },
+            ),
+
+            // ── the floating panel ─────────────────────────────────────
+            Positioned(
+              top: barBottom + 10,
+              left: panelLeft,
+              right: panelRight,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 14),
+                        child: Text(
+                          "How would you like to search?",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      _searchOptionCard(
+                        icon: Icons.edit_note,
+                        title: "Describe what you want",
+                        subtitle: "Type a sentence describing your ideal hostel",
+                        onTap: () {
+                          _removeSearchOverlay();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const DescribeSearchScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _searchOptionCard(
+                        icon: Icons.checklist,
+                        title: "Guided search",
+                        subtitle: "Answer a few quick questions",
+                        onTap: () {
+                          _removeSearchOverlay();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const GuidedSearchScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              ListTile(
-                leading: const Icon(Icons.checklist, color: AppColors.primary),
-                title: const Text("Guided search"),
-                subtitle: const Text("Answer a few quick questions"),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const GuidedSearchScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
+            ),
+          ],
         );
       },
+    );
+
+    Overlay.of(context).insert(_searchOverlay!);
+  }
+
+  Widget _searchOptionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              // Icon with tinted background
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 14),
+              // Title + subtitle
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Trailing chevron
+              Icon(Icons.arrow_forward_ios,
+                  size: 14, color: Colors.grey.shade400),
+            ],
+          ),
+        ),
+      ),
     );
   }
   
@@ -351,6 +477,7 @@ void _openSearchOptions() {
             children: [
               Expanded(
                 child: Container(
+                  key: _searchBarKey,
                   height: 56,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
@@ -530,6 +657,7 @@ Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
                 singlePrice: data['singlePrice'] ?? '0',
                 doublePrice: data['doublePrice'] ?? '0',
                 rating: '4.5',
+                distanceFromCampus: data['distance']?.toString(),
               ),
             );
         },
@@ -693,57 +821,5 @@ Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
     );
   }
 
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 0,
-      selectedItemColor: AppColors.primary,
-      unselectedItemColor: Colors.grey,
-      onTap: (index){
-        if (index == 0) return;
-        if (index == 1){
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const StudentSearchScreen(),
-            ),
-          );
-          return;
-        }
-        if (index==2){
-          _goToActiveBooking(context);
-          return;
-        }
-        if (index==3){
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const StudentNotificationsScreen(),
-            ),
-          );
-          return;
-        }
-        if (index==4){
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const StudentProfileScreen(),
-            ),
-          ).then((_) {
-            // Refresh recommendations in case preferences were updated
-            _refreshPreferences();
-          });
-          return;
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-        BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Booking'),
-        BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: 'Notifications'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-      ],
-    );
-  }
 }
 

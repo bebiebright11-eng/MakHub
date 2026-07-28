@@ -84,6 +84,78 @@ class TextPreferenceExtractor {
       preferredLocation = 'Near Main Gate';
     }
 
+    // ---- Distance from university ----
+    // Recognised phrases map to the same value tokens used by the guided search.
+    //
+    // Buckets:
+    //   under_1km  – "within 1km", "under 1 km", "close to campus/university",
+    //                "very close", "next to campus", "walking distance"
+    //   1_2km      – "1-2 km", "1 to 2 km", "about 1 km", "around 1 km"
+    //   2_5km      – "2-5 km", "2 to 5 km", "about 3 km", "a few km", "few kilometers"
+    //   5km_plus   – "5 km away", "far from campus", "over 5 km", "more than 5"
+    String distanceRange = '';
+
+    // under_1km — explicit sub-1 km mentions or proximity phrases
+    if (RegExp(
+      r'within\s*(?:0[\.,]?\d*|1)\s*k(?:m|ilomete)',
+      caseSensitive: false,
+    ).hasMatch(lower) ||
+        RegExp(
+          r'under\s*1\s*k(?:m|ilomete)',
+          caseSensitive: false,
+        ).hasMatch(lower) ||
+        RegExp(
+          r'less\s+than\s*1\s*k(?:m|ilomete)',
+          caseSensitive: false,
+        ).hasMatch(lower) ||
+        RegExp(
+          r'\b(?:very\s+close|next\s+to\s+(?:campus|university|uni)|walking\s+distance|close\s+to\s+(?:campus|university|uni))\b',
+          caseSensitive: false,
+        ).hasMatch(lower)) {
+      distanceRange = 'under_1km';
+
+    // 1–2 km
+    } else if (RegExp(
+      r'1\s*[-–to]+\s*2\s*k(?:m|ilomete)',
+      caseSensitive: false,
+    ).hasMatch(lower) ||
+        RegExp(
+          r'(?:about|around|approximately)\s*1\s*k(?:m|ilomete)',
+          caseSensitive: false,
+        ).hasMatch(lower)) {
+      distanceRange = '1_2km';
+
+    // 2–5 km
+    } else if (RegExp(
+      r'2\s*[-–to]+\s*5\s*k(?:m|ilomete)',
+      caseSensitive: false,
+    ).hasMatch(lower) ||
+        RegExp(
+          r'(?:about|around|approximately)\s*[234]\s*k(?:m|ilomete)',
+          caseSensitive: false,
+        ).hasMatch(lower) ||
+        RegExp(
+          r'(?:a\s+few|few)\s+k(?:m|ilomete)',
+          caseSensitive: false,
+        ).hasMatch(lower)) {
+      distanceRange = '2_5km';
+
+    // 5 km +
+    } else if (RegExp(
+      r'(?:over|above|more\s+than|greater\s+than)\s*5\s*k(?:m|ilomete)',
+      caseSensitive: false,
+    ).hasMatch(lower) ||
+        RegExp(
+          r'5\s*k(?:m|ilomete)\s+(?:away|from)',
+          caseSensitive: false,
+        ).hasMatch(lower) ||
+        RegExp(
+          r'\bfar\s+(?:from\s+(?:campus|university|uni)|away)\b',
+          caseSensitive: false,
+        ).hasMatch(lower)) {
+      distanceRange = '5km_plus';
+    }
+
     // ---- Facilities ----
     final facilityKeywords = {
       'wifi': 'WiFi',
@@ -109,6 +181,7 @@ class TextPreferenceExtractor {
 
     return {
       "preferredLocation": preferredLocation,
+      "distanceRange": distanceRange,
       "preferredType": preferredType,
       "roomType": roomType,
       "minBudget": minBudget,
