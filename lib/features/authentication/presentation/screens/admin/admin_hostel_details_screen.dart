@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_manage_floors_screen.dart';
 
 import 'admin_edit_hostel_screen.dart';
 import 'admin_add_personnel_screen.dart';
 
-class AdminHostelDetailsScreen extends StatelessWidget {
+class AdminHostelDetailsScreen extends StatefulWidget {
   final String hostelId;
   final Map<String, dynamic> hostelData;
 
@@ -14,6 +15,78 @@ class AdminHostelDetailsScreen extends StatelessWidget {
     required this.hostelId,
     required this.hostelData,
   });
+
+  @override
+  State<AdminHostelDetailsScreen> createState() =>
+      _AdminHostelDetailsScreenState();
+}
+
+class _AdminHostelDetailsScreenState extends State<AdminHostelDetailsScreen> {
+  late Future<List<Map<String, dynamic>>> _reviewsFuture;
+
+  String get hostelId => widget.hostelId;
+  Map<String, dynamic> get hostelData => widget.hostelData;
+
+  @override
+  void initState() {
+    super.initState();
+    _reviewsFuture = _loadReviews();
+  }
+
+  // Reviews live at the top-level `reviews` collection (with a hostelId field),
+  // but some hostels use a subcollection. We query both and merge.
+  Future<List<Map<String, dynamic>>> _loadReviews() async {
+    final firestore = FirebaseFirestore.instance;
+    final List<QueryDocumentSnapshot> allDocs = [];
+
+    final topLevel = await firestore
+        .collection('reviews')
+        .where('hostelId', isEqualTo: hostelId)
+        .get();
+    allDocs.addAll(topLevel.docs);
+
+    final sub = await firestore
+        .collection('hostels')
+        .doc(hostelId)
+        .collection('reviews')
+        .get();
+    allDocs.addAll(sub.docs);
+
+    if (allDocs.isEmpty) return [];
+
+    final nameCache = <String, String>{};
+    final List<Map<String, dynamic>> items = [];
+    for (final doc in allDocs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final userId = (data['userId'] ?? '').toString();
+      String name = 'Student';
+      if (userId.isNotEmpty) {
+        if (nameCache.containsKey(userId)) {
+          name = nameCache[userId]!;
+        } else {
+          try {
+            final userDoc =
+                await firestore.collection('users').doc(userId).get();
+            name = (userDoc.data()?['fullName'] ??
+                    userDoc.data()?['name'] ??
+                    'Student')
+                .toString();
+          } catch (_) {
+            name = 'Student';
+          }
+          nameCache[userId] = name;
+        }
+      }
+      items.add({
+        'name': name,
+        'rating': (data['rating'] is num)
+            ? (data['rating'] as num).toInt()
+            : int.tryParse(data['rating']?.toString() ?? '') ?? 5,
+        'comment': (data['comment'] ?? data['review'] ?? '').toString(),
+      });
+    }
+    return items;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -214,10 +287,52 @@ const SizedBox(height: 24),
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            _reviewCard("Ama K.", 5, "Very clean rooms and the security is excellent. The WiFi is stable too."),
-            const SizedBox(height: 10),
-            _reviewCard("Kwesi M.", 5, "Great location near campus and the common areas are well maintained."),
-            const SizedBox(height: 30),
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _reviewsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  );
+                }
+                final reviews = snapshot.data ?? [];
+                if (reviews.isEmpty) {
+                  return Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'No student reviews yet',
+                        style: TextStyle(color: Colors.grey, fontSize: 13),
+                      ),
+                    ),
+                  );
+                }
+                return Column(
+                  children: reviews.take(5).map((r) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _reviewCard(
+                        (r['name'] as String),
+                        (r['rating'] as int),
+                        (r['comment'] as String),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
 
             // Action buttons
             

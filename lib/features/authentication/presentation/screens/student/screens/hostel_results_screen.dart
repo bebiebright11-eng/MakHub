@@ -87,7 +87,7 @@ class HostelResultsScreen extends StatelessWidget {
                             distance: data['location'] ?? '',
                             singlePrice: data['singlePrice'] ?? '0',
                             doublePrice: data['doublePrice'] ?? '0',
-                            rating: '4.5',
+                            rating: ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1),
                             distanceFromCampus: data['distance']?.toString(),
                           ),
                         );
@@ -110,7 +110,7 @@ Widget _buildLargeHostelCard(BuildContext context, QueryDocumentSnapshot doc, {i
     final name = data['hostelName'] ?? 'Unnamed Hostel';
     final distance = data['location'] ?? '';
     final singlePrice = data['singlePrice'] ?? '0';
-    const rating = '4.5';
+    final rating = ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1);
 
     return GestureDetector(
       onTap: () {
@@ -184,7 +184,7 @@ Widget _buildLargeHostelCard(BuildContext context, QueryDocumentSnapshot doc, {i
                 const SizedBox(width: 4),
                 const Icon(Icons.star, size: 14, color: Colors.black87),
                 const SizedBox(width: 2),
-                const Text(rating, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(rating, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
               ],
             ),
             const SizedBox(height: 4),

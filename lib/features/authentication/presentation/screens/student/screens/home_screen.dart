@@ -7,6 +7,9 @@ import '/algorithms/recommendation_algorithm.dart';
 import 'guided_search_screen.dart';
 import '../widgets/hostel_card.dart';
 import 'describe_search_screen.dart';
+import 'profile_screen.dart';
+import 'preference_screen.dart';
+import 'hostel_results_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -41,7 +44,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   /// Called whenever this screen comes back into focus (e.g. after
   /// the student saves preferences and pops back from ProfileScreen).
-  // ignore: unused_element
   void _refreshPreferences() {
     setState(() {
       _preferencesFuture = _loadPreferences();
@@ -106,13 +108,30 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               SliverToBoxAdapter(child: const SizedBox(height: 20)),
               SliverToBoxAdapter(child: _buildCategoryChips()),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
-              SliverToBoxAdapter(child: _buildSectionHeader("Recommended Hostels")),
+              SliverToBoxAdapter(child: _buildSectionHeader("Recommended Hostels", onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => HostelResultsScreen(preferences: preferences),
+                  ),
+                );
+              })),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
               SliverToBoxAdapter(child: _buildHostelList(recommendedDocs)),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
               for (var location in ["Kikumi", "Near Main Gate", "Kikoni"])
                 if (_hostelsForLocation(filteredDocs, location).isNotEmpty) ...[
-                  SliverToBoxAdapter(child: _buildSectionHeader("Hostels near $location")),
+                  SliverToBoxAdapter(child: _buildSectionHeader("Hostels near $location", onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HostelResultsScreen(preferences: {
+                          ...preferences,
+                          'preferredLocation': location,
+                        }),
+                      ),
+                    );
+                  })),
                   SliverToBoxAdapter(child: const SizedBox(height: 12)),
                   SliverToBoxAdapter(child: _buildHostelList(_hostelsForLocation(filteredDocs, location))),
                   SliverToBoxAdapter(child: const SizedBox(height: 20)),
@@ -389,13 +408,23 @@ void _removeSearchOverlay() {
                   Text('Find your hostel', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const StudentProfileScreen(),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.person_outline, color: Colors.white),
                 ),
-                child: const Icon(Icons.person_outline, color: Colors.white),
               )
             ],
           ),
@@ -427,14 +456,26 @@ void _removeSearchOverlay() {
                 ),
               ),
               const SizedBox(width: 12),
-              Container(
-                height: 56,
-                width: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(16),
+              GestureDetector(
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const StudentPreferenceScreen(),
+                    ),
+                  );
+                  // Reload preferences in case the student just saved new ones
+                  _refreshPreferences();
+                },
+                child: Container(
+                  height: 56,
+                  width: 56,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.tune, color: Colors.white),
                 ),
-                child: const Icon(Icons.tune, color: Colors.white),
               )
             ],
           )
@@ -526,22 +567,26 @@ Widget _buildChip(String label, IconData icon) {
   );
 }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, {VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: const BoxDecoration(
-              color: Colors.black,
-              shape: BoxShape.circle,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: Colors.black,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_forward, color: Colors.white, size: 16),
             ),
-            child: const Icon(Icons.arrow_forward, color: Colors.white, size: 16),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -583,7 +628,7 @@ Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
                 distance: data['location'] ?? '',
                 singlePrice: data['singlePrice'] ?? '0',
                 doublePrice: data['doublePrice'] ?? '0',
-                rating: '4.5',
+                rating: ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1),
                 distanceFromCampus: data['distance']?.toString(),
               ),
             );
