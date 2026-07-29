@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '/core/constants/app_colors.dart';
 import 'floor_selection_screen.dart';
+import '../services/wishlist_service.dart';
 import 'reviews_screen.dart';
 
 class HostelDetailsScreen extends StatefulWidget {
@@ -27,6 +28,20 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
         .collection('reviews')
         .where('hostelId', isEqualTo: widget.hostelId)
         .snapshots();
+
+    // Listen for the first valid hostel snapshot and record the view once.
+    // We store the subscription so it can be cancelled after recording.
+    _hostelStream
+        .firstWhere((s) => s.exists)
+        .then((snapshot) {
+          if (!mounted) return;
+          final data = snapshot.data() as Map<String, dynamic>?;
+          if (data != null) {
+            WishlistService.instance
+                .addRecentlyViewed(widget.hostelId, data);
+          }
+        })
+        .catchError((_) {});
   }
 
   @override

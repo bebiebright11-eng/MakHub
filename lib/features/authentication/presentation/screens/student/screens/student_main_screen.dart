@@ -2,12 +2,10 @@
 import '/core/constants/app_colors.dart';
 import 'package:flutter/rendering.dart';
 import 'home_screen.dart';
-import 'search_screen.dart';
 import 'notifications_screen.dart';
+import 'booking_tab_router.dart';
 import 'settings_screen.dart';
-import 'booking_information_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'wishlist_screen.dart';
 
 class StudentMainScreen extends StatefulWidget {
   const StudentMainScreen({super.key});
@@ -19,59 +17,14 @@ class StudentMainScreen extends StatefulWidget {
 class _StudentMainScreenState extends State<StudentMainScreen> {
   int currentIndex = 0;
   bool _showBottomBar = true;
-  late Future<QuerySnapshot> _bookingFuture;
 
   final List<GlobalKey<NavigatorState>> _navigatorKeys =
       List.generate(5, (_) => GlobalKey<NavigatorState>());
 
-  @override
-  void initState() {
-    super.initState();
-    _bookingFuture = _fetchBooking();
-  }
-
-  Future<QuerySnapshot> _fetchBooking() {
-    return FirebaseFirestore.instance
-        .collection('bookings')
-        .where('studentId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-        .limit(1)
-        .get();
-  }
-
-  Widget _bookingTab() {
-    return FutureBuilder<QuerySnapshot>(
-      future: _bookingFuture,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return const Center(child: Text('Failed to load booking.'));
-        }
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(
-            child: Text(
-              'You have not booked any room yet.',
-              style: TextStyle(fontSize: 18),
-            ),
-          );
-        }
-        final booking = snapshot.data!.docs.first;
-        final data = booking.data() as Map<String, dynamic>;
-        return StudentBookingInformationScreen(
-          bookingId: booking.id,
-          hostelId: data['hostelId'],
-          roomId: data['roomId'],
-          floorId: data['floorId'],
-        );
-      },
-    );
-  }
-
   List<Widget> get _rootScreens => [
         const StudentHomeScreen(),
-        const StudentSearchScreen(),
-        _bookingTab(),
+        const WishlistScreen(),
+        const BookingTabRouter(),
         const StudentNotificationsScreen(),
         const StudentMenuScreen(),
       ];
@@ -135,7 +88,7 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
                 selectedItemColor: AppColors.primary,
                 items: const [
                   BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-                  BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
+                  BottomNavigationBarItem(icon: Icon(Icons.favorite), label: "Wishlist"),
                   BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: "Booking"),
                   BottomNavigationBarItem(icon: Icon(Icons.notifications), label: "Notifications"),
                   BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
