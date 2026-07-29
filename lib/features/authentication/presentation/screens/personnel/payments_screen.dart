@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '/algorithms/payment_verification_algorithm.dart';
-import '10_payment_details_screen.dart';
+import 'payment_details_screen.dart';
 
 class PendingPaymentsScreen extends StatefulWidget {
   const PendingPaymentsScreen({super.key});
@@ -179,7 +180,7 @@ class _PendingPaymentsScreenState extends State<PendingPaymentsScreen> {
                         final studentName = (data['studentName'] ?? data['userName'] ?? 'Student').toString();
                         final hostelName = (data['hostelName'] ?? 'Hostel').toString();
                         final roomNumber = (data['roomNumber'] ?? data['roomId'] ?? 'N/A').toString();
-                        final amount = data['amount'] != null ? 'UGX ${data['amount']}' : 'UGX 50,000';
+                        final amount = data['amount'] != null ? 'UGX ${data['amount']}' : 'N/A';
 
                         return _paymentCard(
                           context,
@@ -221,7 +222,7 @@ class _PendingPaymentsScreenState extends State<PendingPaymentsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,7 +230,7 @@ class _PendingPaymentsScreenState extends State<PendingPaymentsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('ID: $bookingId', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+              Text('ID: $bookingId', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -264,7 +265,7 @@ class _PendingPaymentsScreenState extends State<PendingPaymentsScreen> {
                   ElevatedButton(
                     onPressed: () => _confirmPayment(paymentDocId, bookingId),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                     ),
                     child: const Text('Confirm'),

@@ -1,10 +1,17 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminPaymentDetailsScreen extends StatelessWidget {
   final String studentName;
   final String hostelRoom;
   final String amount;
   final String status;
+  final String balance;
+  final String method;
+  final String reference;
+  final String paymentDocId;
+  final String bookingId;
 
   const AdminPaymentDetailsScreen({
     super.key,
@@ -12,10 +19,47 @@ class AdminPaymentDetailsScreen extends StatelessWidget {
     required this.hostelRoom,
     required this.amount,
     required this.status,
+    required this.balance,
+    required this.method,
+    required this.reference,
+    required this.paymentDocId,
+    required this.bookingId,
   });
+
+  // Confirm the payment in Firestore and update the linked booking
+  Future<void> _markAsPaid(BuildContext context) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('payments')
+          .doc(paymentDocId)
+          .update({'paymentStatus': 'confirmed'});
+
+      if (bookingId.isNotEmpty) {
+        final bookingRef =
+            FirebaseFirestore.instance.collection('bookings').doc(bookingId);
+        final bookingDoc = await bookingRef.get();
+        if (bookingDoc.exists) {
+          await bookingRef.update({'bookingStatus': 'confirmed'});
+        }
+      }
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment marked as confirmed.')),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update payment: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bool isConfirmed = status.toLowerCase() == 'confirmed';
+
     return Scaffold(
       appBar: AppBar(
         title: Text(studentName),
@@ -42,7 +86,7 @@ class AdminPaymentDetailsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Total Fee", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const Text("Amount Paid", style: TextStyle(fontSize: 12, color: Colors.grey)),
                   Text(amount, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   Row(
@@ -51,15 +95,21 @@ class AdminPaymentDetailsScreen extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Amount Paid", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                          const Text("Status", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          Text(
+                            status,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isConfirmed ? Colors.green : Colors.orange,
+                            ),
+                          ),
                         ],
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text("Balance", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          const Text("GHS 0", style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(balance, style: const TextStyle(fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ],
@@ -70,35 +120,20 @@ class AdminPaymentDetailsScreen extends StatelessWidget {
 
             const SizedBox(height: 22),
             _sectionTitle("Payment Method", "Transaction reference and date"),
-            _infoRow("Method", "Mobile Money"),
+            _infoRow("Method", method),
             const SizedBox(height: 10),
-            _infoRow("Reference", "TXN-2048-8891"),
+            _infoRow("Reference", reference),
 
             const SizedBox(height: 30),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+                onPressed: isConfirmed ? null : () => _markAsPaid(context),
                 icon: const Icon(Icons.check_circle),
-                label: const Text("Mark as Paid"),
+                label: Text(isConfirmed ? "Already Paid" : "Mark as Paid"),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.notifications_active_outlined),
-                label: const Text("Send Reminder"),
-                style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -135,7 +170,13 @@ class AdminPaymentDetailsScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
         ],
       ),
     );

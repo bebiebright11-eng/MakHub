@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '/core/constants/app_colors.dart';
+import '/algorithms/hostel_rating_algorithm.dart';
 
 class StudentReviewsScreen extends StatefulWidget {
+  final String hostelId;
   final String hostelName;
 
   const StudentReviewsScreen({
     super.key,
+    required this.hostelId,
     required this.hostelName,
   });
 
@@ -14,31 +20,16 @@ class StudentReviewsScreen extends StatefulWidget {
 
 class _StudentReviewsScreenState extends State<StudentReviewsScreen> {
   int _selectedRating = 0;
+  bool _isSubmitting = false;
   final _reviewController = TextEditingController();
 
-  final List<Map<String, dynamic>> _reviews = [
-    {
-      "name": "Ama K.",
-      "rating": 5,
-      "comment": "Very clean rooms and the security is excellent. The WiFi is stable too.",
-      "helpful": 12,
-      "markedHelpful": false,
-    },
-    {
-      "name": "Kwesi M.",
-      "rating": 5,
-      "comment": "Great location near campus and the common areas are well maintained.",
-      "helpful": 8,
-      "markedHelpful": false,
-    },
-    {
-      "name": "Esi A.",
-      "rating": 4,
-      "comment": "Good hostel overall, but the water pressure could be better.",
-      "helpful": 3,
-      "markedHelpful": false,
-    },
-  ];
+  // Reviews stored at top-level `reviews` collection with hostelId field
+  // (matches how hostel_details_screen.dart reads them)
+  late final Stream<QuerySnapshot> _reviewsStream = FirebaseFirestore.instance
+      .collection('reviews')
+      .where('hostelId', isEqualTo: widget.hostelId)
+      .orderBy('createdAt', descending: true)
+      .snapshots();
 
   @override
   void dispose() {
@@ -46,159 +37,279 @@ class _StudentReviewsScreenState extends State<StudentReviewsScreen> {
     super.dispose();
   }
 
+  Future<void> _submitReview() async {
+    if (_selectedRating == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a star rating first.')),
+      );
+      return;
+    }
+    if (_reviewController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please write a review before submitting.')),
+      );
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be logged in to leave a review.')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      // Save to top-level reviews collection (matches hostel_details_screen reads)
+      await FirebaseFirestore.instance.collection('reviews').add({
+        'hostelId': widget.hostelId,
+        'userId': user.uid,
+        'rating': _selectedRating,
+        'review': _reviewController.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Also update the hostel's averageRating via the algorithm
+      await HostelRatingAlgorithm.computeAndSave(widget.hostelId);
+
+      if (!mounted) return;
+
+      setState(() {
+        _reviewController.clear();
+        _selectedRating = 0;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Review submitted. Thank you!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit review: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  String _formatTimestamp(Timestamp? ts) {
+    if (ts == null) return '';
+    final d = ts.toDate();
+    final diff = DateTime.now().difference(d);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${d.day}/${d.month}/${d.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Reviews & Ratings"),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Reviews & Ratings',
+          style: TextStyle(
+              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         centerTitle: true,
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          // Hostel name
           Text(
             widget.hostelName,
             style: const TextStyle(fontSize: 13, color: Colors.grey),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
-          const Text(
-            "Rate this Hostel",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: List.generate(5, (index) {
-              final starNumber = index + 1;
-              return IconButton(
-                onPressed: () {
-                  setState(() {
-                    _selectedRating = starNumber;
-                  });
-                },
-                icon: Icon(
-                  starNumber <= _selectedRating ? Icons.star : Icons.star_border,
-                  color: Colors.amber,
-                  size: 32,
-                ),
-              );
-            }),
-          ),
-
-          const SizedBox(height: 16),
-
-          const Text(
-            "Write a Review",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _reviewController,
-            maxLines: 4,
-            decoration: InputDecoration(
-              hintText: "Share your experience at this hostel...",
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
+          // ── Write a review ───────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
             ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                if (_selectedRating == 0 || _reviewController.text.isEmpty) return;
-                setState(() {
-                  _reviews.insert(0, {
-                    "name": "You",
-                    "rating": _selectedRating,
-                    "comment": _reviewController.text,
-                    "helpful": 0,
-                    "markedHelpful": false,
-                  });
-                  _reviewController.clear();
-                  _selectedRating = 0;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text("Submit Review"),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Rate this Hostel',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: List.generate(5, (index) {
+                    final star = index + 1;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedRating = star),
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Icon(
+                          star <= _selectedRating ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 34,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Write a Review',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _reviewController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: 'Share your experience at this hostel...',
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: AppColors.primary, width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submitReview,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text(
+                            'Submit Review',
+                            style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ),
+              ],
             ),
           ),
 
           const SizedBox(height: 28),
 
+          // ── Previous reviews (live from Firestore) ───────────────────────
           const Text(
-            "Previous Reviews",
+            'Previous Reviews',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
 
-          ...List.generate(_reviews.length, (index) {
-            final review = _reviews[index];
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(review["name"], style: const TextStyle(fontWeight: FontWeight.bold)),
-                      Row(
-                        children: List.generate(
-                          review["rating"] as int,
-                          (i) => const Icon(Icons.star, size: 14, color: Colors.amber),
-                        ),
-                      ),
-                    ],
+          StreamBuilder<QuerySnapshot>(
+            stream: _reviewsStream,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 6),
-                  Text(review["comment"], style: const TextStyle(color: Colors.grey)),
-                  const SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        if (!review["markedHelpful"]) {
-                          review["helpful"] = review["helpful"] + 1;
-                          review["markedHelpful"] = true;
-                        }
-                      });
-                    },
-                    child: Row(
+                  child: const Center(
+                    child: Text(
+                      'No reviews yet. Be the first to review!',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                );
+              }
+
+              return Column(
+                children: snapshot.data!.docs.map((doc) {
+                  final review = doc.data() as Map<String, dynamic>;
+                  final int rating = (review['rating'] ?? 0).toInt();
+                  final String comment =
+                      (review['review'] ?? review['comment'] ?? '').toString();
+                  final Timestamp? ts = review['createdAt'] as Timestamp?;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.thumb_up,
-                          size: 16,
-                          color: review["markedHelpful"] ? Colors.blue : Colors.grey,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: List.generate(
+                                5,
+                                (i) => Icon(
+                                  Icons.star,
+                                  size: 15,
+                                  color: i < rating
+                                      ? Colors.amber
+                                      : Colors.grey.shade300,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              _formatTimestamp(ts),
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.grey),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(height: 8),
                         Text(
-                          "Helpful (${review["helpful"]})",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: review["markedHelpful"] ? Colors.blue : Colors.grey,
-                          ),
+                          comment,
+                          style: const TextStyle(
+                              color: Colors.black87,
+                              fontSize: 13,
+                              height: 1.5),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            );
-          }),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
         ],
       ),
     );

@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:flutter/rendering.dart';
 import 'home_screen.dart';
 import 'notifications_screen.dart';
@@ -17,8 +18,6 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
   int currentIndex = 0;
   bool _showBottomBar = true;
 
-  // One Navigator per tab so a push inside any tab stays inside
-  // that tab's own stack, instead of escaping the Scaffold below.
   final List<GlobalKey<NavigatorState>> _navigatorKeys =
       List.generate(5, (_) => GlobalKey<NavigatorState>());
 
@@ -49,15 +48,17 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
         final isFirstRouteInTab =
             !(await _navigatorKeys[currentIndex].currentState!.maybePop());
         if (isFirstRouteInTab && currentIndex != 0) {
           _onTap(0);
-          return false;
+        } else if (isFirstRouteInTab) {
+          if (context.mounted) Navigator.of(context).pop();
         }
-        return isFirstRouteInTab;
       },
       child: Scaffold(
         body: NotificationListener<UserScrollNotification>(
@@ -84,7 +85,7 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
                 currentIndex: currentIndex,
                 onTap: _onTap,
                 type: BottomNavigationBarType.fixed,
-                selectedItemColor: Colors.blue,
+                selectedItemColor: AppColors.primary,
                 items: const [
                   BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
                   BottomNavigationBarItem(icon: Icon(Icons.favorite), label: "Wishlist"),

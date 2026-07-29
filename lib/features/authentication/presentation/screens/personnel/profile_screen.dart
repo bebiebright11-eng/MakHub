@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -84,9 +85,9 @@ class ProfileScreen extends StatelessWidget {
 
           final String name = data['fullName'] ?? data['name'] ?? _currentUser?.displayName ?? 'User';
           final String role = data['role'] ?? 'Hostel Personnel';
-          final String hostel = data['hostelName'] ?? 'Elite Residency';
+          final String hostel = data['hostelName'] ?? 'Not assigned';
           final String email = data['email'] ?? _currentUser?.email ?? 'Not provided';
-          final String phone = data['phone'] ?? '+256 000 000 000';
+          final String phone = data['phone'] ?? 'Not provided';
           final String? photoUrl = data['photoUrl'] ?? _currentUser?.photoURL;
 
           return SingleChildScrollView(
@@ -101,7 +102,7 @@ class ProfileScreen extends StatelessWidget {
                       ? NetworkImage(photoUrl)
                       : null,
                   child: photoUrl == null || photoUrl.isEmpty
-                      ? const Icon(Icons.person, size: 50, color: Color(0xFF2563EB))
+                      ? const Icon(Icons.person, size: 50, color: AppColors.primary)
                       : null,
                 ),
                 const SizedBox(height: 16),

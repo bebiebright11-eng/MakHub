@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import '/algorithms/text_preference_extractor.dart';
 import 'hostel_results_screen.dart';
 
@@ -74,7 +75,7 @@ class _DescribeSearchScreenState extends State<DescribeSearchScreen> {
               child: ElevatedButton(
                 onPressed: _search,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

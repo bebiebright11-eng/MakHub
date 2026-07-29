@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import 'student_register_screen.dart';
 import 'forgot_password_screen.dart';
-import 'home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'student_main_screen.dart';
@@ -40,7 +39,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.3),
+                      color: AppColors.primary.withValues(alpha: 0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     )
@@ -150,7 +149,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     if (!userDoc.exists) {
       await FirebaseAuth.instance.signOut();
 
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -165,7 +164,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     if (data['role'] != 'student') {
       await FirebaseAuth.instance.signOut();
 
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -175,7 +174,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       return;
     }
 
-    if (!mounted) return;
+    if (!context.mounted) return;
 
     Navigator.pushReplacement(
       context,
@@ -185,7 +184,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     );
 
   } on FirebaseAuthException catch (e) {
-    if (!mounted) return;
+    if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

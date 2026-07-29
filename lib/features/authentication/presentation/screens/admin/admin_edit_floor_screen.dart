@@ -76,6 +76,8 @@ class _AdminEditFloorScreenState
 
     });
 
+    if (!mounted) return;
+
     Navigator.pop(context, true);
   }
 

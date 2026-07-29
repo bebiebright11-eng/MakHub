@@ -67,7 +67,8 @@ class StudentActiveBookingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentIndex = _steps.indexWhere((s) => s["title"] == bookingStatus);
+    final currentIndex =
+        _steps.indexWhere((s) => s["title"] == bookingStatus);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -83,7 +84,10 @@ class StudentActiveBookingScreen extends StatelessWidget {
           children: [
             Text(
               "Active Booking",
-              style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
             ),
             Text(
               "Track your current booking progress",
@@ -99,7 +103,8 @@ class StudentActiveBookingScreen extends StatelessWidget {
           children: [
             // Booking info card
             Container(
-              padding: const EdgeInsets.all(16),
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(16),
@@ -113,8 +118,13 @@ class StudentActiveBookingScreen extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Booking ID", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                          Text(bookingId, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const Text("Booking ID",
+                              style: TextStyle(
+                                  color: Colors.grey, fontSize: 12)),
+                          Text(bookingId,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16)),
                         ],
                       ),
                       _statusPill(bookingStatus, _statusColor, filled: true),
@@ -132,7 +142,8 @@ class StudentActiveBookingScreen extends StatelessWidget {
 
             // Progress card
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -151,7 +162,8 @@ class StudentActiveBookingScreen extends StatelessWidget {
                           ? Colors.orange
                           : Colors.grey.shade300;
 
-                  final Color textColor = isDone || isCurrent ? Colors.black : Colors.grey;
+                  final Color textColor =
+                      isDone || isCurrent ? Colors.black : Colors.grey;
 
                   String badgeLabel;
                   Color badgeColor;
@@ -178,19 +190,26 @@ class StudentActiveBookingScreen extends StatelessWidget {
                               height: 32,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: circleColor.withOpacity(isDone || isCurrent ? 1 : 0.2),
+                                color: circleColor.withValues(
+                                    alpha: isDone || isCurrent ? 1.0 : 0.2),
                               ),
                               child: Icon(
-                                isDone ? Icons.check : _iconFor(step["icon"]!),
+                                isDone
+                                    ? Icons.check
+                                    : _iconFor(step["icon"]!),
                                 size: 16,
-                                color: isDone || isCurrent ? Colors.white : Colors.grey.shade500,
+                                color: isDone || isCurrent
+                                    ? Colors.white
+                                    : Colors.grey.shade500,
                               ),
                             ),
                             if (!isLast)
                               Container(
                                 width: 2,
                                 height: 36,
-                                color: isDone ? Colors.blue : Colors.grey.shade300,
+                                color: isDone
+                                    ? Colors.blue
+                                    : Colors.grey.shade300,
                               ),
                           ],
                         ),
@@ -206,13 +225,18 @@ class StudentActiveBookingScreen extends StatelessWidget {
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
-                                    color: isCurrent ? Colors.orange.shade800 : textColor,
+                                    color: isCurrent
+                                        ? Colors.orange.shade800
+                                        : textColor,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   step["description"]!,
-                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12, height: 1.3),
+                                  style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                      height: 1.3),
                                 ),
                               ],
                             ),
@@ -232,8 +256,10 @@ class StudentActiveBookingScreen extends StatelessWidget {
 
             const SizedBox(height: 28),
 
+            // View Booking Details button
             SizedBox(
               width: double.infinity,
+              height: 50,
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.push(
@@ -252,11 +278,13 @@ class StudentActiveBookingScreen extends StatelessWidget {
                   backgroundColor: const Color(0xFF2563EB),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
                 child: const Text(
                   "View Booking Details",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -271,8 +299,11 @@ class StudentActiveBookingScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(label,
+            style: const TextStyle(color: Colors.grey, fontSize: 13)),
+        Text(value,
+            style: const TextStyle(
+                fontWeight: FontWeight.w600, color: Colors.black)),
       ],
     );
   }
@@ -281,12 +312,13 @@ class StudentActiveBookingScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+        style: TextStyle(
+            color: color, fontSize: 11, fontWeight: FontWeight.bold),
       ),
     );
   }

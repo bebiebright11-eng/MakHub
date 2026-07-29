@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'active_booking_screen.dart';
@@ -169,7 +170,7 @@ class StudentMenuScreen extends StatelessWidget {
             // ── Menu items ───────────────────────────────────────────────
             _menuCard(
               icon: Icons.person_outline,
-              iconColor: const Color(0xFF2563EB),
+              iconColor: AppColors.primary,
               iconBg: const Color(0xFFEFF6FF),
               label: "My Profile",
               onTap: () => Navigator.push(
@@ -212,7 +213,7 @@ class StudentMenuScreen extends StatelessWidget {
             ),
             _menuCard(
               icon: Icons.shield_outlined,
-              iconColor: const Color(0xFF2563EB),
+              iconColor: AppColors.primary,
               iconBg: const Color(0xFFEFF6FF),
               label: "Privacy Policy",
               onTap: () => Navigator.push(

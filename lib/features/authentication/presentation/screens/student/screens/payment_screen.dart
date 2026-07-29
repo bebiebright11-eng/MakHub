@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'booking_status_screen.dart';
 import 'active_booking_screen.dart';
@@ -55,20 +56,10 @@ Future<void> _loadBookingDetails() async {
   floorId = booking['floorId'] ?? '';
   roomId = booking['roomId'] ?? '';
 
-print("BOOKING DATA:");
-print(booking);
-
-print("hostelId = ${booking['hostelId']}");
-print("floorId = ${booking['floorId']}");
-print("roomId = ${booking['roomId']}");
-
   final hostelDoc = await FirebaseFirestore.instance
       .collection('hostels')
       .doc(hostelId)
       .get();
-
-      print(hostelDoc.exists);
-      print(hostelDoc.data());
 
   final floorDoc = await FirebaseFirestore.instance
       .collection('hostels')
@@ -76,9 +67,6 @@ print("roomId = ${booking['roomId']}");
       .collection('floors')
       .doc(floorId)
       .get();
-
-      print(floorDoc.exists);
-      print(floorDoc.data());
 
   final roomDoc = await FirebaseFirestore.instance
       .collection('hostels')
@@ -88,9 +76,6 @@ print("roomId = ${booking['roomId']}");
       .collection('rooms')
       .doc(roomId)
       .get();
-
-      print(roomDoc.exists);
-      print(roomDoc.data());
 
   setState(() {
     hostelName =
@@ -359,7 +344,7 @@ _summaryRow(
                         style:
                             ElevatedButton.styleFrom(
                           backgroundColor:
-                              Colors.blue,
+                              AppColors.primary,
                           foregroundColor:
                               Colors.white,
                           padding:
@@ -415,7 +400,7 @@ _summaryRow(
                         style:
                             OutlinedButton.styleFrom(
                           side: const BorderSide(
-                            color: Colors.blue,
+                            color: AppColors.primary,
                             width: 1.5,
                           ),
                           padding:
@@ -432,7 +417,7 @@ _summaryRow(
                         child: const Text(
                           "Reserve Room & Pay Later",
                           style: TextStyle(
-                            color: Colors.blue,
+                            color: AppColors.primary,
                             fontSize: 16,
                             fontWeight:
                                 FontWeight.bold,
@@ -472,7 +457,7 @@ _summaryRow(
           value,
           style: TextStyle(
             color: bold
-                ? Colors.blue
+                ? AppColors.primary
                 : Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: bold ? 18 : 15,

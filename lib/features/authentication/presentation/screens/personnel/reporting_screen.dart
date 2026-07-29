@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '12_student_verification_screen.dart';
+import 'student_verification_screen.dart';
 
 class ReportingStudentsScreen extends StatefulWidget {
   const ReportingStudentsScreen({super.key});
@@ -222,7 +223,7 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10),
         ],
       ),
       child: Row(
@@ -234,7 +235,7 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
               color: Color(0xFFDBEAFE),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.person, color: Color(0xFF2563EB)),
+            child: const Icon(Icons.person, color: AppColors.primary),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -255,7 +256,7 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),

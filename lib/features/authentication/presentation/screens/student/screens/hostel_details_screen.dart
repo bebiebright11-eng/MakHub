@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '/core/constants/app_colors.dart';
 import 'floor_selection_screen.dart';
 import '../services/wishlist_service.dart';
+import 'reviews_screen.dart';
 
 class HostelDetailsScreen extends StatefulWidget {
   final String hostelId;
@@ -103,7 +105,7 @@ _buildSectionTitle('Facilities'),
                       const SizedBox(height: 16),
                       _buildRules(data),
                       const SizedBox(height: 24),
-                      _buildReviewsSection(),
+                      _buildReviewsSection(data: data),
                       const SizedBox(height: 100),
                     ],
                   ),
@@ -141,8 +143,8 @@ _buildSectionTitle('Facilities'),
           child: Center(
             child: Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), shape: BoxShape.circle),
-              child: const Icon(Icons.play_arrow, color: Color(0xFF2563EB), size: 32),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), shape: BoxShape.circle),
+              child: const Icon(Icons.play_arrow, color: AppColors.primary, size: 32),
             ),
           ),
         ),
@@ -187,7 +189,7 @@ _buildSectionTitle('Facilities'),
               height: 8,
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                color: index == 0 ? Colors.white : Colors.white.withOpacity(0.5),
+                color: index == 0 ? Colors.white : Colors.white.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
             )),
@@ -198,7 +200,7 @@ _buildSectionTitle('Facilities'),
           right: 16,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(20)),
             child: const Row(
               children: [
                 Icon(Icons.videocam_outlined, color: Colors.white, size: 14),
@@ -223,7 +225,7 @@ _buildSectionTitle('Facilities'),
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.location_on, size: 14, color: Color(0xFF2563EB)),
+                const Icon(Icons.location_on, size: 14, color: AppColors.primary),
                 const SizedBox(width: 4),
                 Text(data['location'] ?? '', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
               ],
@@ -235,9 +237,9 @@ _buildSectionTitle('Facilities'),
           decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(12)),
           child: Row(
             children: [
-              const Icon(Icons.star, color: Color(0xFF2563EB), size: 14),
+              const Icon(Icons.star, color: AppColors.primary, size: 14),
               const SizedBox(width: 4),
-              Text('${data['securityRating'] ?? '-'}', style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+              Text('${data['securityRating'] ?? '-'}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
@@ -251,7 +253,7 @@ _buildSectionTitle('Facilities'),
       _buildTag(
         '${data['distance'] ?? ''} from campus',
         const Color(0xFFEFF6FF),
-        const Color(0xFF2563EB),
+        AppColors.primary,
         Icons.location_on,
       ),
       const SizedBox(width: 12),
@@ -303,7 +305,7 @@ Widget _buildPricingCards(Map<String, dynamic> data) {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.grey.shade100),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,7 +361,7 @@ Widget _infoRow(
       children: [
         Icon(
           icon,
-          color: const Color(0xFF2563EB),
+          color: AppColors.primary,
           size: 20,
         ),
         const SizedBox(width: 16),
@@ -422,7 +424,7 @@ Widget _infoRow(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: const Color(0xFF2563EB), size: 20),
+          Icon(icon, color: AppColors.primary, size: 20),
           const SizedBox(height: 8),
           Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: 12, fontWeight: FontWeight.w500)),
         ],
@@ -449,7 +451,7 @@ Widget _infoRow(
         children: rules.asMap().entries.map((entry) {
           return Padding(
             padding: EdgeInsets.only(bottom: entry.key == rules.length - 1 ? 0 : 12),
-            child: _ruleRow(Icons.info_outline, entry.value, const Color(0xFF2563EB)),
+            child: _ruleRow(Icons.info_outline, entry.value, AppColors.primary),
           );
         }).toList(),
       ),
@@ -466,7 +468,7 @@ Widget _infoRow(
     );
   }
 
-  Widget _buildReviewsSection() {
+  Widget _buildReviewsSection({required Map<String, dynamic> data}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -474,7 +476,18 @@ Widget _infoRow(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Student Reviews', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            TextButton(onPressed: () {}, child: const Text('See all', style: TextStyle(color: Color(0xFF2563EB)))),
+            TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => StudentReviewsScreen(
+                    hostelId: widget.hostelId,
+                    hostelName: data['hostelName'] ?? '',
+                  ),
+                ),
+              ),
+              child: const Text('See all', style: TextStyle(color: AppColors.primary)),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -541,7 +554,7 @@ Widget _infoRow(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
       ),
       child: Row(
         children: [
@@ -561,9 +574,9 @@ Widget _infoRow(
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.layers_outlined, color: Color(0xFF2563EB)),
+                  Icon(Icons.layers_outlined, color: AppColors.primary),
                   SizedBox(width: 8),
-                  Text('View Floors', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+                  Text('View Floors', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -578,7 +591,7 @@ Widget _infoRow(
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
+                backgroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'admin_hostel_details_screen.dart';
 import 'admin_add_hostel_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -199,7 +200,7 @@ if (selectedFilter != 'All' &&
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.blue.shade50,
+          color: AppColors.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
@@ -379,7 +380,7 @@ floatingActionButton: FloatingActionButton(
       ),
       decoration: BoxDecoration(
         color: selected
-            ? Colors.blue
+            ? AppColors.primary
             : Colors.grey.shade200,
         borderRadius: BorderRadius.circular(20),
       ),

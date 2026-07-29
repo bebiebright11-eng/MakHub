@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UpdateRoomStatusScreen extends StatefulWidget {
@@ -87,7 +88,6 @@ class _UpdateRoomStatusScreenState extends State<UpdateRoomStatusScreen> {
         _loading = false;
       });
     } catch (e) {
-      debugPrint(e.toString());
       setState(() => _loading = false);
     }
   }
@@ -214,7 +214,7 @@ class _UpdateRoomStatusScreenState extends State<UpdateRoomStatusScreen> {
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            const Icon(Icons.straighten, color: Colors.blue),
+                            const Icon(Icons.straighten, color: AppColors.primary),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text('Room Size (ft): ${_roomType == "Single" ? _singleRoomSize : _doubleRoomSize}'),
@@ -284,7 +284,7 @@ class _UpdateRoomStatusScreenState extends State<UpdateRoomStatusScreen> {
                           },
                         });
 
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Room status updated instantly across all platforms!'),
@@ -294,7 +294,7 @@ class _UpdateRoomStatusScreenState extends State<UpdateRoomStatusScreen> {
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
+                        backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
@@ -344,7 +344,7 @@ class _UpdateRoomStatusScreenState extends State<UpdateRoomStatusScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? Colors.blue : Colors.grey.shade100,
+            color: selected ? AppColors.primary : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(

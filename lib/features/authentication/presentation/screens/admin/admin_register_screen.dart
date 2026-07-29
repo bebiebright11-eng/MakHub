@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -19,7 +20,6 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
   final _confirmPasswordController = TextEditingController();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -55,7 +55,7 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
                 const Icon(
                   Icons.admin_panel_settings,
                   size: 72,
-                  color: Colors.blue,
+                  color: AppColors.primary,
                 ),
                 const SizedBox(height: 16),
 
@@ -220,6 +220,8 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
   'createdAt': FieldValue.serverTimestamp(),
 });
 
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("User registered successfully!"),
@@ -241,6 +243,8 @@ class _AdminRegisterScreenState extends State<AdminRegisterScreen> {
       } else {
         message = e.message ?? "Registration failed.";
       }
+
+      if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),

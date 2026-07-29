@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 
 class AdminBookingDetailsScreen extends StatelessWidget {
   final String studentName;
@@ -36,7 +37,7 @@ class AdminBookingDetailsScreen extends StatelessWidget {
               child: CircleAvatar(
                 radius: 50,
                 backgroundColor: Color(0xFFDBEAFE),
-                child: Icon(Icons.person, size: 50, color: Color(0xFF2563EB)),
+                child: Icon(Icons.person, size: 50, color: AppColors.primary),
               ),
             ),
             const SizedBox(height: 16),
@@ -63,7 +64,7 @@ class AdminBookingDetailsScreen extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -82,7 +83,7 @@ class AdminBookingDetailsScreen extends StatelessWidget {
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
         ),
         const SizedBox(height: 12),
         Container(
@@ -92,7 +93,7 @@ class AdminBookingDetailsScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey.shade200),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10),
             ],
           ),
           child: Column(children: children),

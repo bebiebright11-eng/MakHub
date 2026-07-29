@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class AdminEditHostelScreen extends StatefulWidget {
   final String hostelId;
@@ -38,7 +37,6 @@ class _AdminEditHostelScreenState extends State<AdminEditHostelScreen> {
   String _selectedType = "Mixed";
   final Set<String> _selectedFacilities = {};
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   final List<String> _facilities = [
     "WiFi",
@@ -367,7 +365,7 @@ const SizedBox(height: 10),
                           }
                         });
                       },
-                      selectedColor: AppColors.primary.withOpacity(0.08),
+                      selectedColor: AppColors.primary.withValues(alpha: 0.08),
                       checkmarkColor: AppColors.primary,
                     );
                   }).toList(),
@@ -423,6 +421,8 @@ child: ElevatedButton(
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
+        if (!context.mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Hostel updated successfully'),
@@ -431,6 +431,7 @@ child: ElevatedButton(
 
         Navigator.pop(context);
       } catch (e) {
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:makhub/core/constants/payment_constants.dart';
 
@@ -50,12 +51,6 @@ Future<void> _loadReceipt() async {
 
     final booking = bookingSnapshot.data()!;
 
-    debugPrint("========== BOOKING ==========");
-    debugPrint("Booking ID : ${widget.bookingId}");
-    debugPrint("Student ID : ${booking['studentId']}");
-    debugPrint("Hostel ID  : ${booking['hostelId']}");
-    debugPrint("Floor ID   : ${booking['floorId']}");
-    debugPrint("Room ID    : ${booking['roomId']}");
 
     bookingId = widget.bookingId;
 
@@ -71,7 +66,6 @@ Future<void> _loadReceipt() async {
         .doc(studentId)
         .get();
 
-    debugPrint("Student Exists : ${studentSnapshot.exists}");
 
     if (studentSnapshot.exists) {
       final student = studentSnapshot.data()!;
@@ -85,7 +79,6 @@ Future<void> _loadReceipt() async {
         .doc(hostelId)
         .get();
 
-    debugPrint("Hostel Exists : ${hostelSnapshot.exists}");
 
     if (hostelSnapshot.exists) {
       final hostel = hostelSnapshot.data()!;
@@ -103,7 +96,6 @@ Future<void> _loadReceipt() async {
         .doc(roomId)
         .get();
 
-    debugPrint("Room Exists : ${roomSnapshot.exists}");
 
     if (roomSnapshot.exists) {
       final room = roomSnapshot.data()!;
@@ -125,21 +117,33 @@ Future<void> _loadReceipt() async {
 
     bookingStatus = booking["bookingStatus"] ?? "";
 
-    transactionId = "TXN-100001";
+    // ---------------- TRANSACTION ----------------
+
+    final paymentSnapshot = await FirebaseFirestore.instance
+        .collection("payments")
+        .where("bookingId", isEqualTo: widget.bookingId)
+        .limit(1)
+        .get();
+
+    if (paymentSnapshot.docs.isNotEmpty) {
+      final payment = paymentSnapshot.docs.first.data();
+      transactionId = (payment["transactionReference"] ??
+              payment["transactionID"] ??
+              payment["ref"] ??
+              "N/A")
+          .toString();
+    } else {
+      transactionId = "N/A";
+    }
 
     receiptNumber =
         "RCPT-${widget.bookingId.substring(widget.bookingId.length - 5)}";
 
-    debugPrint("Student Name : $studentName");
-    debugPrint("Hostel Name  : $hostelName");
-    debugPrint("Room Number  : $roomNumber");
 
     setState(() {
       isLoading = false;
     });
-  } catch (e, stackTrace) {
-    debugPrint("RECEIPT ERROR: $e");
-    debugPrint(stackTrace.toString());
+  } catch (e) {
 
     setState(() {
       isLoading = false;
@@ -202,7 +206,7 @@ Widget build(BuildContext context) {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(.06),
+                          color: Colors.black.withValues(alpha: .06),
                           blurRadius: 15,
                           offset: const Offset(0, 5),
                         ),
@@ -214,10 +218,10 @@ Widget build(BuildContext context) {
 
                         CircleAvatar(
                           radius: 28,
-                          backgroundColor: Colors.blue.shade50,
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.08),
                           child: const Icon(
                             Icons.verified_outlined,
-                            color: Colors.blue,
+                            color: AppColors.primary,
                             size: 30,
                           ),
                         ),
@@ -328,14 +332,14 @@ const SizedBox(height: 15),
     vertical: 12,
   ),
   decoration: BoxDecoration(
-    color: Colors.blue.shade50,
+    color: AppColors.primary.withValues(alpha: 0.08),
     borderRadius: BorderRadius.circular(10),
   ),
   child: _infoRow(
     "Total Paid",
     "UGX ${PaymentConstants.totalAmount}",
     bold: true,
-    valueColor: Colors.blue,
+    valueColor: AppColors.primary,
   ),
 ),
 
@@ -413,7 +417,7 @@ const SizedBox(height: 15),
       ),
     ),
     style: ElevatedButton.styleFrom(
-      backgroundColor: Colors.blue,
+      backgroundColor: AppColors.primary,
       foregroundColor: Colors.white,
       elevation: 0,
       shape: RoundedRectangleBorder(
