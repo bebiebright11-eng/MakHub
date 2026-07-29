@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'home_screen.dart';
 import 'notifications_screen.dart';
+import 'booking_tab_router.dart';
 import 'settings_screen.dart';
-import 'booking_information_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'wishlist_screen.dart';
 
 class StudentMainScreen extends StatefulWidget {
   const StudentMainScreen({super.key});
@@ -23,46 +22,10 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
   final List<GlobalKey<NavigatorState>> _navigatorKeys =
       List.generate(5, (_) => GlobalKey<NavigatorState>());
 
-  Widget _bookingTab() {
-    return FutureBuilder<QuerySnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('bookings')
-          .where('studentId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-          .limit(1)
-          .get(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(
-            child: Text(
-              "You have not booked any room yet.",
-              style: TextStyle(fontSize: 18),
-            ),
-          );
-        }
-
-        final booking = snapshot.data!.docs.first;
-        final data = booking.data() as Map<String, dynamic>;
-
-        return StudentBookingInformationScreen(
-          bookingId: booking.id,
-          hostelId: data['hostelId'],
-          roomId: data['roomId'],
-          floorId: data['floorId'],
-        );
-      },
-    );
-  }
-
   List<Widget> get _rootScreens => [
         const StudentHomeScreen(),
-        const Center(
-          child: Text("Search Screen", style: TextStyle(fontSize: 22)),
-        ),
-        _bookingTab(),
+        const WishlistScreen(),
+        const BookingTabRouter(),
         const StudentNotificationsScreen(),
         const StudentMenuScreen(),
       ];
@@ -124,7 +87,7 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
                 selectedItemColor: Colors.blue,
                 items: const [
                   BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-                  BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
+                  BottomNavigationBarItem(icon: Icon(Icons.favorite), label: "Wishlist"),
                   BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: "Booking"),
                   BottomNavigationBarItem(icon: Icon(Icons.notifications), label: "Notifications"),
                   BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),

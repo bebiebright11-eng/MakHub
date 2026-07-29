@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
+import '/core/constants/payment_constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '/algorithms/booking_conflict_algorithm.dart';
@@ -226,10 +227,6 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
   }
 
   Widget _buildSummaryCard(Map<String, dynamic> hostelData, Map<String, dynamic> roomData) {
-    const bookingFee = 50000;
-    const mobileMoneyCharge = 2000;
-    final total = bookingFee + mobileMoneyCharge;
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -262,19 +259,19 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _summaryItem('Room Number', 'Room ${roomData['roomNumber'] ?? ''}'),
-              _summaryItem('Booking Fee', 'UGX $bookingFee'),
+              _summaryItem('Booking Fee', 'UGX ${PaymentConstants.bookingFee}'),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _summaryItem('Mobile Money Charges', 'UGX $mobileMoneyCharge'),
+              _summaryItem('Mobile Money Charges', 'UGX ${PaymentConstants.mobileMoneyCharge}'),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   const Text('Total Amount', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  Text('UGX $total', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary)),
+                  Text('UGX ${PaymentConstants.totalAmount}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary)),
                 ],
               ),
             ],
