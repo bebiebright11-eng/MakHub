@@ -40,6 +40,83 @@ class _StudentBookingInformationScreenState
     return Colors.red;
   }
 
+  // ── Display-label mappers ─────────────────────────────────────────────
+  // Maps raw Firestore bookingStatus values to human-readable labels.
+
+  /// Payment status label shown to the student.
+  String get _paymentLabel {
+    switch (status.toLowerCase()) {
+      case 'confirmed':
+      case 'payment_received':
+        return 'Received';
+      case 'pending':
+        return 'Pending';
+      case 'rejected':
+        return 'Rejected';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return 'Pending';
+    }
+  }
+
+  /// Booking status label shown to the student.
+  String get _bookingLabel {
+    switch (status.toLowerCase()) {
+      case 'confirmed':
+        return 'Reserved';
+      case 'payment_received':
+        return 'Payment Received';
+      case 'pending':
+        return 'Pending';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'rejected':
+        return 'Rejected';
+      case 'checked_in':
+        return 'Checked In';
+      default:
+        return 'Pending';
+    }
+  }
+
+  /// Room status label shown to the student.
+  String get _roomLabel {
+    switch (status.toLowerCase()) {
+      case 'confirmed':
+      case 'checked_in':
+        return 'Reserved';
+      case 'payment_received':
+      case 'pending':
+        return 'Pending';
+      case 'cancelled':
+      case 'rejected':
+        return 'Released';
+      default:
+        return 'Pending';
+    }
+  }
+
+  /// Colour used for a given label pill.
+  Color _labelColor(String label) {
+    switch (label) {
+      case 'Received':
+      case 'Reserved':
+      case 'Checked In':
+        return Colors.green;
+      case 'Payment Received':
+        return Colors.blue;
+      case 'Pending':
+        return Colors.orange;
+      case 'Cancelled':
+      case 'Rejected':
+      case 'Released':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   String remainingBalance = "";
   bool isLoading = true;
   String amountPaid = "";
@@ -162,7 +239,7 @@ void initState() {
                   Icon(Icons.check_circle, color: _statusColor, size: 18),
                   const SizedBox(width: 6),
                   Text(
-                    "Booking ${isLoading ? 'Loading...' : status}",
+                    "Booking ${isLoading ? 'Loading...' : _bookingLabel}",
                     style: TextStyle(color: _statusColor, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -237,6 +314,24 @@ void initState() {
                   ),
                   const SizedBox(height: 10),
                   _infoRow("Payment Method", isLoading ? "Loading..." : paymentMethod),
+                  const SizedBox(height: 10),
+                  _infoRow(
+                    "Payment",
+                    isLoading ? "Loading..." : _paymentLabel,
+                    valueColor: isLoading ? null : _labelColor(_paymentLabel),
+                  ),
+                  const SizedBox(height: 10),
+                  _infoRow(
+                    "Booking",
+                    isLoading ? "Loading..." : _bookingLabel,
+                    valueColor: isLoading ? null : _labelColor(_bookingLabel),
+                  ),
+                  const SizedBox(height: 10),
+                  _infoRow(
+                    "Room",
+                    isLoading ? "Loading..." : _roomLabel,
+                    valueColor: isLoading ? null : _labelColor(_roomLabel),
+                  ),
                 ],
               ),
             ),

@@ -117,6 +117,21 @@ class NotificationAlgorithm {
         type: 'room',
       );
 
+  /// Notify student that their room is reserved after successful payment.
+  static Future<void> roomReserved({
+    required String studentId,
+    required String bookingId,
+  }) =>
+      send(
+        userId: studentId,
+        title: 'Payment Received',
+        subtitle:
+            'Your payment has been received successfully.\n'
+            'Your room has been reserved successfully.\n'
+            'Booking ID: $bookingId',
+        type: 'payment',
+      );
+
   /// Notify personnel that a new booking needs review.
   static Future<void> newBookingForPersonnel({
     required String personnelId,
