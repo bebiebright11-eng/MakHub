@@ -181,6 +181,47 @@ Future<void> _loadBookingDetails() async {
         );
       }
 
+      // ── Step 5: notify the hostel personnel responsible for this hostel
+      //    Look up all personnel whose hostelId matches, then write one
+      //    notification per matching personnel account.
+      try {
+        // Resolve the student's display name for the notification message.
+        String studentName = 'A student';
+        if (studentId.isNotEmpty) {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(studentId)
+              .get();
+          if (userDoc.exists) {
+            studentName = (userDoc.data()?['fullName'] ?? studentName).toString();
+          }
+        }
+
+        final personnelSnap = await FirebaseFirestore.instance
+            .collection('personnel')
+            .where('hostelId', isEqualTo: hostelId)
+            .get();
+
+        for (final pDoc in personnelSnap.docs) {
+          final pData = pDoc.data();
+          // Personnel notifications use their Firebase Auth UID stored in
+          // the 'firebaseUid' field (set on first login) or fall back to
+          // the Firestore document ID.
+          final pUid = (pData['firebaseUid'] ?? pDoc.id).toString();
+          if (pUid.isEmpty) continue;
+
+          await NotificationAlgorithm.newReservationForPersonnel(
+            personnelId: pUid,
+            roomNumber: roomNumber,
+            studentName: studentName,
+            bookingId: widget.bookingId,
+            bookingDate: DateTime.now(),
+          );
+        }
+      } catch (_) {
+        // Personnel notification failure must not block the student flow.
+      }
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -190,7 +231,7 @@ Future<void> _loadBookingDetails() async {
         ),
       );
 
-      // ── Step 5: navigate to Active Booking showing all three stages done
+      // ── Step 6: navigate to Active Booking showing all three stages done
       Navigator.push(
         context,
         MaterialPageRoute(

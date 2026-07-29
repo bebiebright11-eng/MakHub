@@ -157,4 +157,47 @@ class NotificationAlgorithm {
         subtitle: 'Payment of $amount for booking $bookingId awaits your confirmation.',
         type: 'payment',
       );
+
+  /// Notify hostel personnel that a room has been reserved by a student.
+  /// Triggered automatically when a student successfully pays.
+  ///
+  /// The notification is written to:
+  ///   users/{personnelId}/notifications/{docId}
+  ///
+  /// Schema stored:
+  ///   title      : 'New Room Reservation'
+  ///   subtitle   : full message with room number, student name,
+  ///                booking ID and date
+  ///   type       : 'reservation'
+  ///   bookingId  : for fast lookup from the notification card
+  ///   createdAt  : server timestamp
+  ///   isRead     : false
+  static Future<void> newReservationForPersonnel({
+    required String personnelId,
+    required String roomNumber,
+    required String studentName,
+    required String bookingId,
+    required DateTime bookingDate,
+  }) {
+    final day   = bookingDate.day.toString().padLeft(2, '0');
+    final month = bookingDate.month.toString().padLeft(2, '0');
+    final year  = bookingDate.year.toString();
+    final dateStr = '$day/$month/$year';
+
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(personnelId)
+        .collection('notifications')
+        .add({
+      'title': 'New Room Reservation',
+      'subtitle':
+          'Room $roomNumber has been reserved by $studentName.\n'
+          'Booking ID: $bookingId\n'
+          'Date: $dateStr',
+      'type': 'reservation',
+      'bookingId': bookingId,
+      'createdAt': FieldValue.serverTimestamp(),
+      'isRead': false,
+    });
+  }
 }
