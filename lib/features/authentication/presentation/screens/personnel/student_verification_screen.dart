@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StudentVerificationScreen extends StatelessWidget {
@@ -148,7 +149,7 @@ class StudentVerificationScreen extends StatelessWidget {
                 const CircleAvatar(
                   radius: 50,
                   backgroundColor: Color(0xFFDBEAFE),
-                  child: Icon(Icons.person, size: 50, color: Color(0xFF2563EB)),
+                  child: Icon(Icons.person, size: 50, color: AppColors.primary),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -162,7 +163,7 @@ class StudentVerificationScreen extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10),
                     ],
                   ),
                   child: Column(
@@ -192,7 +193,7 @@ class StudentVerificationScreen extends StatelessWidget {
                           child: Image.network(
                             admissionDocUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Center(
+                            errorBuilder: (_, _, _) => const Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -244,7 +245,7 @@ class StudentVerificationScreen extends StatelessWidget {
                           isApproved: true,
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
+                          backgroundColor: AppColors.primary,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           foregroundColor: Colors.white,
                         ),

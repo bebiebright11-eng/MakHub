@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '7_room_details_screen.dart';
+import 'room_details_screen.dart';
 
 class RoomListScreen extends StatefulWidget {
   final String hostelId;
@@ -160,7 +161,7 @@ class _RoomListScreenState extends State<RoomListScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFF2563EB) : Colors.grey.shade100,
+            color: selected ? AppColors.primary : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
@@ -232,7 +233,7 @@ class _RoomListScreenState extends State<RoomListScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(status, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w600)),

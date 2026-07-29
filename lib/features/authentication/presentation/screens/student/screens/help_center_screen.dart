@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 
 class StudentHelpCenterScreen extends StatelessWidget {
   const StudentHelpCenterScreen({super.key});
@@ -79,7 +80,7 @@ class StudentHelpCenterScreen extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.blue, size: 20),
+            Icon(icon, color: AppColors.primary, size: 20),
             const SizedBox(width: 12),
             Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600))),
             const Icon(Icons.chevron_right, color: Colors.grey),

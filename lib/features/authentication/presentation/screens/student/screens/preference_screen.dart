@@ -164,7 +164,7 @@ class _StudentPreferenceScreenState extends State<StudentPreferenceScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.08),
+                      color: AppColors.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Row(
@@ -187,63 +187,56 @@ class _StudentPreferenceScreenState extends State<StudentPreferenceScreen> {
 
                   // ── Budget ──────────────────────────────────────────────
                   _sectionTitle('Preferred Budget'),
-                  _radioTile(
-                    label: 'Below UGX 300,000',
-                    value: 'below300000',
+                  RadioGroup<String>(
                     groupValue: _budget,
                     onChanged: (v) => setState(() => _budget = v!),
-                  ),
-                  _radioTile(
-                    label: 'UGX 300,000 – 500,000',
-                    value: '300000-500000',
-                    groupValue: _budget,
-                    onChanged: (v) => setState(() => _budget = v!),
-                  ),
-                  _radioTile(
-                    label: 'Above UGX 500,000',
-                    value: 'above500000',
-                    groupValue: _budget,
-                    onChanged: (v) => setState(() => _budget = v!),
+                    child: Column(
+                      children: [
+                        _radioTile(
+                          label: 'Below UGX 300,000',
+                          value: 'below300000',
+                        ),
+                        _radioTile(
+                          label: 'UGX 300,000 – 500,000',
+                          value: '300000-500000',
+                        ),
+                        _radioTile(
+                          label: 'Above UGX 500,000',
+                          value: 'above500000',
+                        ),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 20),
 
                   // ── Room type ───────────────────────────────────────────
                   _sectionTitle('Room Type'),
-                  _radioTile(
-                    label: 'Single',
-                    value: 'Single',
+                  RadioGroup<String>(
                     groupValue: _roomType,
                     onChanged: (v) => setState(() => _roomType = v!),
-                  ),
-                  _radioTile(
-                    label: 'Double',
-                    value: 'Double',
-                    groupValue: _roomType,
-                    onChanged: (v) => setState(() => _roomType = v!),
+                    child: Column(
+                      children: [
+                        _radioTile(label: 'Single', value: 'Single'),
+                        _radioTile(label: 'Double', value: 'Double'),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 20),
 
                   // ── Hostel type ─────────────────────────────────────────
                   _sectionTitle('Hostel Type'),
-                  _radioTile(
-                    label: 'Boys',
-                    value: 'boys',
+                  RadioGroup<String>(
                     groupValue: _hostelType,
                     onChanged: (v) => setState(() => _hostelType = v!),
-                  ),
-                  _radioTile(
-                    label: 'Girls',
-                    value: 'girls',
-                    groupValue: _hostelType,
-                    onChanged: (v) => setState(() => _hostelType = v!),
-                  ),
-                  _radioTile(
-                    label: 'Mixed',
-                    value: 'mixed',
-                    groupValue: _hostelType,
-                    onChanged: (v) => setState(() => _hostelType = v!),
+                    child: Column(
+                      children: [
+                        _radioTile(label: 'Boys', value: 'boys'),
+                        _radioTile(label: 'Girls', value: 'girls'),
+                        _radioTile(label: 'Mixed', value: 'mixed'),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 20),
@@ -376,19 +369,15 @@ class _StudentPreferenceScreenState extends State<StudentPreferenceScreen> {
     );
   }
 
-  Widget _radioTile({
+    Widget _radioTile({
     required String label,
     required String value,
-    required String groupValue,
-    required void Function(String?) onChanged,
   }) {
     return RadioListTile<String>(
       title: Text(label),
       value: value,
-      groupValue: groupValue,
       activeColor: AppColors.primary,
       contentPadding: EdgeInsets.zero,
-      onChanged: onChanged,
     );
   }
 }

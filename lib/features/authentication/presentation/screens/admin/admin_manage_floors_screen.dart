@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'admin_add_floor_screen.dart';
 import 'admin_room_list_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -58,7 +59,7 @@ class _AdminManageFloorsScreenState
 }
 },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 ),
               icon :const Icon(Icons.add,size:18),
@@ -295,7 +296,7 @@ int _countRooms(String range) {
                   children: [
                     Text(
                       available,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
                     ),
                     const Text(
                       "Available Rooms",
@@ -341,8 +342,8 @@ Row(
         icon: const Icon(Icons.edit),
         label: const Text("Edit Floor"),
         style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.blue,
-          side: const BorderSide(color: Colors.blue),
+          foregroundColor: AppColors.primary,
+          side: const BorderSide(color: AppColors.primary),
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class StudentForgotPasswordScreen extends StatefulWidget {
@@ -37,7 +38,7 @@ class _StudentForgotPasswordScreenState extends State<StudentForgotPasswordScree
                 color: Color(0xFFEFF6FF),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.vpn_key_outlined, size: 40, color: Color(0xFF2563EB)),
+              child: const Icon(Icons.vpn_key_outlined, size: 40, color: AppColors.primary),
             ),
             const SizedBox(height: 32),
             const Text(
@@ -59,7 +60,7 @@ class _StudentForgotPasswordScreenState extends State<StudentForgotPasswordScree
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: Colors.grey.shade100),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 4)),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20, offset: const Offset(0, 4)),
                 ],
               ),
               child: Column(
@@ -84,9 +85,9 @@ class _StudentForgotPasswordScreenState extends State<StudentForgotPasswordScree
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: _isLoading ? null : _handleResetPassword,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
+                        backgroundColor: AppColors.primary,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       child: _isLoading
@@ -136,7 +137,7 @@ class _StudentForgotPasswordScreenState extends State<StudentForgotPasswordScree
                 const Text('Remembered it?', style: TextStyle(color: Colors.grey)),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Back to Login', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+                  child: const Text('Back to Login', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -190,7 +191,7 @@ class _StudentForgotPasswordScreenState extends State<StudentForgotPasswordScree
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       currentIndex: 0,
-      selectedItemColor: const Color(0xFF2563EB),
+      selectedItemColor: AppColors.primary,
       unselectedItemColor: Colors.grey,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),

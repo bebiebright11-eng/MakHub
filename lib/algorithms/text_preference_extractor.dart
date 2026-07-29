@@ -6,7 +6,7 @@ class TextPreferenceExtractor {
     int? minBudget;
     int? maxBudget;
 
-    int? _parseAmount(String raw) {
+    int? parseAmount(String raw) {
       String cleaned = raw.replaceAll(',', '').trim();
       bool isK = cleaned.endsWith('k');
       if (isK) cleaned = cleaned.substring(0, cleaned.length - 1);
@@ -22,8 +22,8 @@ class TextPreferenceExtractor {
     ).firstMatch(lower);
 
     if (rangeMatch != null) {
-      minBudget = _parseAmount(rangeMatch.group(1)!);
-      maxBudget = _parseAmount(rangeMatch.group(2)!);
+      minBudget = parseAmount(rangeMatch.group(1)!);
+      maxBudget = parseAmount(rangeMatch.group(2)!);
     } else {
       // Pattern: "under X" / "below X" / "less than X"
       final maxMatch = RegExp(
@@ -32,7 +32,7 @@ class TextPreferenceExtractor {
       ).firstMatch(lower);
 
       if (maxMatch != null) {
-        maxBudget = _parseAmount(maxMatch.group(1)!);
+        maxBudget = parseAmount(maxMatch.group(1)!);
       } else {
         // Pattern: "above X" / "over X" / "more than X"
         final minMatch = RegExp(
@@ -41,7 +41,7 @@ class TextPreferenceExtractor {
         ).firstMatch(lower);
 
         if (minMatch != null) {
-          minBudget = _parseAmount(minMatch.group(1)!);
+          minBudget = parseAmount(minMatch.group(1)!);
         } else {
           // Fallback: just one lone number mentioned, treat as max budget
           final singleMatch = RegExp(
@@ -50,7 +50,7 @@ class TextPreferenceExtractor {
           ).firstMatch(lower);
 
           if (singleMatch != null) {
-            maxBudget = _parseAmount(singleMatch.group(1)!);
+            maxBudget = parseAmount(singleMatch.group(1)!);
           }
         }
       }

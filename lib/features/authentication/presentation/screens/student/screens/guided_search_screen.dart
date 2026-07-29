@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'hostel_results_screen.dart';
 
 class GuidedSearchScreen extends StatefulWidget {
@@ -113,7 +114,7 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
                 child: ElevatedButton(
                   onPressed: _submitSearch,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
+                    backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -174,7 +175,7 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
               padding: const EdgeInsets.only(top: 6),
               child: Text(
                 summary,
-                style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w600),
+                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
               ),
             ),
           if (isActive) ...[

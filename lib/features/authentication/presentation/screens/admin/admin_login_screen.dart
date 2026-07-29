@@ -43,6 +43,8 @@ Future<void> _loginAdmin() async {
         .doc(userCredential.user!.uid)
         .get();
 
+    if (!mounted) return;
+
     if (!userDoc.exists) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -69,6 +71,7 @@ Future<void> _loginAdmin() async {
       );
     }
   } on FirebaseAuthException catch (e) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(e.message ?? "Login failed"),

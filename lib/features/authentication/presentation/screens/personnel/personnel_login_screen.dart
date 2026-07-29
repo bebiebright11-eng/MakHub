@@ -39,6 +39,8 @@ Future<void> _handleLogin() async {
         .limit(1)
         .get();
 
+    if (!mounted) return;
+
     if (result.docs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -71,6 +73,8 @@ if ((data['firebaseUid'] ?? '') == '') {
   });
 }
 
+if (!mounted) return;
+
 // Save personnel + hostel session into AppState
 AppState().setPersonnel(
   personnelId: doc.id,
@@ -94,6 +98,8 @@ Navigator.pushReplacementNamed(context, '/dashboard');
     } else if (e.code == 'invalid-credential') {
       message = "Invalid email or password.";
     }
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

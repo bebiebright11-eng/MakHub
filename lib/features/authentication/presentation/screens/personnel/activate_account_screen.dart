@@ -1,4 +1,4 @@
-// ignore_for_file: file_names, deprecated_member_use
+﻿// ignore_for_file: file_names, deprecated_member_use
 import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -74,9 +74,7 @@ class _ActivateAccountScreenState extends State<ActivateAccountScreen> {
       .limit(1)
       .get();
 
-      print("Email entered: $email");
-print("Phone entered: $phone");
-print("Documents found: ${result.docs.length}");
+  if (!mounted) return;
 
   if (result.docs.isEmpty) {
 
@@ -117,6 +115,8 @@ await FirebaseFirestore.instance
   'activated': true,
   'firebaseUid': user!.uid,
 });
+
+  if (!mounted) return;
 
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(

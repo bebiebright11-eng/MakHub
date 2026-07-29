@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'preference_screen.dart';
@@ -61,11 +62,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
               children: [
                 CircleAvatar(
                   radius: 40,
-                  backgroundColor: Colors.blue.shade50,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.08),
                   child: const Icon(
                     Icons.person,
                     size: 44,
-                    color: Colors.blue,
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -135,7 +136,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blue, size: 20),
+          Icon(icon, color: AppColors.primary, size: 20),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,7 +163,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.blue, size: 20),
+            Icon(icon, color: AppColors.primary, size: 20),
             const SizedBox(width: 12),
             Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600))),
             const Icon(Icons.chevron_right, color: Colors.grey),

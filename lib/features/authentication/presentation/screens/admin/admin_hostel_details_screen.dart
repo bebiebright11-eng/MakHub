@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'admin_manage_floors_screen.dart';
 
 import 'admin_edit_hostel_screen.dart';
@@ -235,7 +236,7 @@ ElevatedButton.icon(
     );
   },
   style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.blue,
+    backgroundColor: AppColors.primary,
     foregroundColor: Colors.white,
     padding: const EdgeInsets.symmetric(vertical: 14),
     shape: RoundedRectangleBorder(
@@ -309,7 +310,7 @@ Widget _infoCard(
       children: [
         Icon(
           icon,
-          color: Colors.blue,
+          color: AppColors.primary,
         ),
 
         const SizedBox(height: 8),
@@ -348,7 +349,7 @@ Widget _infoCard(
           Text(label),
           Text(
             price,
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
           ),
         ],
       ),
@@ -436,29 +437,9 @@ class _FacilityChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: Colors.blue),
+          Icon(icon, size: 18, color: AppColors.primary),
           const SizedBox(width: 8),
           Text(label),
-        ],
-      ),
-    );
-  }
-}
-
-class _RuleItem extends StatelessWidget {
-  final String text;
-
-  const _RuleItem(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("•  "),
-          Expanded(child: Text(text)),
         ],
       ),
     );

@@ -124,9 +124,13 @@ class RecommendationAlgorithm {
         }
       } else if (!hasDistanceFilter && hostelDistKm != null) {
         // No filter set — still reward proximity with up to +20 as a tiebreaker
-        if (hostelDistKm <= 1.0) score += 20;
-        else if (hostelDistKm <= 2.0) score += 12;
-        else if (hostelDistKm <= 5.0) score += 6;
+        if (hostelDistKm <= 1.0) {
+          score += 20;
+        } else if (hostelDistKm <= 2.0) {
+          score += 12;
+        } else if (hostelDistKm <= 5.0) {
+          score += 6;
+        }
       }
 
       // ── 5. Security rating (+15) ──────────────────────────────────────────
@@ -137,9 +141,13 @@ class RecommendationAlgorithm {
 
       // ── 6. Room type availability (+10) ───────────────────────────────────
       if (roomType == 'Single' &&
-          (data['singlePrice'] ?? '').toString().isNotEmpty) score += 10;
+          (data['singlePrice'] ?? '').toString().isNotEmpty) {
+        score += 10;
+      }
       if (roomType == 'Double' &&
-          (data['doublePrice'] ?? '').toString().isNotEmpty) score += 10;
+          (data['doublePrice'] ?? '').toString().isNotEmpty) {
+        score += 10;
+      }
 
       // ── 7. Facilities (+2 each) ───────────────────────────────────────────
       final List hostelFacilities = data['facilities'] ?? [];

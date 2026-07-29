@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_bookings_details_screen.dart';
 import 'admin_notification_screen.dart';
 import 'admin_profile_screen.dart';
@@ -12,37 +14,96 @@ class AdminBookingsScreen extends StatefulWidget {
 
 class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
   String _selectedFilter = "Pending";
+  String _searchQuery = "";
 
-  final List<Map<String, String>> _bookings = [
-    {
-      "name": "Ama K.",
-      "status": "Confirmed",
-      "hostelRoom": "Sunrise Residence • Room 204",
-      "date": "12 Aug 2026",
-      "reference": "Hostel A - 204",
-    },
-    {
-      "name": "Kwesi M.",
-      "status": "Pending",
-      "hostelRoom": "Sunrise Residence • Room 101",
-      "date": "14 Aug 2026",
-      "reference": "Hostel B - 101",
-    },
-    {
-      "name": "Esi A.",
-      "status": "Cancelled",
-      "hostelRoom": "Sunrise Residence • Room 306",
-      "date": "10 Aug 2026",
-      "reference": "Hostel C - 306",
-    },
-    {
-      "name": "Nana O.",
-      "status": "Confirmed",
-      "hostelRoom": "Sunrise Residence • Room 112",
-      "date": "08 Aug 2026",
-      "reference": "Hostel A - 112",
-    },
-  ];
+  // Cache resolved booking details so the stream doesn't re-fetch on rebuild
+  final Map<String, Map<String, String>> _detailsCache = {};
+
+  // Resolve student, hostel, floor and room info for one booking document
+  Future<Map<String, String>> _resolveBooking(
+      QueryDocumentSnapshot doc) async {
+    if (_detailsCache.containsKey(doc.id)) return _detailsCache[doc.id]!;
+
+    final data = doc.data() as Map<String, dynamic>;
+    final firestore = FirebaseFirestore.instance;
+
+    String studentName = 'Unknown Student';
+    String hostelName = 'Unknown Hostel';
+    String floorName = 'N/A';
+    String roomNumber = 'N/A';
+    String roomType = 'N/A';
+
+    try {
+      final studentId = (data['studentId'] ?? '').toString();
+      if (studentId.isNotEmpty) {
+        final studentDoc =
+            await firestore.collection('users').doc(studentId).get();
+        studentName =
+            (studentDoc.data()?['fullName'] ?? 'Unknown Student').toString();
+      }
+
+      final hostelId = (data['hostelId'] ?? '').toString();
+      final floorId = (data['floorId'] ?? '').toString();
+      final roomId = (data['roomId'] ?? '').toString();
+
+      if (hostelId.isNotEmpty) {
+        final hostelDoc =
+            await firestore.collection('hostels').doc(hostelId).get();
+        hostelName =
+            (hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel').toString();
+
+        if (floorId.isNotEmpty) {
+          final floorDoc = await firestore
+              .collection('hostels')
+              .doc(hostelId)
+              .collection('floors')
+              .doc(floorId)
+              .get();
+          floorName = (floorDoc.data()?['floorName'] ??
+                  floorDoc.data()?['floorNumber'] ??
+                  'N/A')
+              .toString();
+
+          if (roomId.isNotEmpty) {
+            final roomDoc = await firestore
+                .collection('hostels')
+                .doc(hostelId)
+                .collection('floors')
+                .doc(floorId)
+                .collection('rooms')
+                .doc(roomId)
+                .get();
+            roomNumber =
+                (roomDoc.data()?['roomNumber'] ?? 'N/A').toString();
+            roomType = (roomDoc.data()?['roomType'] ?? 'N/A').toString();
+          }
+        }
+      }
+    } catch (_) {
+      // Keep fallbacks if any lookup fails
+    }
+
+    final resolved = {
+      'studentName': studentName,
+      'hostelName': hostelName,
+      'floorName': floorName,
+      'roomNumber': roomNumber,
+      'roomType': roomType,
+    };
+    _detailsCache[doc.id] = resolved;
+    return resolved;
+  }
+
+  String _formatDate(Timestamp? ts) {
+    if (ts == null) return 'N/A';
+    final d = ts.toDate();
+    return "${d.day}/${d.month}/${d.year}";
+  }
+
+  String _statusLabel(String raw) {
+    if (raw.isEmpty) return 'Pending';
+    return raw[0].toUpperCase() + raw.substring(1).toLowerCase();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,12 +118,15 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Sunrise Residence • Hostel management",
+              "All hostels • Booking management",
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
             const SizedBox(height: 16),
 
             TextField(
+              onChanged: (value) {
+                setState(() => _searchQuery = value.trim().toLowerCase());
+              },
               decoration: InputDecoration(
                 hintText: "Search bookings...",
                 prefixIcon: const Icon(Icons.search),
@@ -88,16 +152,103 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
             const SizedBox(height: 16),
 
             Expanded(
-              child: ListView.builder(
-                itemCount: _bookings.length,
-                itemBuilder: (context, index) {
-                  final booking = _bookings[index];
-                  return _bookingCard(
-                    name: booking["name"]!,
-                    status: booking["status"]!,
-                    hostelRoom: booking["hostelRoom"]!,
-                    date: booking["date"]!,
-                    reference: booking["reference"]!,
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('bookings')
+                    .orderBy('bookingDate', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                        child:
+                            Text('Error loading bookings: ${snapshot.error}'));
+                  }
+
+                  final docs = (snapshot.data?.docs ?? []).where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final status =
+                        (data['bookingStatus'] ?? 'pending').toString();
+                    return status.toLowerCase() ==
+                        _selectedFilter.toLowerCase();
+                  }).toList();
+
+                  if (docs.isEmpty) {
+                    return Center(
+                      child: Text(
+                        "No ${_selectedFilter.toLowerCase()} bookings",
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      final status = _statusLabel(
+                          (data['bookingStatus'] ?? 'pending').toString());
+                      final date =
+                          _formatDate(data['bookingDate'] as Timestamp?);
+
+                      return FutureBuilder<Map<String, String>>(
+                        future: _resolveBooking(doc),
+                        builder: (context, detailsSnapshot) {
+                          final details = detailsSnapshot.data;
+
+                          if (details == null) {
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border:
+                                    Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                ),
+                              ),
+                            );
+                          }
+
+                          // Apply search on resolved student/hostel names
+                          if (_searchQuery.isNotEmpty &&
+                              !details['studentName']!
+                                  .toLowerCase()
+                                  .contains(_searchQuery) &&
+                              !details['hostelName']!
+                                  .toLowerCase()
+                                  .contains(_searchQuery)) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return _bookingCard(
+                            name: details['studentName']!,
+                            status: status,
+                            hostelRoom:
+                                "${details['hostelName']} • Room ${details['roomNumber']}",
+                            date: date,
+                            reference: doc.id.length > 6
+                                ? doc.id.substring(doc.id.length - 6)
+                                : doc.id,
+                            hostel: details['hostelName']!,
+                            floor: details['floorName']!,
+                            roomNumber: details['roomNumber']!,
+                            roomType: details['roomType']!,
+                          );
+                        },
+                      );
+                    },
                   );
                 },
               ),
@@ -107,7 +258,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 2,
-        selectedItemColor: Colors.blue,
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
@@ -120,25 +271,25 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
               ),
             );
             return;
-          } 
+          }
           if (index == 4) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const AdminProfileScreen(),
-        ),
-      );
-      return;
-    }
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminProfileScreen(),
+              ),
+            );
+            return;
+          }
           Navigator.pop(context);
-          // Other tabs (Dashboard, Hostels, Notifications, Profile)
-          // can be wired the same way once those screens are ready.
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Dashboard"),
-          BottomNavigationBarItem(icon: Icon(Icons.apartment), label: "Hostels"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.apartment), label: "Hostels"),
           BottomNavigationBarItem(icon: Icon(Icons.book), label: "Bookings"),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: "Notifications"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.notifications), label: "Notifications"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),
@@ -157,7 +308,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? Colors.blue : Colors.grey.shade100,
+            color: selected ? AppColors.primary : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
@@ -179,6 +330,10 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
     required String hostelRoom,
     required String date,
     required String reference,
+    required String hostel,
+    required String floor,
+    required String roomNumber,
+    required String roomType,
   }) {
     Color statusColor;
     if (status == "Confirmed") {
@@ -205,17 +360,22 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
             children: [
               Text(
                 name,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   status,
-                  style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                      color: statusColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -234,40 +394,26 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AdminBookingDetailsScreen(
-                          studentName: name,
-                          hostel: 'Sunrise Residence',
-                          floor: 'first Floor',
-                          roomNumber: reference,
-                          roomType:'Double Room',
-                          bookingStatus: status,
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text("View"),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AdminBookingDetailsScreen(
+                      studentName: name,
+                      hostel: hostel,
+                      floor: floor,
+                      roomNumber: roomNumber,
+                      roomType: roomType,
+                      bookingStatus: status,
+                    ),
                   ),
-                  child: const Text("Manage"),
-                ),
-              ),
-            ],
+                );
+              },
+              child: const Text("View"),
+            ),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'payment_screen.dart';
 import 'package:makhub/core/constants/payment_constants.dart';
@@ -131,7 +132,6 @@ void initState() {
           }
 
           final booking = snapshot.data!.data() as Map<String, dynamic>;
-          final bookingStatus = booking['bookingStatus'] ?? 'pending';
           final expiresAtTimestamp = booking['expiresAt'] as Timestamp?;
 
           if (expiresAtTimestamp != null) {
@@ -184,7 +184,7 @@ Text(
   style: const TextStyle(
     fontSize: 34,
     fontWeight: FontWeight.bold,
-    color: Colors.blue,
+    color: AppColors.primary,
   ),
 ),
 
@@ -270,12 +270,12 @@ Container(
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: AppColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
               Icons.calendar_today,
-              color: Colors.blue,
+              color: AppColors.primary,
               size: 20,
             ),
           ),
@@ -379,7 +379,7 @@ const SizedBox(height: 15),
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       child: const Text(

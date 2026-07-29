@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -56,7 +57,7 @@ String _selectedUniversity = "Makerere University";
                 color: Color(0xFFEFF6FF),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.school, size: 32, color: Color(0xFF2563EB)),
+              child: const Icon(Icons.school, size: 32, color: AppColors.primary),
             ),
             const SizedBox(height: 8),
             const Text('Fill in your details to get started', style: TextStyle(color: Colors.grey, fontSize: 14)),
@@ -72,7 +73,7 @@ String _selectedUniversity = "Makerere University";
             const SizedBox(height: 16),
             
             DropdownButtonFormField<String>(
-  value: _selectedUniversity,
+  initialValue: _selectedUniversity,
   decoration: InputDecoration(
     labelText: "University",
     border: OutlineInputBorder(
@@ -130,7 +131,7 @@ String _selectedUniversity = "Makerere University";
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.description_outlined, color: Color(0xFF2563EB), size: 32),
+                  const Icon(Icons.description_outlined, color: AppColors.primary, size: 32),
                   const SizedBox(height: 8),
                   const Text('Tap to upload document', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   const Text('PDF, JPG or PNG (max 5MB)', style: TextStyle(color: Colors.grey, fontSize: 12)),
@@ -161,7 +162,7 @@ String _selectedUniversity = "Makerere University";
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _handleRegister,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 child: _isLoading
@@ -188,7 +189,7 @@ String _selectedUniversity = "Makerere University";
                 const Text('Already have an account?', style: TextStyle(color: Colors.grey)),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Log In', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+                  child: const Text('Log In', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -325,36 +326,11 @@ String _selectedUniversity = "Makerere University";
     );
   }
 
-  Widget _buildDropdownField(String label, String hint, IconData icon) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: Colors.grey),
-              const SizedBox(width: 12),
-              Expanded(child: Text(hint, style: TextStyle(color: Colors.grey.shade400))),
-              const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildBottomNav() {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       currentIndex: 4,
-      selectedItemColor: const Color(0xFF2563EB),
+      selectedItemColor: AppColors.primary,
       unselectedItemColor: Colors.grey,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
