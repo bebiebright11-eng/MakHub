@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'booking_status_screen.dart';
 import 'active_booking_screen.dart';
 import 'package:makhub/core/constants/payment_constants.dart';
+import '/algorithms/notification_algorithm.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class StudentPaymentScreen extends StatefulWidget {
   final String bookingId;
@@ -111,38 +113,125 @@ Future<void> _loadBookingDetails() async {
   Future<void> _payNow() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isSaving = true;
-    });
+    setState(() => _isSaving = true);
 
     try {
+      // ── Step 1: write payment record as 'confirmed' immediately
+      //    (simulated payment — no real MNO call yet)
       await FirebaseFirestore.instance
-          .collection("payments")
+          .collection('payments')
           .add({
-        "bookingId": widget.bookingId,
-        "amount": PaymentConstants.totalAmount,
-        "mobileNumber":
-            _mobileNumberController.text.trim(),
-        "paymentStatus": "pending",
-        "paymentTime":
-            FieldValue.serverTimestamp(),
+        'bookingId': widget.bookingId,
+        'amount': PaymentConstants.totalAmount,
+        'mobileNumber': _mobileNumberController.text.trim(),
+        'paymentStatus': 'confirmed',
+        'paymentMethod': 'Mobile Money',
+        'paymentTime': FieldValue.serverTimestamp(),
+        'confirmedAt': FieldValue.serverTimestamp(),
       });
 
+      // ── Step 2: mark booking as 'confirmed' (Room Reserved stage)
       await FirebaseFirestore.instance
-          .collection("bookings")
+          .collection('bookings')
           .doc(widget.bookingId)
-          .update({
-        "bookingStatus": "payment_received",
-      });
+          .update({'bookingStatus': 'confirmed'});
+
+      // ── Step 3: update room occupancy
+      //    Read current occupied + capacity, increment, set status.
+      //
+      //    Single  capacity=1:  0→1  status='Occupied'
+      //    Double  capacity=2:  0→1  status='Available'
+      //                         1→2  status='Occupied'
+      if (hostelId.isNotEmpty && floorId.isNotEmpty && roomId.isNotEmpty) {
+        final roomRef = FirebaseFirestore.instance
+            .collection('hostels')
+            .doc(hostelId)
+            .collection('floors')
+            .doc(floorId)
+            .collection('rooms')
+            .doc(roomId);
+
+        final roomSnap = await roomRef.get();
+        if (roomSnap.exists) {
+          final rd = roomSnap.data()!;
+
+          final int capacity = rd['capacity'] is int
+              ? rd['capacity'] as int
+              : int.tryParse(rd['capacity'].toString()) ?? 1;
+
+          final int currentOccupied = rd['occupied'] is int
+              ? rd['occupied'] as int
+              : int.tryParse(rd['occupied'].toString()) ?? 0;
+
+          final int newOccupied = (currentOccupied + 1).clamp(0, capacity);
+
+          await roomRef.update({
+            'occupied': newOccupied,
+            'status': newOccupied >= capacity ? 'Occupied' : 'Available',
+          });
+        }
+      }
+
+      // ── Step 4: send in-app notification to the student
+      final studentId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (studentId.isNotEmpty) {
+        await NotificationAlgorithm.roomReserved(
+          studentId: studentId,
+          bookingId: widget.bookingId,
+        );
+      }
+
+      // ── Step 5: notify the hostel personnel responsible for this hostel
+      //    Look up all personnel whose hostelId matches, then write one
+      //    notification per matching personnel account.
+      try {
+        // Resolve the student's display name for the notification message.
+        String studentName = 'A student';
+        if (studentId.isNotEmpty) {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(studentId)
+              .get();
+          if (userDoc.exists) {
+            studentName = (userDoc.data()?['fullName'] ?? studentName).toString();
+          }
+        }
+
+        final personnelSnap = await FirebaseFirestore.instance
+            .collection('personnel')
+            .where('hostelId', isEqualTo: hostelId)
+            .get();
+
+        for (final pDoc in personnelSnap.docs) {
+          final pData = pDoc.data();
+          // Personnel notifications use their Firebase Auth UID stored in
+          // the 'firebaseUid' field (set on first login) or fall back to
+          // the Firestore document ID.
+          final pUid = (pData['firebaseUid'] ?? pDoc.id).toString();
+          if (pUid.isEmpty) continue;
+
+          await NotificationAlgorithm.newReservationForPersonnel(
+            personnelId: pUid,
+            roomNumber: roomNumber,
+            studentName: studentName,
+            bookingId: widget.bookingId,
+            bookingDate: DateTime.now(),
+          );
+        }
+      } catch (_) {
+        // Personnel notification failure must not block the student flow.
+      }
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Payment submitted successfully"),
+          content: Text('Payment confirmed. Your room is reserved!'),
+          backgroundColor: Colors.green,
         ),
       );
 
+      // ── Step 6: navigate to Active Booking showing all three stages done
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -153,24 +242,17 @@ Future<void> _loadBookingDetails() async {
             hostelId: hostelId,
             roomId: roomId,
             floorId: floorId,
-            bookingStatus: "Payment Received",
+            bookingStatus: 'Room Reserved',
           ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Payment Failed: $e"),
-        ),
+        SnackBar(content: Text('Payment failed: $e')),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 

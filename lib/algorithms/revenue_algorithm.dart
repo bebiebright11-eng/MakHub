@@ -30,10 +30,16 @@ class RevenueAlgorithm {
     final DateTime now = DateTime.now();
     final DateTime from = _windowStart(now, window);
 
-    // Base query: confirmed payments in the time window
+    // Base query: payments in the time window.
+    //
+    // NOTE: We intentionally do NOT filter by paymentStatus here.
+    // Combining .where('paymentStatus', ...) with
+    // .where('paymentTime', isGreaterThanOrEqualTo: ...) requires a
+    // composite Firestore index.  Filtering by paymentTime alone uses
+    // an auto-created single-field index and avoids that requirement.
+    // The paymentStatus == 'confirmed' check is applied in memory below.
     Query query = FirebaseFirestore.instance
         .collection('payments')
-        .where('paymentStatus', isEqualTo: 'confirmed')
         .where('paymentTime', isGreaterThanOrEqualTo: Timestamp.fromDate(from));
 
     final snapshot = await query.get();
@@ -43,6 +49,10 @@ class RevenueAlgorithm {
 
     for (final doc in snapshot.docs) {
       final data = doc.data() as Map<String, dynamic>;
+
+      // Only count confirmed payments (filtered in memory — see query comment).
+      final status = (data['paymentStatus'] ?? '').toString();
+      if (status != 'confirmed') continue;
 
       // Optionally scope to one hostel via bookingId → booking → hostelId
       if (hostelId != null) {

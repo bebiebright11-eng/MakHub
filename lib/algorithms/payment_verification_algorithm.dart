@@ -1,16 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'notification_algorithm.dart';
+import '/core/constants/payment_constants.dart';
 
-/// Expected payment amount — must match PaymentConstants.totalAmount
-/// used in payment_screen.dart (50,000 UGX booking fee).
-const int kExpectedPaymentAmount = 50000;
+/// Expected payment amount — reads from PaymentConstants so it stays
+/// in sync if the booking fee changes in the future.
+int get kExpectedPaymentAmount => PaymentConstants.totalAmount;
 
 /// Verifies a payment and performs all downstream updates:
 ///   1. Confirms payment exists
 ///   2. Verifies the amount is correct
 ///   3. Updates payment status → 'confirmed'
 ///   4. Updates booking status → 'confirmed'
-///   5. Reserves the room (increments occupied, sets status to Reserved or Occupied)
+///   5. Updates room occupancy:
+///        occupied += 1
+///        status → 'Occupied' when occupied >= capacity, else 'Available'
 ///   6. Notifies the student
 class PaymentVerificationAlgorithm {
   const PaymentVerificationAlgorithm._();
@@ -18,9 +21,8 @@ class PaymentVerificationAlgorithm {
   /// [paymentId] — Firestore document ID from the `payments` collection.
   static Future<PaymentVerificationResult> verify(String paymentId) async {
     // ── 1. Fetch payment ──────────────────────────────────────────────────
-    final paymentRef = FirebaseFirestore.instance
-        .collection('payments')
-        .doc(paymentId);
+    final paymentRef =
+        FirebaseFirestore.instance.collection('payments').doc(paymentId);
 
     final paymentSnap = await paymentRef.get();
     if (!paymentSnap.exists) {
@@ -31,7 +33,8 @@ class PaymentVerificationAlgorithm {
     final currentStatus = (payment['paymentStatus'] ?? '').toString();
 
     if (currentStatus == 'confirmed') {
-      return const PaymentVerificationResult.failed('Payment already confirmed.');
+      return const PaymentVerificationResult.failed(
+          'Payment already confirmed.');
     }
 
     // ── 2. Verify amount ──────────────────────────────────────────────────
@@ -41,7 +44,8 @@ class PaymentVerificationAlgorithm {
 
     if (amount == null || amount < kExpectedPaymentAmount) {
       return PaymentVerificationResult.failed(
-        'Amount mismatch. Expected UGX $kExpectedPaymentAmount, got UGX ${amount ?? 0}.',
+        'Amount mismatch. Expected UGX $kExpectedPaymentAmount, '
+        'got UGX ${amount ?? 0}.',
       );
     }
 
@@ -57,8 +61,6 @@ class PaymentVerificationAlgorithm {
     String hostelId = '';
     String floorId = '';
     String roomId = '';
-    String hostelName = '';
-    String roomNumber = '';
 
     if (bookingId.isNotEmpty) {
       final bookingRef = FirebaseFirestore.instance
@@ -77,7 +79,12 @@ class PaymentVerificationAlgorithm {
       }
     }
 
-    // ── 5. Reserve the room ───────────────────────────────────────────────
+    // ── 5. Update room occupancy ──────────────────────────────────────────
+    //
+    // Occupancy rules:
+    //   Single room  capacity=1: 0/1 → 1/1 → status 'Occupied'
+    //   Double room  capacity=2: 0/2 → 1/2 → status 'Available'
+    //                            1/2 → 2/2 → status 'Occupied'
     if (hostelId.isNotEmpty && floorId.isNotEmpty && roomId.isNotEmpty) {
       final roomRef = FirebaseFirestore.instance
           .collection('hostels')
@@ -90,36 +97,29 @@ class PaymentVerificationAlgorithm {
       final roomSnap = await roomRef.get();
       if (roomSnap.exists) {
         final rd = roomSnap.data()!;
-        roomNumber = (rd['roomNumber'] ?? roomId).toString();
-        final int capacity =
-            (rd['capacity'] is int ? rd['capacity'] : int.tryParse(rd['capacity'].toString())) ?? 1;
-        final int currentOccupied =
-            (rd['occupied'] is int ? rd['occupied'] : int.tryParse(rd['occupied'].toString())) ?? 0;
+
+        final int capacity = rd['capacity'] is int
+            ? rd['capacity'] as int
+            : int.tryParse(rd['capacity'].toString()) ?? 1;
+
+        final int currentOccupied = rd['occupied'] is int
+            ? rd['occupied'] as int
+            : int.tryParse(rd['occupied'].toString()) ?? 0;
+
         final int newOccupied = (currentOccupied + 1).clamp(0, capacity);
 
         await roomRef.update({
           'occupied': newOccupied,
-          'status': newOccupied >= capacity ? 'Occupied' : 'Reserved',
+          'status': newOccupied >= capacity ? 'Occupied' : 'Available',
         });
-      }
-
-      // Fetch hostel name
-      final hostelSnap = await FirebaseFirestore.instance
-          .collection('hostels')
-          .doc(hostelId)
-          .get();
-      if (hostelSnap.exists) {
-        hostelName =
-            (hostelSnap.data()?['hostelName'] ?? hostelId).toString();
       }
     }
 
     // ── 6. Notify student ─────────────────────────────────────────────────
-    if (studentId.isNotEmpty) {
-      await NotificationAlgorithm.bookingConfirmed(
+    if (studentId.isNotEmpty && bookingId.isNotEmpty) {
+      await NotificationAlgorithm.roomReserved(
         studentId: studentId,
-        hostelName: hostelName,
-        roomNumber: roomNumber,
+        bookingId: bookingId,
       );
     }
 

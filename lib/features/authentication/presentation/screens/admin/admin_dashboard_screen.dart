@@ -30,24 +30,81 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<_DashboardStats> _loadStats() async {
-    // Run all queries in parallel
-    final results = await Future.wait([
-      FirebaseFirestore.instance.collection('hostels').get(),
-      OccupancyAlgorithm.computeAll(),
-      RevenueAlgorithm.daily(),
-      FirebaseFirestore.instance
+    // ── Diagnostic loader ─────────────────────────────────────────────────
+    // Each query runs independently so a single failure does not hide the
+    // others.  Results are logged to the console; the dashboard falls back
+    // to safe defaults for any query that fails.
+
+    // ── 1. Hostels ────────────────────────────────────────────────────────
+    int hostelCount = 0;
+    debugPrint('[Dashboard] Loading hostels...');
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('hostels')
+          .get();
+      hostelCount = snap.docs.length;
+      debugPrint('[Dashboard] Hostels ✓  ($hostelCount found)');
+    } catch (e, st) {
+      debugPrint('[Dashboard] Hostels ✗  FAILED: $e');
+      debugPrint(st.toString());
+    }
+
+    // ── 2. Occupancy ──────────────────────────────────────────────────────
+    OccupancyResult occupancy = const OccupancyResult(
+      total: 0, occupied: 0, available: 0, reserved: 0, percentage: 0.0,
+    );
+    debugPrint('[Dashboard] Loading occupancy (collectionGroup rooms)...');
+    try {
+      occupancy = await OccupancyAlgorithm.computeAll();
+      debugPrint(
+        '[Dashboard] Occupancy ✓  '
+        '(total=${occupancy.total}, occupied=${occupancy.occupied}, '
+        'available=${occupancy.available})',
+      );
+    } catch (e, st) {
+      debugPrint('[Dashboard] Occupancy ✗  FAILED: $e');
+      debugPrint(st.toString());
+    }
+
+    // ── 3. Revenue ────────────────────────────────────────────────────────
+    RevenueResult revenue = RevenueResult(
+      total: 0, paymentCount: 0, window: RevenueWindow.daily,
+      from: _epoch, to: _epoch,
+    );
+    debugPrint(
+      '[Dashboard] Loading revenue (payments — paymentTime >= today)...',
+    );
+    try {
+      revenue = await RevenueAlgorithm.daily();
+      debugPrint(
+        '[Dashboard] Revenue ✓  '
+        '(${revenue.formattedTotal}, ${revenue.paymentCount} payment(s))',
+      );
+    } catch (e, st) {
+      debugPrint('[Dashboard] Revenue ✗  FAILED: $e');
+      debugPrint(st.toString());
+    }
+
+    // ── 4. Recent bookings ────────────────────────────────────────────────
+    List<QueryDocumentSnapshot> recentBookings = [];
+    debugPrint(
+      '[Dashboard] Loading bookings '
+      '(orderBy bookingDate desc, limit 5)...',
+    );
+    try {
+      final snap = await FirebaseFirestore.instance
           .collection('bookings')
           .orderBy('bookingDate', descending: true)
           .limit(5)
-          .get(),
-    ]);
+          .get();
+      recentBookings = snap.docs;
+      debugPrint('[Dashboard] Bookings ✓  (${recentBookings.length} found)');
+    } catch (e, st) {
+      debugPrint('[Dashboard] Bookings ✗  FAILED: $e');
+      debugPrint(st.toString());
+    }
 
-    final hostelCount =
-        (results[0] as QuerySnapshot).docs.length;
-    final occupancy = results[1] as OccupancyResult;
-    final revenue = results[2] as RevenueResult;
-    final recentBookings =
-        (results[3] as QuerySnapshot).docs;
+    debugPrint('[Dashboard] _loadStats complete.');
 
     return _DashboardStats(
       hostelCount: hostelCount,
@@ -56,6 +113,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       recentBookings: recentBookings,
     );
   }
+
+  // Safe default DateTime used as a fallback for RevenueResult.
+  static final DateTime _epoch = DateTime(2000);
 
   void _refresh() => setState(() => _statsFuture = _loadStats());
 
@@ -103,7 +163,67 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
+              final err = snapshot.error.toString();
+              // Detect the index-required error specifically so we can give
+              // a more actionable message, but show a friendly UI for any error.
+              final isIndexError = err.contains('failed-precondition') ||
+                  err.contains('index') ||
+                  err.contains('FAILED_PRECONDITION');
+
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isIndexError
+                            ? Icons.cloud_off_outlined
+                            : Icons.error_outline,
+                        size: 56,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        isIndexError
+                            ? 'Dashboard unavailable'
+                            : 'Failed to load dashboard',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        isIndexError
+                            ? 'A database configuration issue is preventing the dashboard from loading. Please contact your system administrator.'
+                            : 'Something went wrong. Please try again.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 14,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: _refresh,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Retry'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
             }
 
             final stats = snapshot.data!;

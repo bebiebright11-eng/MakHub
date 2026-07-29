@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../state/app_state.dart';
 import 'floors_screen.dart';
 import 'payments_screen.dart';
@@ -224,6 +225,60 @@ class _DashboardContentState extends State<_DashboardContent> {
     return items.take(4).toList();
   }
 
+  // ── Logout ────────────────────────────────────────────────────────────
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Log Out',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Log Out',
+              style: TextStyle(
+                  color: Colors.red, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    // Sign out of Firebase and clear the in-memory session.
+    await FirebaseAuth.instance.signOut();
+    AppState().setPersonnel(
+      personnelId:    '',
+      personnelName:  '',
+      personnelEmail: '',
+      hostelId:       '',
+      hostelName:     '',
+    );
+
+    if (!context.mounted) return;
+
+    // Navigate to the personnel login screen, removing every prior route
+    // so the back button cannot return to the dashboard.
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/login',
+      (route) => false,
+    );
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -244,12 +299,39 @@ class _DashboardContentState extends State<_DashboardContent> {
                     Text('Manage rooms, payments, and student activity', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                   ],
                 ),
-                Container(
-                  decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]),
-                  child: IconButton(
-                    icon: const Icon(Icons.notifications_outlined, color: Colors.black),
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsScreen())),
-                  ),
+                Row(
+                  children: [
+                    // ── Notification bell with unread badge ────────────
+                    Container(
+                      decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+                            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsScreen())),
+                          ),
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: _UnreadBadge(
+                              personnelUid: AppState().personnelId,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // ── Logout button ──────────────────────────────────
+                    Container(
+                      decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]),
+                      child: IconButton(
+                        icon: const Icon(Icons.logout, color: Colors.black),
+                        tooltip: 'Logout',
+                        onPressed: () => _confirmLogout(context),
+                      ),
+                    ),
+                  ],
                 )
               ],
             ),
@@ -429,6 +511,50 @@ class _DashboardContentState extends State<_DashboardContent> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Listens to the personnel's unread notification count in real time and
+/// renders a red badge dot with a number.  Renders nothing when count is 0.
+class _UnreadBadge extends StatelessWidget {
+  final String personnelUid;
+
+  const _UnreadBadge({required this.personnelUid});
+
+  @override
+  Widget build(BuildContext context) {
+    if (personnelUid.isEmpty) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(personnelUid)
+          .collection('notifications')
+          .where('isRead', isEqualTo: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final count = snapshot.data?.docs.length ?? 0;
+        if (count == 0) return const SizedBox.shrink();
+
+        return Container(
+          padding: const EdgeInsets.all(3),
+          decoration: const BoxDecoration(
+            color: Colors.red,
+            shape: BoxShape.circle,
+          ),
+          constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+          child: Text(
+            count > 99 ? '99+' : count.toString(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        );
+      },
     );
   }
 }

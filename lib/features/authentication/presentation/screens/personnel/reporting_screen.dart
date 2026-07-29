@@ -2,13 +2,23 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'student_verification_screen.dart';
+import '../../state/app_state.dart';
+import 'reservation_details_screen.dart';
 
+/// Shows students who have successfully reserved a room (bookingStatus ==
+/// 'confirmed') for the hostel this personnel manages.
+///
+/// Behaviour changes from the old Reporting screen:
+///   • Only bookings with bookingStatus == 'confirmed' are shown.
+///   • Only bookings for AppState().hostelId are shown.
+///   • Verify button removed; the whole card is tappable → ReservationDetailsScreen.
+///   • Displayed fields: Student Name, Room Number, Reporting Date.
 class ReportingStudentsScreen extends StatefulWidget {
   const ReportingStudentsScreen({super.key});
 
   @override
-  State<ReportingStudentsScreen> createState() => _ReportingStudentsScreenState();
+  State<ReportingStudentsScreen> createState() =>
+      _ReportingStudentsScreenState();
 }
 
 class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
@@ -28,15 +38,15 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
   String _formatDate(dynamic timestamp) {
     if (timestamp is Timestamp) {
       final dt = timestamp.toDate();
-      final months = [
+      const months = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
       ];
       return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
     } else if (timestamp is String && timestamp.isNotEmpty) {
       return timestamp;
     }
-    return 'Pending Check-in';
+    return 'Not set';
   }
 
   void _onSearchChanged(String value) {
@@ -46,36 +56,37 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
     });
   }
 
-  /// Resolves a raw booking document into display-ready data by looking up
-  /// the referenced student, hostel, and room documents.
+  /// Resolves a confirmed booking document into display-ready data by
+  /// fetching the student name, room number and reporting date.
   Future<Map<String, String>> _resolveBooking(
     String bookingId,
     Map<String, dynamic> booking,
   ) async {
     final studentId = booking['studentId'] as String?;
-    final hostelId = booking['hostelId'] as String?;
-    final floorId = booking['floorId'] as String?;
-    final roomId = booking['roomId'] as String?;
+    final hostelId  = booking['hostelId']  as String?;
+    final floorId   = booking['floorId']   as String?;
+    final roomId    = booking['roomId']    as String?;
 
-    String name = 'Unknown Student';
-    String hostelName = 'Unknown Hostel';
-    String roomNumber = 'N/A';
+    String name         = 'Unknown Student';
+    String roomNumber   = 'N/A';
+    String reportingDate = 'Not set';
 
-    if (studentId != null) {
-      final userDoc = await _firestore.collection('users').doc(studentId).get();
+    // Student name
+    if (studentId != null && studentId.isNotEmpty) {
+      final userDoc =
+          await _firestore.collection('users').doc(studentId).get();
       if (userDoc.exists) {
         name = (userDoc.data()?['fullName'] ?? name).toString();
       }
     }
 
-    if (hostelId != null) {
-      final hostelDoc = await _firestore.collection('hostels').doc(hostelId).get();
-      if (hostelDoc.exists) {
-        hostelName = (hostelDoc.data()?['hostelName'] ?? hostelName).toString();
-      }
-    }
-
-    if (hostelId != null && floorId != null && roomId != null) {
+    // Room number
+    if (hostelId != null &&
+        floorId  != null &&
+        roomId   != null &&
+        hostelId.isNotEmpty &&
+        floorId.isNotEmpty &&
+        roomId.isNotEmpty) {
       final roomDoc = await _firestore
           .collection('hostels')
           .doc(hostelId)
@@ -85,39 +96,57 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
           .doc(roomId)
           .get();
       if (roomDoc.exists) {
-        roomNumber = (roomDoc.data()?['roomNumber'] ?? roomNumber).toString();
+        roomNumber =
+            (roomDoc.data()?['roomNumber'] ?? roomNumber).toString();
       }
     }
 
-    final rawDate = booking['bookingDate'] ?? booking['reportingDate'] ?? booking['createdAt'];
+    // Reporting date — stored on the hostel document
+    if (hostelId != null && hostelId.isNotEmpty) {
+      final hostelDoc =
+          await _firestore.collection('hostels').doc(hostelId).get();
+      if (hostelDoc.exists) {
+        final ts = hostelDoc.data()?['reportingDate'] as Timestamp?;
+        if (ts != null) {
+          reportingDate = _formatDate(ts);
+        }
+      }
+    }
 
     return {
-      'docId': bookingId,
-      'name': name,
-      'hostel': hostelName,
-      'room': roomNumber.startsWith('Room') ? roomNumber : 'Room $roomNumber',
-      'date': _formatDate(rawDate),
+      'docId':         bookingId,
+      'name':          name,
+      'room':          roomNumber.startsWith('Room')
+                           ? roomNumber
+                           : 'Room $roomNumber',
+      'reportingDate': reportingDate,
     };
   }
 
   @override
   Widget build(BuildContext context) {
+    final hostelId = AppState().hostelId;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reporting Students', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Reserved Students',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
       ),
       body: Column(
         children: [
+          // ── Search bar (kept; not yet functional per spec) ───────────
           Padding(
             padding: const EdgeInsets.all(20.0),
             child: TextField(
               controller: _searchController,
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
-                hintText: 'Search Student, Hostel or ID',
+                hintText: 'Search Student, Room or ID',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
@@ -137,9 +166,18 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
               ),
             ),
           ),
+
+          // ── Reservations list ────────────────────────────────────────
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _firestore.collection('bookings').snapshots(),
+              // Only confirmed bookings for this hostel
+              stream: hostelId.isNotEmpty
+                  ? _firestore
+                      .collection('bookings')
+                      .where('hostelId', isEqualTo: hostelId)
+                      .where('bookingStatus', isEqualTo: 'confirmed')
+                      .snapshots()
+                  : const Stream.empty(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -147,54 +185,75 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
 
                 if (snapshot.hasError) {
                   return Center(
-                    child: Text('Error loading reporting students: ${snapshot.error}'),
+                    child: Text(
+                      'Error loading reservations: ${snapshot.error}',
+                    ),
                   );
                 }
 
                 final docs = snapshot.data?.docs ?? [];
                 if (docs.isEmpty) {
-                  return const Center(child: Text('No reporting students found.'));
+                  return const Center(
+                    child: Text(
+                      'No reserved students yet.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  );
                 }
 
                 return FutureBuilder<List<Map<String, String>>>(
                   future: Future.wait(
-                    docs.map((doc) => _resolveBooking(
-                          doc.id,
-                          doc.data() as Map<String, dynamic>,
-                        )),
+                    docs.map(
+                      (doc) => _resolveBooking(
+                        doc.id,
+                        doc.data() as Map<String, dynamic>,
+                      ),
+                    ),
                   ),
                   builder: (context, resolvedSnapshot) {
                     if (!resolvedSnapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(
+                          child: CircularProgressIndicator());
                     }
 
                     var resolved = resolvedSnapshot.data!;
 
+                    // Client-side search filter (future-ready)
                     if (_searchQuery.isNotEmpty) {
                       resolved = resolved.where((r) {
-                        return r['name']!.toLowerCase().contains(_searchQuery) ||
-                            r['hostel']!.toLowerCase().contains(_searchQuery) ||
-                            r['room']!.toLowerCase().contains(_searchQuery) ||
-                            r['docId']!.toLowerCase().contains(_searchQuery);
+                        return r['name']!
+                                .toLowerCase()
+                                .contains(_searchQuery) ||
+                            r['room']!
+                                .toLowerCase()
+                                .contains(_searchQuery) ||
+                            r['docId']!
+                                .toLowerCase()
+                                .contains(_searchQuery);
                       }).toList();
                     }
 
                     if (resolved.isEmpty) {
-                      return const Center(child: Text('No reporting students found.'));
+                      return const Center(
+                        child: Text(
+                          'No matching reservations found.',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      );
                     }
 
                     return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 20),
                       itemCount: resolved.length,
                       itemBuilder: (context, index) {
                         final r = resolved[index];
-                        return _reportingCard(
+                        return _reservationCard(
                           context,
-                          docId: r['docId']!,
-                          name: r['name']!,
-                          hostel: r['hostel']!,
-                          room: r['room']!,
-                          date: r['date']!,
+                          docId:         r['docId']!,
+                          name:          r['name']!,
+                          room:          r['room']!,
+                          reportingDate: r['reportingDate']!,
                         );
                       },
                     );
@@ -208,61 +267,84 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
     );
   }
 
-  Widget _reportingCard(
+  // ── Card widget ──────────────────────────────────────────────────────────
+
+  Widget _reservationCard(
     BuildContext context, {
     required String docId,
     required String name,
-    required String hostel,
     required String room,
-    required String date,
+    required String reportingDate,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10),
-        ],
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ReservationDetailsScreen(bookingId: docId),
+        ),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: const BoxDecoration(
-              color: Color(0xFFDBEAFE),
-              shape: BoxShape.circle,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
             ),
-            child: const Icon(Icons.person, color: AppColors.primary),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                Text('$hostel • $room', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-                Text('Reporting Date: $date', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
-              ],
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: const BoxDecoration(
+                color: Color(0xFFDBEAFE),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.person, color: AppColors.primary),
             ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => StudentVerificationScreen(studentId: docId),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    room,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Reporting: $reportingDate',
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            // Chevron signals tappability (no Verify button)
+            Icon(
+              Icons.chevron_right,
+              color: Colors.grey.shade400,
             ),
-            child: const Text('Verify'),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
