@@ -108,7 +108,6 @@ Future<void> _loadRoom() async {
     });
 
   } catch (e) {
-    debugPrint(e.toString());
 
     setState(() {
       _loading = false;
@@ -153,7 +152,7 @@ Widget build(BuildContext context) {
   width: double.infinity,
   padding: const EdgeInsets.all(18),
   decoration: BoxDecoration(
-    color: AppColors.primary.withOpacity(0.08),
+    color: AppColors.primary.withValues(alpha: 0.08),
     borderRadius: BorderRadius.circular(15),
   ),
   child: Column(
@@ -592,7 +591,7 @@ _selectedFeatures.isEmpty
               vertical: 10,
             ),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.08),
+              color: AppColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(

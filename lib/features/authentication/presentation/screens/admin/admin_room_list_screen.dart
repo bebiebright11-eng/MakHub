@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'admin_room_details_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 
@@ -161,7 +162,7 @@ return _tappableRoomCard(
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
-              color: selected ? Colors.blue : Colors.grey.shade100,
+              color: selected ? AppColors.primary : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
@@ -243,7 +244,7 @@ return _tappableRoomCard(
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(

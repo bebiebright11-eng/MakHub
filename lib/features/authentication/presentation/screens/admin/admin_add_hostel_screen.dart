@@ -316,7 +316,7 @@ const SizedBox(height: 10),
                           }
                         });
                       },
-                      selectedColor: AppColors.primary.withOpacity(0.08),
+                      selectedColor: AppColors.primary.withValues(alpha: 0.08),
                       checkmarkColor: AppColors.primary,
                     );
                   }).toList(),
@@ -370,6 +370,8 @@ child: ElevatedButton(
           'createdAt': FieldValue.serverTimestamp(),
         });
 
+        if (!context.mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Hostel added successfully'),
@@ -378,6 +380,7 @@ child: ElevatedButton(
 
         Navigator.pop(context);
       } catch (e) {
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),

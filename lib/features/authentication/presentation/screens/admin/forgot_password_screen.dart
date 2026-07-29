@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 
 class AdminForgotPasswordScreen extends StatefulWidget {
   const AdminForgotPasswordScreen({super.key});
@@ -83,11 +84,10 @@ class _AdminForgotPasswordScreenState
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
                       // Firebase password reset logic goes here later
-                      debugPrint("Reset link sent to: ${_emailController.text}");
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(

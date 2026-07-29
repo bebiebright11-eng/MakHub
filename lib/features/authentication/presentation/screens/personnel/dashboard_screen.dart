@@ -1,13 +1,14 @@
 // ignore_for_file: file_names, deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../state/app_state.dart';
-import '5_floors_screen.dart';
-import '9_payments_screen.dart';
-import '11_reporting_screen.dart';
-import '14_profile_screen.dart';
-import '4_hostel_details_screen.dart';
-import '13_notifications_screen.dart';
+import 'floors_screen.dart';
+import 'payments_screen.dart';
+import 'reporting_screen.dart';
+import 'profile_screen.dart';
+import 'hostel_details_screen.dart';
+import 'notifications_screen.dart';
 import '/core/constants/app_colors.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -48,15 +49,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
         final isFirstRouteInTab =
             !(await _navigatorKeys[_currentIndex].currentState!.maybePop());
         if (isFirstRouteInTab && _currentIndex != 0) {
           _onTap(0);
-          return false;
+        } else if (isFirstRouteInTab) {
+          if (context.mounted) Navigator.of(context).pop();
         }
-        return isFirstRouteInTab;
       },
       child: Scaffold(
         body: NotificationListener<UserScrollNotification>(
@@ -117,9 +120,109 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 /// The main content of the Dashboard tab.
-/// UNCHANGED from your original file — no edits needed here.
-class _DashboardContent extends StatelessWidget {
+class _DashboardContent extends StatefulWidget {
   const _DashboardContent();
+
+  @override
+  State<_DashboardContent> createState() => _DashboardContentState();
+}
+
+class _DashboardContentState extends State<_DashboardContent> {
+  late Future<List<Map<String, dynamic>>> _activityFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _activityFuture = _loadRecentActivity();
+  }
+
+  // Format dynamic relative timestamps (e.g., '2m ago', '1h ago')
+  String _relativeTime(Timestamp? timestamp) {
+    if (timestamp == null) return '';
+    final difference = DateTime.now().difference(timestamp.toDate());
+    if (difference.inSeconds < 60) return 'Just now';
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return '${difference.inHours}h ago';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    final d = timestamp.toDate();
+    return '${d.day}/${d.month}/${d.year}';
+  }
+
+  // Build the recent activity feed from this hostel's latest bookings and payments
+  Future<List<Map<String, dynamic>>> _loadRecentActivity() async {
+    final firestore = FirebaseFirestore.instance;
+    final hostelId = AppState().hostelId;
+    final List<Map<String, dynamic>> items = [];
+
+    try {
+      Query bookingsQuery = firestore.collection('bookings');
+      if (hostelId.isNotEmpty) {
+        bookingsQuery = bookingsQuery.where('hostelId', isEqualTo: hostelId);
+      }
+      final bookingsSnap = await bookingsQuery.limit(20).get();
+
+      final bookingDocs = bookingsSnap.docs.toList()
+        ..sort((a, b) {
+          final ta = (a.data() as Map<String, dynamic>)['bookingDate'] as Timestamp?;
+          final tb = (b.data() as Map<String, dynamic>)['bookingDate'] as Timestamp?;
+          if (ta == null && tb == null) return 0;
+          if (ta == null) return 1;
+          if (tb == null) return -1;
+          return tb.compareTo(ta);
+        });
+
+      for (final doc in bookingDocs.take(3)) {
+        final data = doc.data() as Map<String, dynamic>;
+        final status = (data['bookingStatus'] ?? 'pending').toString();
+        final ref = doc.id.length > 6 ? doc.id.substring(doc.id.length - 6) : doc.id;
+        items.add({
+          'title': status == 'confirmed' ? 'Booking confirmed' : 'New booking',
+          'subtitle': 'Booking $ref is currently $status.',
+          'time': data['bookingDate'] as Timestamp?,
+          'icon': Icons.calendar_today,
+          'bgColor': const Color(0xFFDBEAFE),
+          'iconColor': AppColors.primary,
+        });
+      }
+
+      // Payments linked to those bookings (whereIn supports up to 10 ids)
+      final bookingIds = bookingDocs.map((d) => d.id).take(10).toList();
+      if (bookingIds.isNotEmpty) {
+        final paymentsSnap = await firestore
+            .collection('payments')
+            .where('bookingId', whereIn: bookingIds)
+            .get();
+        for (final doc in paymentsSnap.docs) {
+          final data = doc.data();
+          final status = (data['paymentStatus'] ?? 'pending').toString();
+          final bookingId = (data['bookingId'] ?? '').toString();
+          final ref = bookingId.length > 6
+              ? bookingId.substring(bookingId.length - 6)
+              : bookingId;
+          items.add({
+            'title': status == 'confirmed' ? 'Payment confirmed' : 'Payment received',
+            'subtitle': 'Payment for booking $ref is $status.',
+            'time': data['paymentTime'] as Timestamp?,
+            'icon': Icons.attach_money,
+            'bgColor': const Color(0xFFFED7AA),
+            'iconColor': AppColors.accent,
+          });
+        }
+      }
+    } catch (_) {
+      // Show whatever activity resolved before the failure
+    }
+
+    items.sort((a, b) {
+      final ta = a['time'] as Timestamp?;
+      final tb = b['time'] as Timestamp?;
+      if (ta == null && tb == null) return 0;
+      if (ta == null) return 1;
+      if (tb == null) return -1;
+      return tb.compareTo(ta);
+    });
+    return items.take(4).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -219,9 +322,40 @@ class _DashboardContent extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            _activityItem('Latest booking confirmed', '2m ago', 'Booking ID BK-2048 for Room 312 was created successfully.', Icons.calendar_today, const Color(0xFFDBEAFE), AppColors.primary),
-            _activityItem('Latest payment confirmed', '18m ago', 'Payment for BK-2039 was verified and receipt generated.', Icons.attach_money, const Color(0xFFFED7AA), AppColors.accent),
-            _activityItem('Latest room update', '41m ago', 'Room 104 changed from Reserved to Occupied in real time.', Icons.bed, const Color(0xFFD1FAE5), const Color(0xFF10B981)),
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _activityFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                final activities = snapshot.data ?? [];
+                if (activities.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text('No recent activity yet', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: activities
+                      .map((a) => _activityItem(
+                            a['title'] as String,
+                            _relativeTime(a['time'] as Timestamp?),
+                            a['subtitle'] as String,
+                            a['icon'] as IconData,
+                            a['bgColor'] as Color,
+                            a['iconColor'] as Color,
+                          ))
+                      .toList(),
+                );
+              },
+            ),
           ],
         ),
       ),

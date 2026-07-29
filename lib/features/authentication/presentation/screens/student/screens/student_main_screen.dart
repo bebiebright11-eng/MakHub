@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:flutter/rendering.dart';
 import 'home_screen.dart';
+import 'search_screen.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
 import 'booking_information_screen.dart';
@@ -17,36 +19,45 @@ class StudentMainScreen extends StatefulWidget {
 class _StudentMainScreenState extends State<StudentMainScreen> {
   int currentIndex = 0;
   bool _showBottomBar = true;
+  late Future<QuerySnapshot> _bookingFuture;
 
-  // One Navigator per tab so a push inside any tab stays inside
-  // that tab's own stack, instead of escaping the Scaffold below.
   final List<GlobalKey<NavigatorState>> _navigatorKeys =
       List.generate(5, (_) => GlobalKey<NavigatorState>());
 
+  @override
+  void initState() {
+    super.initState();
+    _bookingFuture = _fetchBooking();
+  }
+
+  Future<QuerySnapshot> _fetchBooking() {
+    return FirebaseFirestore.instance
+        .collection('bookings')
+        .where('studentId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+        .limit(1)
+        .get();
+  }
+
   Widget _bookingTab() {
     return FutureBuilder<QuerySnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('bookings')
-          .where('studentId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-          .limit(1)
-          .get(),
+      future: _bookingFuture,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Center(child: Text('Failed to load booking.'));
+        }
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(
             child: Text(
-              "You have not booked any room yet.",
+              'You have not booked any room yet.',
               style: TextStyle(fontSize: 18),
             ),
           );
         }
-
         final booking = snapshot.data!.docs.first;
         final data = booking.data() as Map<String, dynamic>;
-
         return StudentBookingInformationScreen(
           bookingId: booking.id,
           hostelId: data['hostelId'],
@@ -59,9 +70,7 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
 
   List<Widget> get _rootScreens => [
         const StudentHomeScreen(),
-        const Center(
-          child: Text("Search Screen", style: TextStyle(fontSize: 22)),
-        ),
+        const StudentSearchScreen(),
         _bookingTab(),
         const StudentNotificationsScreen(),
         const StudentMenuScreen(),
@@ -86,15 +95,17 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
         final isFirstRouteInTab =
             !(await _navigatorKeys[currentIndex].currentState!.maybePop());
         if (isFirstRouteInTab && currentIndex != 0) {
           _onTap(0);
-          return false;
+        } else if (isFirstRouteInTab) {
+          if (context.mounted) Navigator.of(context).pop();
         }
-        return isFirstRouteInTab;
       },
       child: Scaffold(
         body: NotificationListener<UserScrollNotification>(
@@ -121,7 +132,7 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
                 currentIndex: currentIndex,
                 onTap: _onTap,
                 type: BottomNavigationBarType.fixed,
-                selectedItemColor: Colors.blue,
+                selectedItemColor: AppColors.primary,
                 items: const [
                   BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
                   BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),

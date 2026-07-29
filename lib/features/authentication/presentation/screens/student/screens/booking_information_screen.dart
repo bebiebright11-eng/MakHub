@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'notifications_screen.dart';
-import 'profile_screen.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:makhub/core/constants/payment_constants.dart';
 import 'student_receipt_screen.dart';
@@ -10,12 +9,6 @@ class StudentBookingInformationScreen extends StatefulWidget {
   final String hostelId;
   final String roomId;
   final String floorId;
-  final String bookingDate;
-  final String reportingDate;
-  final String remainingBalance;
-  final String amountPaid;
-  final String paymentMethod;
-  final String status;
 
   const StudentBookingInformationScreen({
     super.key,
@@ -23,14 +16,7 @@ class StudentBookingInformationScreen extends StatefulWidget {
     required this.hostelId,
     required this.roomId,
     required this.floorId,
-    this.bookingDate = "12 Jul 2026",
-    this.reportingDate = "12 Sep 2026",
-    this.remainingBalance = "GHS 1,000",
-    this.amountPaid = "GHS 515",
-    this.paymentMethod = "Mobile Money",
-    this.status = "Confirmed",
   });
-  // ...
 
   @override
   State<StudentBookingInformationScreen> createState() =>
@@ -49,21 +35,31 @@ class _StudentBookingInformationScreenState
   ];
 
   Color get _statusColor {
-    if (widget.status == "Confirmed") return Colors.green;
-    if (widget.status == "Pending") return Colors.orange;
+    if (status == "confirmed" || status == "Confirmed") return Colors.green;
+    if (status == "pending" || status == "Pending") return Colors.orange;
     return Colors.red;
   }
 
-String remainingBalance = "";
+  String remainingBalance = "";
   bool isLoading = true;
   String amountPaid = "";
   String hostelName = "";
   String roomNumber = "";
   String floor = "";
   String reportingDate = "Not set";
+  String bookingDate = "N/A";
+  String status = "Pending";
+  String paymentMethod = "Mobile Money";
 
 Future<void> _loadRemainingBalance() async {
   try {
+    final bookingDoc = await FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(widget.bookingId)
+        .get();
+
+    final bookingData = bookingDoc.data();
+
     final hostelDoc = await FirebaseFirestore.instance
         .collection('hostels')
         .doc(widget.hostelId)
@@ -100,6 +96,15 @@ Future<void> _loadRemainingBalance() async {
 
     final reportingTimestamp = hostelDoc.data()?['reportingDate'] as Timestamp?;
 
+    final bookingTimestamp = bookingData?['bookingDate'] as Timestamp?;
+
+    // Payment method from the payments record for this booking
+    final paymentSnapshot = await FirebaseFirestore.instance
+        .collection('payments')
+        .where('bookingId', isEqualTo: widget.bookingId)
+        .limit(1)
+        .get();
+
     setState(() {
       remainingBalance = "UGX $balance";
       amountPaid = "UGX ${PaymentConstants.bookingFee}";
@@ -109,10 +114,18 @@ Future<void> _loadRemainingBalance() async {
       reportingDate = reportingTimestamp != null
           ? "${reportingTimestamp.toDate().day}/${reportingTimestamp.toDate().month}/${reportingTimestamp.toDate().year}"
           : "Not set";
+      bookingDate = bookingTimestamp != null
+          ? "${bookingTimestamp.toDate().day}/${bookingTimestamp.toDate().month}/${bookingTimestamp.toDate().year}"
+          : "N/A";
+      status = (bookingData?['bookingStatus'] ?? 'Pending').toString();
+      if (paymentSnapshot.docs.isNotEmpty) {
+        paymentMethod = (paymentSnapshot.docs.first.data()['paymentMethod'] ??
+                'Mobile Money')
+            .toString();
+      }
       isLoading = false;
     });
   } catch (e) {
-    print("ERROR in _loadRemainingBalance: $e");
     setState(() {
       isLoading = false;
     });
@@ -140,7 +153,7 @@ void initState() {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: _statusColor.withOpacity(0.1),
+                color: _statusColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -149,7 +162,7 @@ void initState() {
                   Icon(Icons.check_circle, color: _statusColor, size: 18),
                   const SizedBox(width: 6),
                   Text(
-                    "Booking ${widget.status}",
+                    "Booking ${isLoading ? 'Loading...' : status}",
                     style: TextStyle(color: _statusColor, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -192,7 +205,7 @@ void initState() {
               ),
               child: Column(
                 children: [
-                  _infoRow("Booking Date", widget.bookingDate),
+                  _infoRow("Booking Date", isLoading ? "Loading..." : bookingDate),
                   const SizedBox(height: 10),
                   _infoRow("Reporting Date", isLoading ? "Loading..." : reportingDate),
                   const SizedBox(height: 10),
@@ -223,7 +236,7 @@ void initState() {
                     valueColor: Colors.green,
                   ),
                   const SizedBox(height: 10),
-                  _infoRow("Payment Method", widget.paymentMethod),
+                  _infoRow("Payment Method", isLoading ? "Loading..." : paymentMethod),
                 ],
               ),
             ),
@@ -277,7 +290,7 @@ Row(
   },
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          side: const BorderSide(color: Colors.blue),
+          side: const BorderSide(color: AppColors.primary),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -285,7 +298,7 @@ Row(
         child: const Text(
           "View Receipt",
           style: TextStyle(
-            color: Colors.blue,
+            color: AppColors.primary,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -301,7 +314,7 @@ Row(
           // Contact hostel logic
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(

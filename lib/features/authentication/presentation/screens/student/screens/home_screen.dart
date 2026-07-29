@@ -2,13 +2,14 @@
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'hostel_details_screen.dart';
-import 'active_booking_screen.dart';
 import '/algorithms/search_algorithm.dart';
 import '/algorithms/recommendation_algorithm.dart';
 import 'guided_search_screen.dart';
 import '../widgets/hostel_card.dart';
 import 'describe_search_screen.dart';
+import 'profile_screen.dart';
+import 'preference_screen.dart';
+import 'hostel_results_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -24,7 +25,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   late Future<Map<String, dynamic>> _preferencesFuture;
 
-  String _searchText = "";
+  final String _searchText = "";
   String _selectedFilter = "";
 
   final TextEditingController _searchController = TextEditingController();
@@ -107,13 +108,30 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               SliverToBoxAdapter(child: const SizedBox(height: 20)),
               SliverToBoxAdapter(child: _buildCategoryChips()),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
-              SliverToBoxAdapter(child: _buildSectionHeader("Recommended Hostels")),
+              SliverToBoxAdapter(child: _buildSectionHeader("Recommended Hostels", onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => HostelResultsScreen(preferences: preferences),
+                  ),
+                );
+              })),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
               SliverToBoxAdapter(child: _buildHostelList(recommendedDocs)),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
               for (var location in ["Kikumi", "Near Main Gate", "Kikoni"])
                 if (_hostelsForLocation(filteredDocs, location).isNotEmpty) ...[
-                  SliverToBoxAdapter(child: _buildSectionHeader("Hostels near $location")),
+                  SliverToBoxAdapter(child: _buildSectionHeader("Hostels near $location", onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HostelResultsScreen(preferences: {
+                          ...preferences,
+                          'preferredLocation': location,
+                        }),
+                      ),
+                    );
+                  })),
                   SliverToBoxAdapter(child: const SizedBox(height: 12)),
                   SliverToBoxAdapter(child: _buildHostelList(_hostelsForLocation(filteredDocs, location))),
                   SliverToBoxAdapter(child: const SizedBox(height: 20)),
@@ -127,78 +145,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   ),
     );
   }
-  Future<void> _goToActiveBooking(BuildContext context) async {
-  final user = FirebaseAuth.instance.currentUser;
-
-  if (user == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("You're not logged in.")),
-    );
-    return;
-  }
-
-  try {
-    final bookingQuery = await FirebaseFirestore.instance
-        .collection('bookings')
-        .where('studentId', isEqualTo: user.uid)
-        .orderBy('bookingDate', descending: true)
-        .limit(1)
-        .get();
-
-    if (bookingQuery.docs.isEmpty) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("You don't have any bookings yet."),
-        ),
-      );
-      return;
-    }
-
-    final bookingDoc = bookingQuery.docs.first;
-
-    final bookingData = bookingDoc.data();
-
-    final hostelId = bookingData['hostelId'] ?? '';
-    final roomId = bookingData['roomId'] ?? '';
-    final floorId = bookingData['floorId'] ?? '';
-
-    final hostelDoc = await FirebaseFirestore.instance
-        .collection('hostels')
-        .doc(hostelId)
-        .get();
-
-    final hostelName =
-        hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
-
-    if (!mounted) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => StudentActiveBookingScreen(
-          bookingId: bookingDoc.id,
-          hostelName: hostelName,
-          roomNumber: roomId,
-          bookingStatus:
-              bookingData['bookingStatus'] ?? 'Pending',
-          hostelId: hostelId,
-          roomId: roomId,  
-          floorId: floorId,   
-        ),
-      ),
-    );
-  } catch (e) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Something went wrong: $e"),
-      ),
-    );
-  }
-}
   Future<Map<String, dynamic>> _loadPreferences() async {
   final user = FirebaseAuth.instance.currentUser;
 
@@ -295,7 +241,7 @@ void _removeSearchOverlay() {
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onTap: _removeSearchOverlay,
-                child: Container(color: Colors.black.withOpacity(0.25)),
+                child: Container(color: Colors.black.withValues(alpha: 0.25)),
               ),
             ),
 
@@ -312,7 +258,7 @@ void _removeSearchOverlay() {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
+                        color: Colors.black.withValues(alpha: 0.12),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),
@@ -462,13 +408,23 @@ void _removeSearchOverlay() {
                   Text('Find your hostel', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  shape: BoxShape.circle,
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const StudentProfileScreen(),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.person_outline, color: Colors.white),
                 ),
-                child: const Icon(Icons.person_outline, color: Colors.white),
               )
             ],
           ),
@@ -500,14 +456,26 @@ void _removeSearchOverlay() {
                 ),
               ),
               const SizedBox(width: 12),
-              Container(
-                height: 56,
-                width: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(16),
+              GestureDetector(
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const StudentPreferenceScreen(),
+                    ),
+                  );
+                  // Reload preferences in case the student just saved new ones
+                  _refreshPreferences();
+                },
+                child: Container(
+                  height: 56,
+                  width: 56,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.tune, color: Colors.white),
                 ),
-                child: const Icon(Icons.tune, color: Colors.white),
               )
             ],
           )
@@ -599,22 +567,26 @@ Widget _buildChip(String label, IconData icon) {
   );
 }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, {VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: const BoxDecoration(
-              color: Colors.black,
-              shape: BoxShape.circle,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: Colors.black,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_forward, color: Colors.white, size: 16),
             ),
-            child: const Icon(Icons.arrow_forward, color: Colors.white, size: 16),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -656,7 +628,7 @@ Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
                 distance: data['location'] ?? '',
                 singlePrice: data['singlePrice'] ?? '0',
                 doublePrice: data['doublePrice'] ?? '0',
-                rating: '4.5',
+                rating: ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1),
                 distanceFromCampus: data['distance']?.toString(),
               ),
             );
@@ -667,159 +639,6 @@ Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
 
     
   
-
-Widget _buildAllHostelsList(List<QueryDocumentSnapshot> hostelDocs) {
-    if (hostelDocs.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Text("No hostels found.", style: TextStyle(fontSize: 16)),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: hostelDocs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _buildAllHostelCard(
-              hostelId: doc.id,
-              name: data['hostelName'] ?? 'Unnamed Hostel',
-              distance: data['location'] ?? '',
-              singlePrice: data['singlePrice'] ?? '0',
-              doublePrice: data['doublePrice'] ?? '0',
-              rating: '4.5',
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildAllHostelCard({
-    required String hostelId,
-    required String name,
-    required String distance,
-    required String singlePrice,
-    required String doublePrice,
-    required String rating,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 4))],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 110,
-            height: 110,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
-            ),
-            child: const Center(child: Icon(Icons.image, size: 32, color: Colors.grey)),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined, color: Colors.grey, size: 13),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          distance,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.grey, fontSize: 11),
-                        ),
-                      ),
-                      const Icon(Icons.star, color: AppColors.accent, size: 13),
-                      const SizedBox(width: 2),
-                      Text(rating, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-  children: [
-    Expanded(
-      child: Text(
-        'Single UGX $singlePrice',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 11),
-      ),
-    ),
-    const SizedBox(width: 10),
-    Expanded(
-      child: Text(
-        'Double UGX $doublePrice',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 11),
-      ),
-    ),
-  ],
-),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => HostelDetailsScreen(hostelId: hostelId),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      'View Details',
-                      style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPriceOption(String type, String price) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(type, style: const TextStyle(color: Colors.grey, fontSize: 10)),
-            Text('UGX $price', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
-          ],
-        ),
-      ),
-    );
-  }
 
 }
 

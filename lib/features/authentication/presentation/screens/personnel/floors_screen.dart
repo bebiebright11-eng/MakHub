@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '6_room_list_screen.dart';
+import 'room_list_screen.dart';
 
 class FloorsScreen extends StatelessWidget {
   final String hostelId;
@@ -68,7 +69,7 @@ class FloorsScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)
         ],
       ),
       child: Row(
@@ -99,7 +100,7 @@ class FloorsScreen extends StatelessWidget {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
+              backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),

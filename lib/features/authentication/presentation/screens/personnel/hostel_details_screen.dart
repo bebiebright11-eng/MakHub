@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -106,11 +107,11 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.location_on, size: 16, color: Color(0xFF2563EB)),
+                    const Icon(Icons.location_on, size: 16, color: AppColors.primary),
                     const SizedBox(width: 4),
                     Text(data['location'] ?? '', style: TextStyle(color: Colors.grey.shade600)),
                     const SizedBox(width: 16),
-                    const Icon(Icons.directions_walk, size: 16, color: Color(0xFF2563EB)),
+                    const Icon(Icons.directions_walk, size: 16, color: AppColors.primary),
                     const SizedBox(width: 4),
                     Text(data['walkingTime'] ?? '', style: TextStyle(color: Colors.grey.shade600)),
                   ],
@@ -125,7 +126,7 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
                 icon: const Icon(Icons.play_circle_fill),
                 label: const Text('View Tour Video'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -249,7 +250,7 @@ const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(type, style: const TextStyle(fontWeight: FontWeight.w500)),
-          Text(price, style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+          Text(price, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
         ],
       ),
     );

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'admin_room_details_screen.dart';
 
 class AdminEditRoomScreen extends StatefulWidget {
   final String hostelId;
@@ -113,7 +113,6 @@ if (hostelDoc.exists) {
 
   } catch (e) {
 
-    debugPrint(e.toString());
 
     setState(() {
       _loading = false;
@@ -376,7 +375,7 @@ Container(
         children: [
           const Icon(
             Icons.straighten,
-            color: Colors.blue,
+            color: AppColors.primary,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -482,7 +481,7 @@ Container(
 
   });
 
-  if (!mounted) return;
+  if (!context.mounted) return;
 
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
@@ -495,7 +494,7 @@ Container(
 
 
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -570,7 +569,7 @@ Container(
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? Colors.blue : Colors.grey.shade100,
+            color: selected ? AppColors.primary : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(

@@ -4,8 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '/algorithms/search_algorithm.dart';
 import '/algorithms/ranking_algorithm.dart';
 import 'hostel_details_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'active_booking_screen.dart';
 
 class StudentSearchScreen extends StatefulWidget {
   const StudentSearchScreen({super.key});
@@ -178,7 +176,7 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
                   data["hostelName"] ?? "",
                   data["location"] ?? "",
                   data["singlePrice"] ?? "",
-                  "4.5",
+                  (data["averageRating"] ?? 0.0).toStringAsFixed(1),
                   List<String>.from(data["facilities"] ?? []),
                 );
               },
@@ -191,78 +189,6 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
     );
   }
 
-  Future<void> _goToActiveBooking(BuildContext context) async {
-  debugPrint("Booking tab tapped");
-
-  final user = FirebaseAuth.instance.currentUser;
-
-  if (user == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("You're not logged in.")),
-    );
-    return;
-  }
-
-  try {
-    final bookingQuery = await FirebaseFirestore.instance
-        .collection('bookings')
-        .where('studentId', isEqualTo: user.uid)
-        .orderBy('bookingDate', descending: true)
-        .limit(1)
-        .get();
-
-    if (bookingQuery.docs.isEmpty) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("You don't have any bookings yet."),
-        ),
-      );
-      return;
-    }
-
-    final bookingDoc = bookingQuery.docs.first;
-    final bookingData = bookingDoc.data();
-
-    final hostelId = bookingData['hostelId'] ?? '';
-    final roomId = bookingData['roomId'] ?? '';
-    final floorId = bookingData['floorId'] ?? '';
-
-    final hostelDoc = await FirebaseFirestore.instance
-        .collection('hostels')
-        .doc(hostelId)
-        .get();
-
-    final hostelName =
-        hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
-
-    if (!mounted) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => StudentActiveBookingScreen(
-          bookingId: bookingDoc.id,
-          hostelName: hostelName,
-          roomNumber: roomId,
-          bookingStatus:
-              bookingData['bookingStatus'] ?? 'Pending',
-          hostelId: hostelId,    
-          roomId: roomId,
-          floorId: floorId,
-
-        ),
-      ),
-    );
-  } catch (e) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Something went wrong: $e")),
-    );
-  }
-}
   List<QueryDocumentSnapshot> _filterHostels(
     List<QueryDocumentSnapshot> docs) {
 
@@ -397,7 +323,7 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

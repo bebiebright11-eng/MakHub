@@ -1,8 +1,44 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'admin_profile_screen.dart';
 
 class AdminNotificationsScreen extends StatelessWidget {
   const AdminNotificationsScreen({super.key});
+
+  String? get _currentUserId => FirebaseAuth.instance.currentUser?.uid;
+
+  // Format dynamic relative timestamps (e.g., '2m ago', '1h ago')
+  String _formatTimestamp(Timestamp? timestamp) {
+    if (timestamp == null) return 'Just now';
+    final DateTime dateTime = timestamp.toDate();
+    final Duration difference = DateTime.now().difference(dateTime);
+
+    if (difference.inSeconds < 60) return 'Just now';
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return '${difference.inHours}h ago';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+  }
+
+  // Map notification types to corresponding icons and colors
+  Map<String, dynamic> _getStyleForType(String? type) {
+    switch (type) {
+      case 'booking':
+        return {'icon': Icons.book, 'color': AppColors.primary};
+      case 'payment':
+        return {'icon': Icons.payment, 'color': Colors.green};
+      case 'review':
+        return {'icon': Icons.star, 'color': Colors.orange};
+      case 'personnel':
+        return {'icon': Icons.person_add, 'color': Colors.purple};
+      case 'maintenance':
+        return {'icon': Icons.build, 'color': Colors.red};
+      default:
+        return {'icon': Icons.notifications, 'color': Colors.grey};
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,111 +53,96 @@ class AdminNotificationsScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            const Text(
-              "Stay updated on recent activity",
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
+      body: _currentUserId == null
+          ? const Center(child: Text("Please log in to view notifications."))
+          : StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(_currentUserId)
+                  .collection('notifications')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-            _sectionLabel("TODAY"),
-            _notificationTile(
-              icon: Icons.book,
-              iconColor: Colors.blue,
-              title: "New booking request",
-              subtitle: "Ama K. requested a room at Sunrise Residence.",
-              time: "10m ago",
-            ),
-            _notificationTile(
-              icon: Icons.payment,
-              iconColor: Colors.green,
-              title: "Payment received",
-              subtitle: "GHS 2,500 was confirmed for Room 204.",
-              time: "18m ago",
-            ),
-            _notificationTile(
-              icon: Icons.star,
-              iconColor: Colors.orange,
-              title: "New student review",
-              subtitle: "Kwesi M. left a 5-star review for the hostel.",
-              time: "8:02 PM",
-            ),
-            _notificationTile(
-              icon: Icons.person_add,
-              iconColor: Colors.purple,
-              title: "Personnel assigned",
-              subtitle: "A new hostel attendant was assigned to First Floor.",
-              time: "6h ago",
-            ),
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                        'Error loading notifications: ${snapshot.error}'),
+                  );
+                }
 
-            const SizedBox(height: 20),
-            _sectionLabel("YESTERDAY"),
-            _notificationTile(
-              icon: Icons.check_circle,
-              iconColor: Colors.green,
-              title: "Booking approved",
-              subtitle: "Room 101 booking was approved and moved to confirmed.",
-              time: "Mon, 4:22 PM",
-            ),
+                final docs = snapshot.data?.docs ?? [];
 
-            const SizedBox(height: 20),
-            _sectionLabel("EARLIER"),
-            _notificationTile(
-              icon: Icons.build,
-              iconColor: Colors.red,
-              title: "Maintenance reminder",
-              subtitle: "Room 106 reported a bathroom issue that needs attention.",
-              time: "Sun, 9:05 PM",
-            ),
+                if (docs.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      "No notifications yet",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  );
+                }
 
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: docs.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return const Padding(
+                        padding: EdgeInsets.only(bottom: 20),
+                        child: Text(
+                          "Stay updated on recent activity",
+                          style: TextStyle(fontSize: 13, color: Colors.grey),
+                        ),
+                      );
+                    }
+
+                    final data =
+                        docs[index - 1].data() as Map<String, dynamic>;
+                    final style =
+                        _getStyleForType(data['type']?.toString());
+
+                    return _notificationTile(
+                      icon: style['icon'],
+                      iconColor: style['color'],
+                      title: data['title'] ?? '',
+                      subtitle: data['subtitle'] ?? '',
+                      time: _formatTimestamp(
+                          data['createdAt'] as Timestamp?),
+                    );
+                  },
+                );
+              },
+            ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 3,
-        selectedItemColor: Colors.blue,
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
-          if (index == 3) return;
+          if (index == 3) return; // already on Notifications
           if (index == 4) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const AdminProfileScreen(),
-        ),
-      );
-      return;
-    } // already on Notifications
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminProfileScreen(),
+              ),
+            );
+            return;
+          }
           Navigator.pop(context);
-          // Other tabs can be wired the same way once ready.
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Dashboard"),
-          BottomNavigationBarItem(icon: Icon(Icons.apartment), label: "Hostels"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.apartment), label: "Hostels"),
           BottomNavigationBarItem(icon: Icon(Icons.book), label: "Bookings"),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: "Notifications"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.notifications), label: "Notifications"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
-      ),
-    );
-  }
-
-  Widget _sectionLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey.shade600,
-          letterSpacing: 0.5,
-        ),
       ),
     );
   }
@@ -145,7 +166,7 @@ class AdminNotificationsScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            backgroundColor: iconColor.withOpacity(0.1),
+            backgroundColor: iconColor.withValues(alpha: 0.1),
             child: Icon(icon, color: iconColor, size: 20),
           ),
           const SizedBox(width: 12),
@@ -155,7 +176,8 @@ class AdminNotificationsScreen extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 const SizedBox(height: 2),
                 Text(

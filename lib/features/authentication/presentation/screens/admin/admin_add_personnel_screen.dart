@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminAddPersonnelScreen extends StatefulWidget {
@@ -60,7 +61,7 @@ class _AdminAddPersonnelScreenState
               width: 90,
               height: 90,
               decoration: BoxDecoration(
-                color: const Color(0xFF2563EB),
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(24),
               ),
               child: const Icon(
@@ -178,7 +179,7 @@ class _AdminAddPersonnelScreenState
 
     });
 
-    if (!mounted) return;
+    if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -189,6 +190,8 @@ class _AdminAddPersonnelScreenState
     Navigator.pop(context);
 
   } catch (e) {
+
+    if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -205,7 +208,7 @@ class _AdminAddPersonnelScreenState
 },
 
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
@@ -288,7 +291,7 @@ class _AdminAddPersonnelScreenState
 
             focusedBorder: const OutlineInputBorder(
               borderSide: BorderSide(
-                color: Color(0xFF2563EB),
+                color: AppColors.primary,
               ),
             ),
           ),

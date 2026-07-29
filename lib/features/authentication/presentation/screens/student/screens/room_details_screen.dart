@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'booking_details_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -65,7 +66,7 @@ late final Stream<DocumentSnapshot> _roomStream =
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  const Icon(Icons.location_on, size: 14, color: Color(0xFF2563EB)),
+                                  const Icon(Icons.location_on, size: 14, color: AppColors.primary),
                                   const SizedBox(width: 4),
                                   Text(widget.hostelId, style: const TextStyle(color: Colors.grey, fontSize: 13)),
                                 ],
@@ -75,7 +76,7 @@ late final Stream<DocumentSnapshot> _roomStream =
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(10)),
-                            child: Text(availability, style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 12)),
+                            child: Text(availability, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
                           ),
                         ],
                       ),
@@ -111,11 +112,11 @@ late final Stream<DocumentSnapshot> _roomStream =
           decoration: BoxDecoration(
             color: Colors.grey.shade200,
             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-            image: roomPhoto != null && roomPhoto.isNotEmpty
+            image: roomPhoto.isNotEmpty
                 ? DecorationImage(image: NetworkImage(roomPhoto), fit: BoxFit.cover)
                 : null,
           ),
-          child: roomPhoto == null || roomPhoto.isEmpty
+          child: roomPhoto.isEmpty
               ? const Center(child: Icon(Icons.bed, size: 80, color: Colors.grey))
               : null,
         ),
@@ -197,7 +198,7 @@ if (data['features'] is Map<String, dynamic>) {
   Widget _detailRow(IconData icon, String title, String subtitle, String value) {
     return Row(
       children: [
-        Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: const Color(0xFF2563EB), size: 18)),
+        Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: AppColors.primary, size: 18)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -231,7 +232,7 @@ if (data['features'] is Map<String, dynamic>) {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: const Color(0xFF2563EB), size: 24),
+            Icon(icon, color: AppColors.primary, size: 24),
             const SizedBox(height: 12),
             Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             const SizedBox(height: 4),
@@ -245,7 +246,7 @@ if (data['features'] is Map<String, dynamic>) {
   Widget _buildBottomAction(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
+      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))]),
       child: SizedBox(
         width: double.infinity,
         height: 56,
@@ -255,7 +256,7 @@ if (data['features'] is Map<String, dynamic>) {
     floorId: widget.floorId,
     roomId: widget.roomId,
 ))),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
           child: const Text('Book Room', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
         ),
       ),

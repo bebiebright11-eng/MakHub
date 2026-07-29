@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -236,7 +236,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 15)],
       ),
       child: Column(
         children: [
@@ -426,7 +426,7 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
         color: Colors.white, 
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05), 
+            color: Colors.black.withValues(alpha: 0.05), 
             blurRadius: 10, 
             offset: const Offset(0, -5),
           ),
@@ -457,22 +457,6 @@ class _StudentBookingDetailsScreenState extends State<StudentBookingDetailsScree
                 ),
         ),
       ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 2,
-      selectedItemColor: AppColors.primary,
-      unselectedItemColor: Colors.grey,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-        BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Booking'),
-        BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: 'Notifications'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-      ],
     );
   }
 }

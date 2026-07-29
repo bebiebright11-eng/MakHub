@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 
 class StudentPrivacyPolicyScreen extends StatelessWidget {
   const StudentPrivacyPolicyScreen({super.key});
@@ -25,7 +26,7 @@ class StudentPrivacyPolicyScreen extends StatelessWidget {
                 child: const Icon(
                   Icons.shield_outlined,
                   size: 48,
-                  color: Color(0xFF2563EB),
+                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(height: 24),

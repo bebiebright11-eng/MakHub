@@ -127,7 +127,7 @@ class PaymentDetailsScreen extends StatelessWidget {
           final studentName = (data['studentName'] ?? data['userName'] ?? 'Student').toString();
           final hostelName = (data['hostelName'] ?? 'Hostel').toString();
           final roomNumber = (data['roomNumber'] ?? data['roomId'] ?? 'N/A').toString();
-          final amount = data['amount'] != null ? 'UGX ${data['amount']}' : 'UGX 50,000';
+          final amount = data['amount'] != null ? 'UGX ${data['amount']}' : 'N/A';
           
           final transferTime = _formatTimestamp(data['paymentTime'] ?? data['paymentDate'] ?? data['createdAt']);
           final transactionRef = (data['transactionReference'] ?? data['transactionID'] ?? data['ref'] ?? 'N/A').toString();
@@ -170,7 +170,7 @@ class PaymentDetailsScreen extends StatelessWidget {
                           child: Image.network(
                             receiptUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Center(
+                            errorBuilder: (_, _, _) => const Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [

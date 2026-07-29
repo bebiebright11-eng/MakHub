@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '8_update_room_status_screen.dart';
+import 'update_room_status_screen.dart';
 
 class RoomDetailsScreen extends StatefulWidget {
   final String hostelId;
@@ -84,7 +85,6 @@ class _RoomDetailsScreenState extends State<RoomDetailsScreen> {
         _loading = false;
       });
     } catch (e) {
-      debugPrint(e.toString());
       setState(() => _loading = false);
     }
   }
@@ -129,7 +129,7 @@ class _RoomDetailsScreenState extends State<RoomDetailsScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: AppColors.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(15),
                     ),
                     child: Column(
@@ -157,7 +157,7 @@ class _RoomDetailsScreenState extends State<RoomDetailsScreen> {
                               ),
                             ),
                             const Spacer(),
-                            const Icon(Icons.people, color: Colors.blue),
+                            const Icon(Icons.people, color: AppColors.primary),
                             const SizedBox(width: 6),
                             Text('$_occupied/$_capacity', style: const TextStyle(fontWeight: FontWeight.bold)),
                           ],
@@ -200,7 +200,7 @@ class _RoomDetailsScreenState extends State<RoomDetailsScreen> {
                     decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
                     child: Row(
                       children: [
-                        const Icon(Icons.people, color: Colors.blue),
+                        const Icon(Icons.people, color: AppColors.primary),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -256,7 +256,7 @@ class _RoomDetailsScreenState extends State<RoomDetailsScreen> {
                     decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
                     child: Row(
                       children: [
-                        const Icon(Icons.hotel, color: Colors.blue),
+                        const Icon(Icons.hotel, color: AppColors.primary),
                         const SizedBox(width: 12),
                         Expanded(child: Text('$_roomType Room', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
                       ],
@@ -274,7 +274,7 @@ class _RoomDetailsScreenState extends State<RoomDetailsScreen> {
                           decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
                           child: Column(
                             children: [
-                              const Icon(Icons.straighten, color: Colors.blue),
+                              const Icon(Icons.straighten, color: AppColors.primary),
                               const SizedBox(height: 10),
                               const Text('Room Size (ft)', style: TextStyle(fontWeight: FontWeight.bold)),
                               const SizedBox(height: 8),
@@ -325,11 +325,11 @@ class _RoomDetailsScreenState extends State<RoomDetailsScreen> {
                           children: _selectedFeatures.map((feature) {
                             return Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(20)),
+                              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(20)),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.check_circle, color: Colors.blue, size: 18),
+                                  const Icon(Icons.check_circle, color: AppColors.primary, size: 18),
                                   const SizedBox(width: 8),
                                   Text(feature),
                                 ],
@@ -346,7 +346,7 @@ class _RoomDetailsScreenState extends State<RoomDetailsScreen> {
                       icon: const Icon(Icons.edit),
                       label: const Text("Update Room"),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

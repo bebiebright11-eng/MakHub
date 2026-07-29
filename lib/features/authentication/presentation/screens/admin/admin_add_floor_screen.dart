@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminAddFloorScreen extends StatefulWidget {
@@ -164,7 +165,7 @@ if (start == null || end == null || start > end) {
   
   await batch.commit();
 
-  if (mounted) {
+  if (context.mounted) {
     Navigator.pop(
       context,
       {
@@ -177,7 +178,7 @@ if (start == null || end == null || start > end) {
 
 
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   
                   shape: RoundedRectangleBorder(
