@@ -61,12 +61,28 @@ class RecommendationAlgorithm {
 
       int score = 0;
 
-      // ── 1. Hostel type (+30) ──────────────────────────────────────────────
+      // ── 1. Hostel type — hard exclusion + score (+30) ─────────────────────
+      // If the student has a type preference, hostels that don't match are
+      // excluded entirely — not just scored lower.
+      // Rule: "Mixed" preference keeps Mixed hostels only.
+      //       "Boys" preference keeps Boys + Mixed hostels.
+      //       "Girls" preference keeps Girls + Mixed hostels.
+      //       No preference → all hostels shown.
       final hostelType = (data['type'] ?? '').toString().toLowerCase();
       final preferredType =
           (preferences['preferredType'] ?? '').toString().toLowerCase();
+
+      if (preferredType.isNotEmpty) {
+        final bool typeAllowed = hostelType == preferredType ||
+            hostelType == 'mixed';
+        if (!typeAllowed) continue; // hard-exclude
+      }
+
       if (preferredType.isNotEmpty && hostelType == preferredType) {
         score += 30;
+      } else if (preferredType.isNotEmpty && hostelType == 'mixed') {
+        // Mixed hostels are allowed but score slightly less than exact match
+        score += 15;
       }
 
       // ── 2. Budget (+25) ───────────────────────────────────────────────────
@@ -94,13 +110,16 @@ class RecommendationAlgorithm {
 
       // ── 3. Location (+20) ─────────────────────────────────────────────────
       final preferredLocation =
-          (preferences['preferredLocation'] ?? '').toString().toLowerCase();
+          (preferences['preferredLocation'] ?? '').toString().toLowerCase().trim();
       final isAnyLocation =
           preferredLocation.isEmpty || preferredLocation.contains('any');
       if (!isAnyLocation) {
         final hostelLocation =
             (data['location'] ?? '').toString().toLowerCase();
-        if (hostelLocation.contains(preferredLocation)) score += 20;
+        // Partial match both ways: "kikoni" matches "near kikoni" and vice versa
+        final locationMatch = hostelLocation.contains(preferredLocation) ||
+            preferredLocation.contains(hostelLocation);
+        if (locationMatch) score += 20;
       }
 
       // ── 4. Distance from university (+20) ────────────────────────────────
@@ -161,14 +180,14 @@ class RecommendationAlgorithm {
 
     scored.sort((a, b) => b.value.compareTo(a.value));
 
-    // Convert raw scores to percentage relative to the top scorer so the
-    // numbers feel meaningful even when preferences are sparse.
-    final int topScore =
-        scored.isEmpty ? 1 : (scored.first.value > 0 ? scored.first.value : 1);
+    // Use absolute scoring against a fixed max of 100 points.
+    // This way 100% means "matches all your preferences perfectly",
+    // NOT just "best of what's available".
+    // Max possible base score = 30+25+20+15+10 = 100 (facilities are bonus).
+    const int absoluteMax = 100;
 
     return scored.map((entry) {
-      // Clamp to _maxBaseScore so perfect matches can't exceed 100%.
-      final rawPct = ((entry.value / topScore) * 100).round();
+      final rawPct = ((entry.value / absoluteMax) * 100).round();
       final pct = rawPct.clamp(0, 100);
       return HostelRecommendation(doc: entry.key, matchPercent: pct);
     }).toList();

@@ -4,6 +4,7 @@ import '/core/constants/app_colors.dart';
 import 'floor_selection_screen.dart';
 import '../services/wishlist_service.dart';
 import 'reviews_screen.dart';
+import 'hostel_map_screen.dart';
 
 class HostelDetailsScreen extends StatefulWidget {
   final String hostelId;
@@ -119,7 +120,8 @@ _buildSectionTitle('Facilities'),
         stream: _hostelStream,
         builder: (context, snapshot) {
           if (!snapshot.hasData || !snapshot.data!.exists) return const SizedBox.shrink();
-          return _buildBottomButtons(context);
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          return _buildBottomButtons(context, data);
         },
       ),
     );
@@ -248,24 +250,70 @@ _buildSectionTitle('Facilities'),
   }
 
   Widget _buildTags(Map<String, dynamic> data) {
-  return Row(
-    children: [
-      _buildTag(
-        '${data['distance'] ?? ''} from campus',
-        const Color(0xFFEFF6FF),
-        AppColors.primary,
-        Icons.location_on,
-      ),
-      const SizedBox(width: 12),
-      _buildTag(
-        '${data['walkingTime'] ?? ''}',
-        const Color(0xFFF1F5F9),
-        Colors.black,
-        Icons.directions_walk,
-      ),
-    ],
-  );
-}
+    final String rawType = (data['type'] ?? '').toString().toLowerCase();
+
+    // Map raw type to display label, icon and colour
+    final Map<String, dynamic> typeStyle = () {
+      switch (rawType) {
+        case 'girls':
+          return {
+            'label': 'Girls Only',
+            'icon': Icons.female,
+            'bg': const Color(0xFFFCE7F3),
+            'color': const Color(0xFFDB2777),
+          };
+        case 'boys':
+          return {
+            'label': 'Boys Only',
+            'icon': Icons.male,
+            'bg': const Color(0xFFEFF6FF),
+            'color': AppColors.primary,
+          };
+        case 'mixed':
+          return {
+            'label': 'Mixed',
+            'icon': Icons.people,
+            'bg': const Color(0xFFF0FDF4),
+            'color': const Color(0xFF16A34A),
+          };
+        default:
+          return {
+            'label': rawType.isNotEmpty ? rawType : 'Unknown',
+            'icon': Icons.apartment,
+            'bg': Colors.grey.shade100,
+            'color': Colors.grey.shade700,
+          };
+      }
+    }();
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      children: [
+        // Gender / type tag — always shown prominently
+        _buildTag(
+          typeStyle['label'] as String,
+          typeStyle['bg'] as Color,
+          typeStyle['color'] as Color,
+          typeStyle['icon'] as IconData,
+        ),
+        if ((data['distance'] ?? '').toString().isNotEmpty)
+          _buildTag(
+            '${data['distance']} from campus',
+            const Color(0xFFEFF6FF),
+            AppColors.primary,
+            Icons.location_on,
+          ),
+        if ((data['walkingTime'] ?? '').toString().isNotEmpty)
+          _buildTag(
+            '${data['walkingTime']}',
+            const Color(0xFFF1F5F9),
+            Colors.black,
+            Icons.directions_walk,
+          ),
+      ],
+    );
+  }
 
   Widget _buildTag(String label, Color bgColor, Color textColor, IconData icon) {
     return Container(
@@ -336,7 +384,14 @@ Widget _buildPricingCards(Map<String, dynamic> data) {
     ),
     child: Column(
       children: [
-        _infoRow(Icons.home, "Hostel Type", data['type'] ?? ""),
+        _infoRow(Icons.home, "Hostel Type", () {
+          switch ((data['type'] ?? '').toString().toLowerCase()) {
+            case 'boys':   return 'Boys Only';
+            case 'girls':  return 'Girls Only';
+            case 'mixed':  return 'Mixed (Boys & Girls)';
+            default:       return data['type'] ?? '';
+          }
+        }()),
         _infoRow(Icons.location_on, "Distance", data['distance'] ?? ""),
         _infoRow(Icons.king_bed, "Single Room Size", data['singleRoomSize'] ?? ""),
         _infoRow(Icons.bed, "Double Room Size", data['doubleRoomSize'] ?? ""),
@@ -549,61 +604,98 @@ Widget _infoRow(
     );
   }
 
-  Widget _buildBottomButtons(BuildContext context) {
+  Widget _buildBottomButtons(BuildContext context, Map<String, dynamic> data) {
+    final double? lat = (data['latitude'] as num?)?.toDouble();
+    final double? lng = (data['longitude'] as num?)?.toDouble();
+    final bool hasLocation = lat != null && lng != null;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => StudentFloorSelectionScreen(hostelId: widget.hostelId),
+          // View on Map button — shown only when coordinates exist
+          if (hasLocation) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => HostelMapScreen(
+                      hostelName: data['hostelName'] ?? '',
+                      latitude: lat,
+                      longitude: lng,
+                      address: data['address'] ?? data['location'] ?? '',
+                      hostelData: data,
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.map_outlined, color: AppColors.primary, size: 18),
+                label: const Text('View on Map', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
               ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                side: const BorderSide(color: Color(0xFFDBEAFE)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.layers_outlined, color: AppColors.primary),
-                  SizedBox(width: 8),
-                  Text('View Floors', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-                ],
-              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => StudentFloorSelectionScreen(hostelId: widget.hostelId),
+            const SizedBox(height: 10),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => StudentFloorSelectionScreen(hostelId: widget.hostelId),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: const BorderSide(color: Color(0xFFDBEAFE)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.layers_outlined, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Text('View Floors', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => StudentFloorSelectionScreen(hostelId: widget.hostelId),
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.calendar_today_outlined, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text('Book Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
               ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.calendar_today_outlined, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text('Book Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
+            ],
           ),
         ],
       ),
