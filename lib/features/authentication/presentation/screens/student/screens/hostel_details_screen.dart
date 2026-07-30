@@ -248,24 +248,70 @@ _buildSectionTitle('Facilities'),
   }
 
   Widget _buildTags(Map<String, dynamic> data) {
-  return Row(
-    children: [
-      _buildTag(
-        '${data['distance'] ?? ''} from campus',
-        const Color(0xFFEFF6FF),
-        AppColors.primary,
-        Icons.location_on,
-      ),
-      const SizedBox(width: 12),
-      _buildTag(
-        '${data['walkingTime'] ?? ''}',
-        const Color(0xFFF1F5F9),
-        Colors.black,
-        Icons.directions_walk,
-      ),
-    ],
-  );
-}
+    final String rawType = (data['type'] ?? '').toString().toLowerCase();
+
+    // Map raw type to display label, icon and colour
+    final Map<String, dynamic> typeStyle = () {
+      switch (rawType) {
+        case 'girls':
+          return {
+            'label': 'Girls Only',
+            'icon': Icons.female,
+            'bg': const Color(0xFFFCE7F3),
+            'color': const Color(0xFFDB2777),
+          };
+        case 'boys':
+          return {
+            'label': 'Boys Only',
+            'icon': Icons.male,
+            'bg': const Color(0xFFEFF6FF),
+            'color': AppColors.primary,
+          };
+        case 'mixed':
+          return {
+            'label': 'Mixed',
+            'icon': Icons.people,
+            'bg': const Color(0xFFF0FDF4),
+            'color': const Color(0xFF16A34A),
+          };
+        default:
+          return {
+            'label': rawType.isNotEmpty ? rawType : 'Unknown',
+            'icon': Icons.apartment,
+            'bg': Colors.grey.shade100,
+            'color': Colors.grey.shade700,
+          };
+      }
+    }();
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      children: [
+        // Gender / type tag — always shown prominently
+        _buildTag(
+          typeStyle['label'] as String,
+          typeStyle['bg'] as Color,
+          typeStyle['color'] as Color,
+          typeStyle['icon'] as IconData,
+        ),
+        if ((data['distance'] ?? '').toString().isNotEmpty)
+          _buildTag(
+            '${data['distance']} from campus',
+            const Color(0xFFEFF6FF),
+            AppColors.primary,
+            Icons.location_on,
+          ),
+        if ((data['walkingTime'] ?? '').toString().isNotEmpty)
+          _buildTag(
+            '${data['walkingTime']}',
+            const Color(0xFFF1F5F9),
+            Colors.black,
+            Icons.directions_walk,
+          ),
+      ],
+    );
+  }
 
   Widget _buildTag(String label, Color bgColor, Color textColor, IconData icon) {
     return Container(
@@ -336,7 +382,14 @@ Widget _buildPricingCards(Map<String, dynamic> data) {
     ),
     child: Column(
       children: [
-        _infoRow(Icons.home, "Hostel Type", data['type'] ?? ""),
+        _infoRow(Icons.home, "Hostel Type", () {
+          switch ((data['type'] ?? '').toString().toLowerCase()) {
+            case 'boys':   return 'Boys Only';
+            case 'girls':  return 'Girls Only';
+            case 'mixed':  return 'Mixed (Boys & Girls)';
+            default:       return data['type'] ?? '';
+          }
+        }()),
         _infoRow(Icons.location_on, "Distance", data['distance'] ?? ""),
         _infoRow(Icons.king_bed, "Single Room Size", data['singleRoomSize'] ?? ""),
         _infoRow(Icons.bed, "Double Room Size", data['doubleRoomSize'] ?? ""),

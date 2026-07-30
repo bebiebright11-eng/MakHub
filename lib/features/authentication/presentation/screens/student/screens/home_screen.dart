@@ -23,7 +23,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   final Stream<QuerySnapshot> _hostelsStream =
       FirebaseFirestore.instance.collection('hostels').snapshots();
 
-  late Future<Map<String, dynamic>> _preferencesFuture;
+  // Stream directly on the user's preferences document — auto-updates
+  // whenever the student saves new preferences from any screen.
+  Stream<DocumentSnapshot>? _preferencesStream;
 
   final String _searchText = "";
   String _selectedFilter = "";
@@ -32,22 +34,19 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   final ScrollController _chipsScrollController = ScrollController();
   final ScrollController _hostelsScrollController = ScrollController();
 
-  // Search-options dropdown overlay
   final GlobalKey _searchBarKey = GlobalKey();
   OverlayEntry? _searchOverlay;
 
   @override
   void initState() {
     super.initState();
-    _preferencesFuture = _loadPreferences();
-  }
-
-  /// Called whenever this screen comes back into focus (e.g. after
-  /// the student saves preferences and pops back from ProfileScreen).
-  void _refreshPreferences() {
-    setState(() {
-      _preferencesFuture = _loadPreferences();
-    });
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _preferencesStream = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots();
+    }
   }
 
   @override
@@ -63,20 +62,25 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _preferencesFuture,
+      body: _preferencesStream == null
+          ? const Center(child: Text('Please log in to see recommendations'))
+          : StreamBuilder<DocumentSnapshot>(
+        stream: _preferencesStream,
         builder: (context, preferenceSnapshot) {
           if (preferenceSnapshot.hasError) {
             return const Center(child: Text('Failed to load preferences'));
           }
 
           if (!preferenceSnapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
-          final preferences = preferenceSnapshot.data!;
+          // Extract preferences map — empty map if not set yet
+          final raw = preferenceSnapshot.data!.data();
+          final preferences = raw != null
+              ? Map<String, dynamic>.from(
+                  (raw as Map<String, dynamic>)['preferences'] ?? {})
+              : <String, dynamic>{};
 
           return StreamBuilder<QuerySnapshot>(
             stream: _hostelsStream,
@@ -145,27 +149,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   ),
     );
   }
-  Future<Map<String, dynamic>> _loadPreferences() async {
-  final user = FirebaseAuth.instance.currentUser;
-
-  if (user == null) {
-    return {};
-  }
-
-  final doc = await FirebaseFirestore.instance
-      .collection("users")
-      .doc(user.uid)
-      .get();
-
-  if (!doc.exists) {
-    return {};
-  }
-
-  return Map<String, dynamic>.from(
-    doc.data()?["preferences"] ?? {},
-  );
-}
-
   List<QueryDocumentSnapshot> _filterHostels(
     List<QueryDocumentSnapshot> docs) {
 
@@ -192,12 +175,29 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         case "Boys":
           return hostelType == "boys";
 
+        case "Mixed":
+          return hostelType == "mixed";
+
         case "Single":
           return singlePrice.isNotEmpty;
 
         case "Budget":
           if (singlePrice.isEmpty) return false;
           return int.parse(singlePrice) <= 500000;
+
+        case "Luxury":
+          if (singlePrice.isEmpty) return false;
+          return int.parse(singlePrice) > 500000;
+
+        case "Cheap":
+          if (singlePrice.isEmpty) return false;
+          return int.parse(singlePrice) <= 300000;
+
+        case "Double":
+          final doublePrice = (data['doublePrice'] ?? '')
+              .toString()
+              .replaceAll(RegExp(r'[^0-9]'), '');
+          return doublePrice.isNotEmpty;
 
         default:
           return true;
@@ -457,15 +457,13 @@ void _removeSearchOverlay() {
               ),
               const SizedBox(width: 12),
               GestureDetector(
-                onTap: () async {
-                  await Navigator.push(
+                onTap: () {
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const StudentPreferenceScreen(),
                     ),
                   );
-                  // Reload preferences in case the student just saved new ones
-                  _refreshPreferences();
                 },
                 child: Container(
                   height: 56,
@@ -594,9 +592,11 @@ Widget _buildChip(String label, IconData icon) {
 
 List<QueryDocumentSnapshot> _hostelsForLocation(
     List<QueryDocumentSnapshot> docs, String location) {
+  final needle = location.toLowerCase();
   return docs.where((doc) {
     final data = doc.data() as Map<String, dynamic>;
-    return (data['location'] ?? '') == location;
+    final hostelLocation = (data['location'] ?? '').toString().toLowerCase();
+    return hostelLocation.contains(needle);
   }).toList();
 }
 
