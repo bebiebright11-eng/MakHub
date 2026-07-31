@@ -57,7 +57,10 @@ Future<void> _loginAdmin() async {
     String role = userDoc['role'];
 
     if (role == "admin") {
-      Navigator.pushReplacement(
+      // Use push (not pushReplacement) so AdminLoginScreen stays in the stack.
+      // This means the system back button on the Dashboard returns here, and
+      // the logout flow (pushAndRemoveUntil to AdminLoginScreen) still works.
+      Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => const AdminDashboardScreen(),
@@ -88,7 +91,15 @@ Future<void> _loginAdmin() async {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              // Stack was cleared (e.g. after logout pushAndRemoveUntil).
+              // Explicitly go back to Role Selection so no black screen appears.
+              Navigator.pushReplacementNamed(context, '/role-selection');
+            }
+          },
         ),
       ),
       body: SafeArea(

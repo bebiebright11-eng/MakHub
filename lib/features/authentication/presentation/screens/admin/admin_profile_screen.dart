@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'admin_login_screen.dart';
 
 class AdminProfileScreen extends StatelessWidget {
   const AdminProfileScreen({super.key});
@@ -130,10 +129,8 @@ class AdminProfileScreen extends StatelessWidget {
                           onPressed: () async {
                             await FirebaseAuth.instance.signOut();
                             if (!context.mounted) return;
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const AdminLoginScreen()),
+                            Navigator.of(context).pushNamedAndRemoveUntil(
+                              '/role-selection',
                               (route) => false,
                             );
                           },

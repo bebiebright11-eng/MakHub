@@ -147,9 +147,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
               if (!context.mounted) return;
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const AdminLoginScreen()),
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/role-selection',
                 (route) => false,
               );
             },
