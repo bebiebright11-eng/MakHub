@@ -269,11 +269,9 @@ class _DashboardContentState extends State<_DashboardContent> {
 
     if (!context.mounted) return;
 
-    // Navigate to the personnel login screen, removing every prior route
-    // so the back button cannot return to the dashboard.
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      '/login',
+    // Clear the entire stack and return to Role Selection.
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/role-selection',
       (route) => false,
     );
   }

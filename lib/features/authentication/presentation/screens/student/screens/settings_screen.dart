@@ -108,10 +108,9 @@ class StudentMenuScreen extends StatelessWidget {
     await FirebaseAuth.instance.signOut();
 
     if (!context.mounted) return;
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const StudentLoginScreen()),
-      (_) => false,
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/role-selection',
+      (route) => false,
     );
   }
 

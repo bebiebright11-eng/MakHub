@@ -29,7 +29,15 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              // Stack was cleared (e.g. after logout pushAndRemoveUntil).
+              // Navigate explicitly so no white screen appears.
+              Navigator.pushReplacementNamed(context, '/role-selection');
+            }
+          },
         ),
       ),
       body: SafeArea(
@@ -184,7 +192,10 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
     if (!context.mounted) return;
 
-    Navigator.pushReplacement(
+    // Use push (not pushReplacement) so StudentLoginScreen stays in the stack.
+    // This means the system back button on the student app returns here, and
+    // the logout flow (pushAndRemoveUntil to StudentLoginScreen) still works.
+    Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => const StudentMainScreen(),
