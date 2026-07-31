@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../state/app_state.dart';
 import 'floors_screen.dart';
 import 'payments_screen.dart';
+import 'personnel_finances_screen.dart';
 import 'reporting_screen.dart';
 import 'profile_screen.dart';
 import 'hostel_details_screen.dart';
@@ -390,7 +391,7 @@ class _DashboardContentState extends State<_DashboardContent> {
                     ),
                   ),
                 ),
-                _quickAction('Payment\nConfirmations', Icons.credit_card, const Color(0xFFFED7AA), AppColors.accent, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PendingPaymentsScreen()))),
+                _quickAction('Finances', Icons.account_balance_wallet_outlined, const Color(0xFFD1FAE5), const Color(0xFF10B981), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PersonnelFinancesScreen()))),
                 _quickAction('Reporting\nStudents', Icons.person_add_alt, const Color(0xFFDBEAFE), AppColors.primary, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportingStudentsScreen()))),
                 _quickAction('Hostel Details', Icons.info_outline, const Color(0xFFD1FAE5), const Color(0xFF10B981), () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HostelDetailsScreen()))),
               ],

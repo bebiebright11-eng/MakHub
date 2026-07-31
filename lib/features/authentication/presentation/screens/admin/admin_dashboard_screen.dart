@@ -10,6 +10,8 @@ import 'admin_notification_screen.dart';
 import 'admin_profile_screen.dart';
 import 'admin_add_hostel_screen.dart';
 import 'admin_payments_screen.dart';
+import 'admin_finances_screen.dart';
+import 'admin_withdrawals_screen.dart';
 import 'admin_login_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -325,11 +327,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ),
                         );
                       }),
-                      _ActionButton('Bookings', Icons.list_alt, () {
+                      _ActionButton('Finances', Icons.account_balance_wallet_outlined, () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const AdminBookingsScreen(),
+                            builder: (_) => const AdminFinancesScreen(),
                           ),
                         );
                       }),
@@ -357,11 +359,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ),
                         );
                       }),
-                      _ActionButton('Profile', Icons.person, () {
+                      _WithdrawalActionButton(onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const AdminProfileScreen(),
+                            builder: (_) => const AdminWithdrawalsScreen(),
                           ),
                         );
                       }),
@@ -692,6 +694,84 @@ class _ActionButton extends StatelessWidget {
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Withdrawal action button with live pending badge ─────────────────────────
+/// Quick-action tile for Withdrawals that shows a live red badge with
+/// the count of pending withdrawal requests.
+class _WithdrawalActionButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _WithdrawalActionButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('withdrawal_requests')
+              .where('status', isEqualTo: 'Pending')
+              .snapshots(),
+          builder: (context, snapshot) {
+            final count = snapshot.data?.docs.length ?? 0;
+            return Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Tile content
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.arrow_circle_up_outlined,
+                          color: AppColors.primary, size: 26),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Withdrawals',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+                // Red badge — only shown when count > 0
+                if (count > 0)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(minWidth: 18),
+                      child: Text(
+                        count > 99 ? '99+' : '$count',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );
