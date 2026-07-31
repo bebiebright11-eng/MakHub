@@ -11,6 +11,9 @@ class HostelCard extends StatefulWidget {
   final String singlePrice;
   final String doublePrice;
   final String rating;
+  /// Number of reviews for this hostel. Used to render "(41)" next to the
+  /// star rating. Pass 0 (default) when not yet known.
+  final int reviewCount;
   /// Raw distance-from-campus string from Firestore, e.g. "0.8 km" or "800m".
   /// Optional — if absent the distance badge is omitted.
   final String? distanceFromCampus;
@@ -23,6 +26,7 @@ class HostelCard extends StatefulWidget {
     required this.singlePrice,
     required this.doublePrice,
     required this.rating,
+    this.reviewCount = 0,
     this.distanceFromCampus,
   });
 
@@ -184,7 +188,16 @@ class _HostelCardState extends State<HostelCard> {
                     ),
                   ),
                 ),
-                // Heart / favourite button
+                // Rating badge — top-left
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: _RatingBadge(
+                    rating: widget.rating,
+                    reviewCount: widget.reviewCount,
+                  ),
+                ),
+                // Heart / favourite button — top-right
                 Positioned(
                   top: 10,
                   right: 10,
@@ -222,27 +235,12 @@ class _HostelCardState extends State<HostelCard> {
 
             const SizedBox(height: 8),
 
-            // ── Name + rating ──────────────────────────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.star, size: 13, color: Colors.black87),
-                const SizedBox(width: 2),
-                Text(
-                  widget.rating,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-              ],
+            // ── Name ──────────────────────────────────────────────────────
+            Text(
+              widget.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
             ),
 
             const SizedBox(height: 2),
@@ -289,6 +287,49 @@ class _HostelCardState extends State<HostelCard> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reusable rating badge — ⭐ 4.8 (41) or ⭐ New
+// Used on every hostel card image overlay (top-left).
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RatingBadge extends StatelessWidget {
+  final String rating;
+  final int reviewCount;
+
+  const _RatingBadge({required this.rating, required this.reviewCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final double parsed = double.tryParse(rating) ?? 0;
+    // Always show numeric format: "4.8 (41)" or "0.0 (0)" — never "New"
+    final String label = '${parsed.toStringAsFixed(1)} ($reviewCount)';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        // Orange badge matching the reference screenshot
+        color: const Color(0xFFFF8A00),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.star, size: 12, color: Colors.white),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

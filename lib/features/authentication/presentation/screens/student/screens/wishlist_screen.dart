@@ -138,7 +138,10 @@ class _FavouritesSliver extends StatelessWidget {
                     distance: data['location'] ?? '',
                     singlePrice: data['singlePrice'] ?? '0',
                     doublePrice: data['doublePrice'] ?? '0',
-                    rating: '4.5',
+                    rating: ((data['averageRating'] ?? 0.0) as num)
+                        .toStringAsFixed(1),
+                    reviewCount:
+                        (data['reviewCount'] as num?)?.toInt() ?? 0,
                     distanceFromCampus: data['distance']?.toString(),
                   ),
                 );
@@ -236,118 +239,181 @@ class _RecentHostelCard extends StatelessWidget {
           builder: (_) => HostelDetailsScreen(hostelId: hostelId),
         ),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade100),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Thumbnail
-            ClipRRect(
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(16),
-              ),
-              child: Container(
-                width: 100,
-                height: 90,
-                color: Colors.grey.shade200,
-                child: imageUrl != null
-                    ? Image.network(imageUrl, fit: BoxFit.cover)
-                    : const Center(
-                        child: Icon(Icons.image, color: Colors.grey, size: 28),
-                      ),
-              ),
-            ),
-            // Details
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
+      child: StreamBuilder<DocumentSnapshot>(
+        // Stream the live hostel doc so rating stays current
+        stream: FirebaseFirestore.instance
+            .collection('hostels')
+            .doc(hostelId)
+            .snapshots(),
+        builder: (context, hostelSnap) {
+          final liveData =
+              hostelSnap.data?.data() as Map<String, dynamic>? ?? data;
+          final double avgRating =
+              (liveData['averageRating'] as num?)?.toDouble() ?? 0;
+          final int reviewCount =
+              (liveData['reviewCount'] as num?)?.toInt() ?? 0;
+          final String ratingStr =
+              avgRating > 0 ? avgRating.toStringAsFixed(1) : '0';
+
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade100),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
+              ],
+            ),
+            child: Row(
+              children: [
+                // Thumbnail with rating badge overlay
+                ClipRRect(
+                  borderRadius: const BorderRadius.horizontal(
+                    left: Radius.circular(16),
+                  ),
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 90,
+                        color: Colors.grey.shade200,
+                        child: imageUrl != null
+                            ? Image.network(imageUrl, fit: BoxFit.cover)
+                            : const Center(
+                                child: Icon(Icons.image,
+                                    color: Colors.grey, size: 28),
+                              ),
                       ),
-                    ),
-                    if (location.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        location,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 12,
+                      Positioned(
+                        top: 6,
+                        left: 6,
+                        child: _RecentRatingBadge(
+                          rating: ratingStr,
+                          reviewCount: reviewCount,
                         ),
                       ),
                     ],
-                    if (distance.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.place_outlined,
-                            size: 11,
-                            color: Colors.grey.shade400,
+                  ),
+                ),
+                // Details
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
                           ),
-                          const SizedBox(width: 2),
-                          Expanded(
-                            child: Text(
-                              '$distance from campus',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.grey.shade400,
-                                fontSize: 11,
-                              ),
+                        ),
+                        if (location.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            location,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontSize: 12,
                             ),
                           ),
                         ],
-                      ),
-                    ],
-                    if (priceLabel.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        priceLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
+                        if (distance.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(Icons.place_outlined,
+                                  size: 11, color: Colors.grey.shade400),
+                              const SizedBox(width: 2),
+                              Expanded(
+                                child: Text(
+                                  '$distance from campus',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (priceLabel.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            priceLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+                // Chevron
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Icon(Icons.chevron_right,
+                      color: Colors.grey.shade400),
+                ),
+              ],
             ),
-            // Chevron
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Icon(
-                Icons.chevron_right,
-                color: Colors.grey.shade400,
-              ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// Small dark badge used on the recently-viewed card thumbnail
+class _RecentRatingBadge extends StatelessWidget {
+  final String rating;
+  final int reviewCount;
+
+  const _RecentRatingBadge(
+      {required this.rating, required this.reviewCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final double parsed = double.tryParse(rating) ?? 0;
+    final bool hasRating = parsed > 0 && reviewCount > 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.star, size: 10, color: Colors.amber),
+          const SizedBox(width: 3),
+          Text(
+            hasRating ? '$rating ($reviewCount)' : 'New',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

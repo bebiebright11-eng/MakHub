@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '/core/constants/app_colors.dart';
 import 'floor_selection_screen.dart';
 import '../services/wishlist_service.dart';
-import 'reviews_screen.dart';
 import 'hostel_map_screen.dart';
 
 class HostelDetailsScreen extends StatefulWidget {
@@ -16,7 +15,6 @@ class HostelDetailsScreen extends StatefulWidget {
 
 class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
   late final Stream<DocumentSnapshot> _hostelStream;
-  late final Stream<QuerySnapshot> _reviewsStream;
 
   @override
   void initState() {
@@ -24,10 +22,6 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
     _hostelStream = FirebaseFirestore.instance
         .collection('hostels')
         .doc(widget.hostelId)
-        .snapshots();
-    _reviewsStream = FirebaseFirestore.instance
-        .collection('reviews')
-        .where('hostelId', isEqualTo: widget.hostelId)
         .snapshots();
 
     // Listen for the first valid hostel snapshot and record the view once.
@@ -524,84 +518,176 @@ Widget _infoRow(
   }
 
   Widget _buildReviewsSection({required Map<String, dynamic> data}) {
+    final double avgRating =
+        (data['averageRating'] as num?)?.toDouble() ?? 0.0;
+    final int reviewCount = (data['reviewCount'] as num?)?.toInt() ?? 0;
+    final String hostelName = (data['hostelName'] ?? '').toString();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Student Reviews', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => StudentReviewsScreen(
-                    hostelId: widget.hostelId,
-                    hostelName: data['hostelName'] ?? '',
-                  ),
-                ),
-              ),
-              child: const Text('See all', style: TextStyle(color: AppColors.primary)),
-            ),
-          ],
-        ),
+        // ── Section header ─────────────────────────────────────────────
+        const Text('Student Reviews',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
+
+        // ── Rating summary card ────────────────────────────────────────
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // Large star row
+                  ...List.generate(
+                    5,
+                    (i) => Icon(
+                      Icons.star,
+                      size: 22,
+                      color: i < avgRating.round()
+                          ? Colors.amber
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    avgRating.toStringAsFixed(1),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Based on $reviewCount review${reviewCount == 1 ? '' : 's'}',
+                style: TextStyle(
+                    fontSize: 13, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Review list (5 most recent) ────────────────────────────────
         StreamBuilder<QuerySnapshot>(
-          stream: _reviewsStream,
+          stream: FirebaseFirestore.instance
+              .collection('reviews')
+              .where('hostelId', isEqualTo: widget.hostelId)
+              .orderBy('createdAt', descending: true)
+              .limit(5)
+              .snapshots(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator()),
+              );
             }
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return const Text('No reviews yet', style: TextStyle(color: Colors.grey));
+
+            final docs = snapshot.data?.docs ?? [];
+
+            if (docs.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.rate_review_outlined,
+                        size: 40, color: Colors.grey.shade300),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'No reviews yet.',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: Colors.black87),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Be the first verified resident to review this hostel.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey.shade500),
+                    ),
+                  ],
+                ),
+              );
             }
 
             return Column(
-              children: snapshot.data!.docs.map((doc) {
-                final review = doc.data() as Map<String, dynamic>;
-                final rating = (review['rating'] ?? 0).toInt();
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey.shade100),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const CircleAvatar(backgroundColor: Colors.grey),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Row(
-                                children: List.generate(5, (i) => Icon(
-                                  Icons.star,
-                                  color: i < rating ? Colors.orange : Colors.grey.shade300,
-                                  size: 14,
-                                )),
-                              ),
-                            ),
-                          ],
+              children: [
+                ...docs.map((doc) => _DetailsReviewCard(
+                      doc: doc,
+                      hostelId: widget.hostelId,
+                    )),
+
+                // ── View All Reviews button ──────────────────────────
+                if (reviewCount > 5) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => _AllReviewsScreen(
+                            hostelId: widget.hostelId,
+                            hostelName: hostelName,
+                          ),
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          review['review'] ?? '',
-                          style: const TextStyle(color: Colors.grey, fontSize: 13, height: 1.5),
-                        ),
-                      ],
+                      ),
+                      icon: const Icon(Icons.chevron_right, size: 18),
+                      label: const Text('View All Reviews'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
                     ),
                   ),
-                );
-              }).toList(),
+                ],
+              ],
             );
           },
         ),
       ],
     );
+  }
+
+  // Relative-date helper used by review cards on this screen
+  static String _relativeDate(Timestamp? ts) {
+    if (ts == null) return '';
+    final d = ts.toDate();
+    final diff = DateTime.now().difference(d);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays} days ago';
+    if (diff.inDays < 30) {
+      final w = diff.inDays ~/ 7;
+      return '$w week${w == 1 ? '' : 's'} ago';
+    }
+    if (diff.inDays < 365) {
+      final m = diff.inDays ~/ 30;
+      return '$m month${m == 1 ? '' : 's'} ago';
+    }
+    return '${d.day}/${d.month}/${d.year}';
   }
 
   Widget _buildBottomButtons(BuildContext context, Map<String, dynamic> data) {
@@ -613,12 +699,17 @@ Widget _infoRow(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          )
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // View on Map button — shown only when coordinates exist
           if (hasLocation) ...[
             SizedBox(
               width: double.infinity,
@@ -635,12 +726,17 @@ Widget _infoRow(
                     ),
                   ),
                 ),
-                icon: const Icon(Icons.map_outlined, color: AppColors.primary, size: 18),
-                label: const Text('View on Map', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                icon: const Icon(Icons.map_outlined,
+                    color: AppColors.primary, size: 18),
+                label: const Text('View on Map',
+                    style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold)),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   side: const BorderSide(color: AppColors.primary),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
               ),
             ),
@@ -653,20 +749,25 @@ Widget _infoRow(
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => StudentFloorSelectionScreen(hostelId: widget.hostelId),
+                      builder: (context) => StudentFloorSelectionScreen(
+                          hostelId: widget.hostelId),
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     side: const BorderSide(color: Color(0xFFDBEAFE)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.layers_outlined, color: AppColors.primary),
                       SizedBox(width: 8),
-                      Text('View Floors', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                      Text('View Floors',
+                          style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -677,20 +778,26 @@ Widget _infoRow(
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => StudentFloorSelectionScreen(hostelId: widget.hostelId),
+                      builder: (context) => StudentFloorSelectionScreen(
+                          hostelId: widget.hostelId),
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.calendar_today_outlined, color: Colors.white),
+                      Icon(Icons.calendar_today_outlined,
+                          color: Colors.white),
                       SizedBox(width: 8),
-                      Text('Book Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      Text('Book Now',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -701,6 +808,248 @@ Widget _infoRow(
       ),
     );
   }
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Review card used on the Hostel Details screen
+// ─────────────────────────────────────────────────────────────────────────────
 
+class _DetailsReviewCard extends StatefulWidget {
+  final QueryDocumentSnapshot doc;
+  final String hostelId;
+
+  const _DetailsReviewCard({required this.doc, required this.hostelId});
+
+  @override
+  State<_DetailsReviewCard> createState() => _DetailsReviewCardState();
+}
+
+class _DetailsReviewCardState extends State<_DetailsReviewCard> {
+  bool? _isVerified;
+  String _reviewerName = 'Anonymous Student';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkVerified();
+    _resolveReviewerName();
+  }
+
+  /// Resolve the reviewer's real full name.
+  ///
+  /// Priority order:
+  ///   1. `studentName` stored directly in the review document
+  ///      (written by the new review flow).
+  ///   2. Live lookup of `users/{userId}` in Firestore.
+  ///   3. Fallback: "Anonymous Student".
+  Future<void> _resolveReviewerName() async {
+    final data = widget.doc.data() as Map<String, dynamic>;
+
+    // 1 — check fields already stored on the document
+    final stored =
+        (data['studentName'] ?? data['userName'] ?? '').toString().trim();
+    if (stored.isNotEmpty) {
+      if (mounted) setState(() => _reviewerName = stored);
+      return;
+    }
+
+    // 2 — live lookup via userId
+    final userId = (data['userId'] ?? '').toString().trim();
+    if (userId.isEmpty) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      final name =
+          (userDoc.data()?['fullName'] ?? userDoc.data()?['name'] ?? '')
+              .toString()
+              .trim();
+      if (mounted && name.isNotEmpty) {
+        setState(() => _reviewerName = name);
+      }
+    } catch (_) {
+      // keep 'Anonymous Student'
+    }
+  }
+
+  Future<void> _checkVerified() async {
+    final data = widget.doc.data() as Map<String, dynamic>;
+    final userId = (data['userId'] ?? '').toString();
+    if (userId.isEmpty) {
+      if (mounted) setState(() => _isVerified = false);
+      return;
+    }
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('studentId', isEqualTo: userId)
+          .where('hostelId', isEqualTo: widget.hostelId)
+          .where('bookingStatus', isEqualTo: 'confirmed')
+          .limit(1)
+          .get();
+      if (mounted) setState(() => _isVerified = snap.docs.isNotEmpty);
+    } catch (_) {
+      if (mounted) setState(() => _isVerified = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = widget.doc.data() as Map<String, dynamic>;
+    final int rating = (data['rating'] as num?)?.toInt() ?? 0;
+    final String comment =
+        (data['review'] ?? data['comment'] ?? '').toString();
+    final String timeAgo = _HostelDetailsScreenState._relativeDate(
+        data['createdAt'] as Timestamp?);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Name + verified badge + date
+          Row(
+            children: [
+              Text(
+                _reviewerName,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.black87),
+              ),
+              if (_isVerified == true) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.verified,
+                          size: 10, color: Colors.green.shade600),
+                      const SizedBox(width: 2),
+                      Text(
+                        'Verified Resident',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const Spacer(),
+              Text(
+                timeAgo,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          // Stars
+          Row(
+            children: List.generate(
+              5,
+              (i) => Icon(
+                Icons.star,
+                size: 14,
+                color: i < rating ? Colors.amber : Colors.grey.shade300,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          // Comment
+          Text(
+            comment,
+            style: const TextStyle(
+                fontSize: 13, color: Colors.black87, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// "View All Reviews" screen — streams every review for one hostel
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AllReviewsScreen extends StatelessWidget {
+  final String hostelId;
+  final String hostelName;
+
+  const _AllReviewsScreen(
+      {required this.hostelId, required this.hostelName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(hostelName,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.black)),
+            const Text('All Reviews',
+                style: TextStyle(fontSize: 12, color: Colors.grey)),
+          ],
+        ),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('reviews')
+            .where('hostelId', isEqualTo: hostelId)
+            .orderBy('createdAt', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snapshot.data?.docs ?? [];
+          if (docs.isEmpty) {
+            return const Center(
+                child: Text('No reviews yet.',
+                    style: TextStyle(color: Colors.grey)));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: docs.length,
+            itemBuilder: (context, index) => _DetailsReviewCard(
+              doc: docs[index],
+              hostelId: hostelId,
+            ),
+          );
+        },
+      ),
+    );
+  }
 }

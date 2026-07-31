@@ -12,7 +12,6 @@ import 'admin_add_hostel_screen.dart';
 import 'admin_payments_screen.dart';
 import 'admin_finances_screen.dart';
 import 'admin_withdrawals_screen.dart';
-import 'admin_login_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});

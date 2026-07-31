@@ -629,6 +629,7 @@ Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
                 singlePrice: data['singlePrice'] ?? '0',
                 doublePrice: data['doublePrice'] ?? '0',
                 rating: ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1),
+                reviewCount: (data['reviewCount'] as num?)?.toInt() ?? 0,
                 distanceFromCampus: data['distance']?.toString(),
               ),
             );

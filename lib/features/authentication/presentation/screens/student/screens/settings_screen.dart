@@ -8,7 +8,7 @@ import 'help_center_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_screen.dart';
 import 'profile_screen.dart';
-import 'student_login_screen.dart';
+import 'reviews_screen.dart';
 
 class StudentMenuScreen extends StatelessWidget {
   const StudentMenuScreen({super.key});
@@ -67,6 +67,107 @@ class StudentMenuScreen extends StatelessWidget {
             hostelId:      hostelId,
             roomId:        roomId,
             floorId:       floorId,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Something went wrong: $e")),
+      );
+    }
+  }
+
+  // ── Review Hostel: check for confirmed booking first ──────────────────────
+
+  Future<void> _goToReviewHostel(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("You're not logged in.")),
+      );
+      return;
+    }
+
+    try {
+      // Look for any confirmed booking belonging to this student
+      final bookingQuery = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('studentId', isEqualTo: user.uid)
+          .where('bookingStatus', isEqualTo: 'confirmed')
+          .orderBy('bookingDate', descending: true)
+          .limit(1)
+          .get();
+
+      if (!context.mounted) return;
+
+      // No confirmed booking → show "Reviews Unavailable" dialog
+      if (bookingQuery.docs.isEmpty) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text(
+              'Reviews Unavailable',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: const Text(
+              'You can only review a hostel after booking and staying in one.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Close'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  // Navigate to student home so they can browse and book
+                  Navigator.of(context)
+                      .popUntil((route) => route.isFirst);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Book a Hostel'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      // Has a confirmed booking — resolve hostel name and check-in date
+      final bookingDoc  = bookingQuery.docs.first;
+      final bookingData = bookingDoc.data();
+      final hostelId    = (bookingData['hostelId'] ?? '').toString();
+
+      // Booking date doubles as the check-in date stored in Firestore
+      final Timestamp? checkInTs =
+          bookingData['bookingDate'] as Timestamp?;
+      final DateTime? checkInDate = checkInTs?.toDate();
+
+      final hostelDoc = await FirebaseFirestore.instance
+          .collection('hostels')
+          .doc(hostelId)
+          .get();
+
+      if (!context.mounted) return;
+
+      final hostelName =
+          (hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel').toString();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StudentReviewsScreen(
+            hostelId:    hostelId,
+            hostelName:  hostelName,
+            checkInDate: checkInDate,
           ),
         ),
       );
@@ -185,6 +286,13 @@ class StudentMenuScreen extends StatelessWidget {
               iconBg: const Color(0xFFF5F3FF),
               label: "My Booking",
               onTap: () => _goToMyBooking(context),
+            ),
+            _menuCard(
+              icon: Icons.star_outline,
+              iconColor: const Color(0xFFF59E0B),
+              iconBg: const Color(0xFFFFFBEB),
+              label: "Review Hostel",
+              onTap: () => _goToReviewHostel(context),
             ),
             _menuCard(
               icon: Icons.notifications_outlined,
