@@ -105,8 +105,15 @@ class AdminBookingDetailsScreen extends StatelessWidget {
   Widget _infoRow(String label, String value, {bool isStatus = false}) {
     Color valueColor = Colors.black;
     if (isStatus) {
-      if (value == 'Confirmed') valueColor = Colors.green;
-      if (value == 'Pending') valueColor = Colors.orange;
+      // New workflow: bookings are automatically confirmed after payment.
+      // 'Confirmed' and 'Room Reserved' are the only expected statuses.
+      final normalized = value.trim().toLowerCase();
+      if (normalized == 'confirmed') {
+        valueColor = Colors.green;
+      } else if (normalized == 'room reserved') {
+        valueColor = AppColors.accent; // orange
+      }
+      // No colour mapping for 'Pending' — no longer used in the new workflow.
     }
 
     return Padding(

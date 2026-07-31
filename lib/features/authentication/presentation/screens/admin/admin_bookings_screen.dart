@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
-import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'admin_bookings_details_screen.dart';
+import '/core/constants/app_colors.dart';
+import 'admin_hostel_bookings_screen.dart';
 import 'admin_notification_screen.dart';
 import 'admin_profile_screen.dart';
+import 'admin_hostels_screen.dart';
+import 'admin_dashboard_screen.dart';
 
+/// Screen 1 — Bookings entry point.
+///
+/// Shows a list of every hostel registered in MakHub.
+/// Each card displays the hostel name and a live count of confirmed
+/// bookings for that hostel, highlighted in orange.
+/// Tapping a card opens [AdminHostelBookingsScreen] filtered to that hostel.
 class AdminBookingsScreen extends StatefulWidget {
   const AdminBookingsScreen({super.key});
 
@@ -13,248 +21,150 @@ class AdminBookingsScreen extends StatefulWidget {
 }
 
 class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
-  String _selectedFilter = "Pending";
-  String _searchQuery = "";
-
-  // Cache resolved booking details so the stream doesn't re-fetch on rebuild
-  final Map<String, Map<String, String>> _detailsCache = {};
-
-  // Resolve student, hostel, floor and room info for one booking document
-  Future<Map<String, String>> _resolveBooking(
-      QueryDocumentSnapshot doc) async {
-    if (_detailsCache.containsKey(doc.id)) return _detailsCache[doc.id]!;
-
-    final data = doc.data() as Map<String, dynamic>;
-    final firestore = FirebaseFirestore.instance;
-
-    String studentName = 'Unknown Student';
-    String hostelName = 'Unknown Hostel';
-    String floorName = 'N/A';
-    String roomNumber = 'N/A';
-    String roomType = 'N/A';
-
-    try {
-      final studentId = (data['studentId'] ?? '').toString();
-      if (studentId.isNotEmpty) {
-        final studentDoc =
-            await firestore.collection('users').doc(studentId).get();
-        studentName =
-            (studentDoc.data()?['fullName'] ?? 'Unknown Student').toString();
-      }
-
-      final hostelId = (data['hostelId'] ?? '').toString();
-      final floorId = (data['floorId'] ?? '').toString();
-      final roomId = (data['roomId'] ?? '').toString();
-
-      if (hostelId.isNotEmpty) {
-        final hostelDoc =
-            await firestore.collection('hostels').doc(hostelId).get();
-        hostelName =
-            (hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel').toString();
-
-        if (floorId.isNotEmpty) {
-          final floorDoc = await firestore
-              .collection('hostels')
-              .doc(hostelId)
-              .collection('floors')
-              .doc(floorId)
-              .get();
-          floorName = (floorDoc.data()?['floorName'] ??
-                  floorDoc.data()?['floorNumber'] ??
-                  'N/A')
-              .toString();
-
-          if (roomId.isNotEmpty) {
-            final roomDoc = await firestore
-                .collection('hostels')
-                .doc(hostelId)
-                .collection('floors')
-                .doc(floorId)
-                .collection('rooms')
-                .doc(roomId)
-                .get();
-            roomNumber =
-                (roomDoc.data()?['roomNumber'] ?? 'N/A').toString();
-            roomType = (roomDoc.data()?['roomType'] ?? 'N/A').toString();
-          }
-        }
-      }
-    } catch (_) {
-      // Keep fallbacks if any lookup fails
-    }
-
-    final resolved = {
-      'studentName': studentName,
-      'hostelName': hostelName,
-      'floorName': floorName,
-      'roomNumber': roomNumber,
-      'roomType': roomType,
-    };
-    _detailsCache[doc.id] = resolved;
-    return resolved;
-  }
-
-  String _formatDate(Timestamp? ts) {
-    if (ts == null) return 'N/A';
-    final d = ts.toDate();
-    return "${d.day}/${d.month}/${d.year}";
-  }
-
-  String _statusLabel(String raw) {
-    if (raw.isEmpty) return 'Pending';
-    return raw[0].toUpperCase() + raw.substring(1).toLowerCase();
-  }
+  // Holds the current search text (lower-cased for comparison).
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Bookings"),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Bookings',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "All hostels • Booking management",
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
+      body: StreamBuilder<QuerySnapshot>(
+        // Stream all hostels — updates automatically when new hostels are added.
+        stream: FirebaseFirestore.instance
+            .collection('hostels')
+            .orderBy('hostelName')
+            .snapshots(),
+        builder: (context, hostelSnapshot) {
+          if (hostelSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            TextField(
-              onChanged: (value) {
-                setState(() => _searchQuery = value.trim().toLowerCase());
-              },
-              decoration: InputDecoration(
-                hintText: "Search bookings...",
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
+          if (hostelSnapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error loading hostels: ${hostelSnapshot.error}',
+                style: const TextStyle(color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            );
+          }
+
+          // All hostel docs from Firestore
+          final allDocs = hostelSnapshot.data?.docs ?? [];
+
+          // Filter in memory — no extra Firestore call on every keystroke
+          final filteredDocs = _searchQuery.isEmpty
+              ? allDocs
+              : allDocs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final name =
+                      (data['hostelName'] ?? '').toString().toLowerCase();
+                  return name.contains(_searchQuery);
+                }).toList();
+
+          return Column(
+            children: [
+              // ── Search bar ──────────────────────────────────────────
+              Padding(
+                padding:
+                    const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.trim().toLowerCase();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search hostel...',
+                    hintStyle: const TextStyle(
+                        fontSize: 14, color: Colors.grey),
+                    prefixIcon:
+                        const Icon(Icons.search, color: Colors.grey),
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 0),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
 
-            Row(
-              children: [
-                _filterTab("Pending"),
-                const SizedBox(width: 10),
-                _filterTab("Confirmed"),
-                const SizedBox(width: 10),
-                _filterTab("Cancelled"),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('bookings')
-                    .orderBy('bookingDate', descending: true)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (snapshot.hasError) {
-                    return Center(
-                        child:
-                            Text('Error loading bookings: ${snapshot.error}'));
-                  }
-
-                  final docs = (snapshot.data?.docs ?? []).where((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    final status =
-                        (data['bookingStatus'] ?? 'pending').toString();
-                    return status.toLowerCase() ==
-                        _selectedFilter.toLowerCase();
-                  }).toList();
-
-                  if (docs.isEmpty) {
-                    return Center(
-                      child: Text(
-                        "No ${_selectedFilter.toLowerCase()} bookings",
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    itemCount: docs.length,
-                    itemBuilder: (context, index) {
-                      final doc = docs[index];
-                      final data = doc.data() as Map<String, dynamic>;
-                      final status = _statusLabel(
-                          (data['bookingStatus'] ?? 'pending').toString());
-                      final date =
-                          _formatDate(data['bookingDate'] as Timestamp?);
-
-                      return FutureBuilder<Map<String, String>>(
-                        future: _resolveBooking(doc),
-                        builder: (context, detailsSnapshot) {
-                          final details = detailsSnapshot.data;
-
-                          if (details == null) {
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border:
-                                    Border.all(color: Colors.grey.shade200),
-                              ),
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
+              // ── Hostel list ─────────────────────────────────────────
+              Expanded(
+                child: allDocs.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.apartment_outlined,
+                                size: 56, color: Colors.grey),
+                            SizedBox(height: 12),
+                            Text(
+                              'No hostels registered yet.',
+                              style: TextStyle(
+                                  color: Colors.grey, fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      )
+                    : filteredDocs.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.search_off,
+                                    size: 56,
+                                    color: Colors.grey.shade400),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'No hostels match your search.',
+                                  style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 16),
                                 ),
-                              ),
-                            );
-                          }
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(
+                                16, 8, 16, 16),
+                            itemCount: filteredDocs.length,
+                            itemBuilder: (context, index) {
+                              final hostelDoc = filteredDocs[index];
+                              final hostelData = hostelDoc.data()
+                                  as Map<String, dynamic>;
+                              final hostelId = hostelDoc.id;
+                              final hostelName =
+                                  (hostelData['hostelName'] ??
+                                          'Unknown Hostel')
+                                      .toString();
 
-                          // Apply search on resolved student/hostel names
-                          if (_searchQuery.isNotEmpty &&
-                              !details['studentName']!
-                                  .toLowerCase()
-                                  .contains(_searchQuery) &&
-                              !details['hostelName']!
-                                  .toLowerCase()
-                                  .contains(_searchQuery)) {
-                            return const SizedBox.shrink();
-                          }
-
-                          return _bookingCard(
-                            name: details['studentName']!,
-                            status: status,
-                            hostelRoom:
-                                "${details['hostelName']} • Room ${details['roomNumber']}",
-                            date: date,
-                            reference: doc.id.length > 6
-                                ? doc.id.substring(doc.id.length - 6)
-                                : doc.id,
-                            hostel: details['hostelName']!,
-                            floor: details['floorName']!,
-                            roomNumber: details['roomNumber']!,
-                            roomType: details['roomType']!,
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
+                              return _HostelBookingCard(
+                                hostelId: hostelId,
+                                hostelName: hostelName,
+                              );
+                            },
+                          ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 2,
@@ -263,160 +173,178 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
           if (index == 2) return;
-          if (index == 3) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AdminNotificationsScreen(),
-              ),
-            );
-            return;
+          switch (index) {
+            case 0:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminDashboardScreen()),
+                (route) => false,
+              );
+              break;
+            case 1:
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminHostelsScreen()),
+              );
+              break;
+            case 3:
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminNotificationsScreen()),
+              );
+              break;
+            case 4:
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminProfileScreen()),
+              );
+              break;
           }
-          if (index == 4) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AdminProfileScreen(),
-              ),
-            );
-            return;
-          }
-          Navigator.pop(context);
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Dashboard"),
           BottomNavigationBarItem(
-              icon: Icon(Icons.apartment), label: "Hostels"),
-          BottomNavigationBarItem(icon: Icon(Icons.book), label: "Bookings"),
+              icon: Icon(Icons.home), label: 'Dashboard'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.notifications), label: "Notifications"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+              icon: Icon(Icons.apartment), label: 'Hostels'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.book), label: 'Bookings'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.notifications), label: 'Alerts'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
   }
+}
 
-  Widget _filterTab(String label) {
-    final selected = _selectedFilter == label;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedFilter = label;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.primary : Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: selected ? Colors.white : Colors.black,
-              fontWeight: FontWeight.w600,
+/// A single hostel card that streams its own confirmed booking count
+/// so each card updates independently and in real time.
+class _HostelBookingCard extends StatelessWidget {
+  final String hostelId;
+  final String hostelName;
+
+  const _HostelBookingCard({
+    required this.hostelId,
+    required this.hostelName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      // Count all confirmed bookings for this specific hostel.
+      // The new workflow confirms bookings automatically on payment,
+      // so 'confirmed' is the only status that matters here.
+      stream: FirebaseFirestore.instance
+          .collection('bookings')
+          .where('hostelId', isEqualTo: hostelId)
+          .where('bookingStatus', isEqualTo: 'confirmed')
+          .snapshots(),
+      builder: (context, bookingSnapshot) {
+        // Show a spinner badge while the count loads
+        final bookingCount = bookingSnapshot.data?.docs.length ?? 0;
+        final isLoading =
+            bookingSnapshot.connectionState == ConnectionState.waiting;
+
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AdminHostelBookingsScreen(
+                  hostelId: hostelId,
+                  hostelName: hostelName,
+                ),
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.borderGrey),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _bookingCard({
-    required String name,
-    required String status,
-    required String hostelRoom,
-    required String date,
-    required String reference,
-    required String hostel,
-    required String floor,
-    required String roomNumber,
-    required String roomType,
-  }) {
-    Color statusColor;
-    if (status == "Confirmed") {
-      statusColor = Colors.green;
-    } else if (status == "Pending") {
-      statusColor = Colors.orange;
-    } else {
-      statusColor = Colors.red;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                name,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
+            child: Row(
+              children: [
+                // Hostel icon
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.apartment,
+                    color: AppColors.primary,
+                    size: 24,
+                  ),
                 ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                      color: statusColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            hostelRoom,
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("Booking Date: $date", style: const TextStyle(fontSize: 12)),
-              Text("Ref: $reference", style: const TextStyle(fontSize: 12)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AdminBookingDetailsScreen(
-                      studentName: name,
-                      hostel: hostel,
-                      floor: floor,
-                      roomNumber: roomNumber,
-                      roomType: roomType,
-                      bookingStatus: status,
+                const SizedBox(width: 16),
+
+                // Hostel name
+                Expanded(
+                  child: Text(
+                    hostelName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
                   ),
-                );
-              },
-              child: const Text("View"),
+                ),
+
+                // Booking count badge (orange)
+                if (isLoading)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.accent,
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: AppColors.accent.withValues(alpha: 0.4)),
+                    ),
+                    child: Text(
+                      '$bookingCount Booking${bookingCount == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right,
+                    color: Colors.grey, size: 20),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
