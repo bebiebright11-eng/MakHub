@@ -177,6 +177,7 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
                   data["location"] ?? "",
                   data["singlePrice"] ?? "",
                   (data["averageRating"] ?? 0.0).toStringAsFixed(1),
+                  (data["reviewCount"] as num?)?.toInt() ?? 0,
                   List<String>.from(data["facilities"] ?? []),
                 );
               },
@@ -316,7 +317,7 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
     );
   }
 
-  Widget _buildHostelItem(String hostelId, String name, String distance, String price, String rating, List<String> features) {
+  Widget _buildHostelItem(String hostelId, String name, String distance, String price, String rating, int reviewCount, List<String> features) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
@@ -343,8 +344,19 @@ class _StudentSearchScreenState extends State<StudentSearchScreen> {
                 left: 10,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(8)),
-                  child: Row(children: [const Icon(Icons.star, color: Colors.white, size: 10), const SizedBox(width: 4), Text(rating, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))]),
+                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+                  child: Row(children: [
+                    const Icon(Icons.star, color: Colors.amber, size: 10),
+                    const SizedBox(width: 4),
+                    Text(
+                      () {
+                        final double parsed = double.tryParse(rating) ?? 0;
+                        if (parsed <= 0 || reviewCount == 0) return 'New';
+                        return '$rating ($reviewCount)';
+                      }(),
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ]),
                 ),
               ),
               Positioned(
