@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
+import '/models/search_criteria.dart';
+import '/algorithms/recent_search_service.dart';
 import 'hostel_results_screen.dart';
 
 class GuidedSearchScreen extends StatefulWidget {
@@ -70,21 +72,46 @@ class _GuidedSearchScreenState extends State<GuidedSearchScreen> {
   }
 
   void _submitSearch() {
-    final preferences = {
-      "preferredLocation":
-          _selectedLocation == "Any around Makerere" ? "" : _selectedLocation,
-      "distanceRange": _selectedDistance ?? "",
-      "preferredType": (_selectedHostelType ?? "").toLowerCase(),
-      "roomType": _selectedRoomType,
-      "minBudget": int.tryParse(_minBudgetController.text.trim()),
-      "maxBudgetValue": int.tryParse(_maxBudgetController.text.trim()),
-      "facilities": _selectedFacilities.toList(),
-    };
+    // Build a typed SearchCriteria from the student's explicit selections.
+    // Null is used for every field the student did not provide so the
+    // SearchMatchAlgorithm never assumes defaults.
+    final String? location =
+        (_selectedLocation == null || _selectedLocation == "Any around Makerere")
+            ? null
+            : _selectedLocation;
+
+    final String? distanceRange =
+        (_selectedDistance == null || _selectedDistance!.isEmpty)
+            ? null
+            : _selectedDistance;
+
+    final String? hostelType =
+        (_selectedHostelType == null || _selectedHostelType!.isEmpty)
+            ? null
+            : _selectedHostelType!.toLowerCase();
+
+    final int? minBudget =
+        int.tryParse(_minBudgetController.text.trim());
+    final int? maxBudget =
+        int.tryParse(_maxBudgetController.text.trim());
+
+    final criteria = SearchCriteria(
+      location: location,
+      distanceRange: distanceRange,
+      hostelType: hostelType,
+      roomType: _selectedRoomType,
+      minBudget: minBudget,
+      maxBudget: maxBudget,
+      facilities: _selectedFacilities.toList(),
+    );
+
+    // Persist as the student's latest search (fire-and-forget).
+    RecentSearchService.instance.save(criteria);
 
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => HostelResultsScreen(preferences: preferences),
+        builder: (context) => HostelResultsScreen(criteria: criteria),
       ),
     );
   }

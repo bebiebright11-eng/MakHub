@@ -1,22 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/hostel_card.dart';
-import '/algorithms/recommendation_algorithm.dart';
+import '/algorithms/search_match_algorithm.dart';
+import '/models/search_criteria.dart';
 import 'hostel_details_screen.dart';
 
+/// Displays the results of a student's active search and shows a Match %
+/// badge on each card.
+///
+/// The Match % is calculated exclusively by [SearchMatchAlgorithm] against
+/// the [SearchCriteria] the student just entered.  It never uses saved
+/// preferences, default values, or hidden assumptions.
 class HostelResultsScreen extends StatelessWidget {
-  final Map<String, dynamic> preferences;
+  final SearchCriteria criteria;
 
   const HostelResultsScreen({
     super.key,
-    required this.preferences,
+    required this.criteria,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Search Results"),
+        title: const Text('Search Results'),
         centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -27,46 +34,53 @@ class HostelResultsScreen extends StatelessWidget {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No hostels available."));
+            return const Center(child: Text('No hostels available.'));
           }
 
-          final ranked = RecommendationAlgorithm.recommendHostels(
+          // Score every hostel against the student's current search criteria.
+          final results = SearchMatchAlgorithm.score(
             hostels: snapshot.data!.docs,
-            preferences: preferences,
+            criteria: criteria,
           );
 
-          if (ranked.isEmpty) {
-            return const Center(child: Text("No matching hostels found."));
+          if (results.isEmpty) {
+            return const Center(child: Text('No matching hostels found.'));
           }
 
-          // Split into top matches and "you might also like"
-          // ranked is List<HostelRecommendation> — keep it typed so we can
-          // show the matchPercent badge on each card.
-          final topMatches = ranked.take(5).toList();
-          final moreOptions =
-              ranked.length > 5 ? ranked.skip(5).toList() : <HostelRecommendation>[];
+          // Top 5 shown as large cards with the Match % badge.
+          // The remainder shown in a horizontal "You might also like" row.
+          final topMatches = results.take(5).toList();
+          final moreOptions = results.length > 5
+              ? results.skip(5).toList()
+              : <SearchMatchResult>[];
 
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(vertical: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: const Text(
-                    "Top Matches",
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'Top Matches',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...topMatches.map((r) => _buildLargeHostelCard(context, r.doc, matchPercent: r.matchPercent)),
+                ...topMatches.map(
+                  (r) => _SearchResultCard(
+                    doc: r.doc,
+                    matchPercent: r.matchPercent,
+                  ),
+                ),
                 if (moreOptions.isNotEmpty) ...[
                   const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: const Text(
-                      "You might also like",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      'You might also like',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -87,8 +101,10 @@ class HostelResultsScreen extends StatelessWidget {
                             distance: data['location'] ?? '',
                             singlePrice: data['singlePrice'] ?? '0',
                             doublePrice: data['doublePrice'] ?? '0',
-                            rating: ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1),
-                            reviewCount: (data['reviewCount'] as num?)?.toInt() ?? 0,
+                            rating: ((data['averageRating'] ?? 0.0) as num)
+                                .toStringAsFixed(1),
+                            reviewCount:
+                                (data['reviewCount'] as num?)?.toInt() ?? 0,
                             distanceFromCampus: data['distance']?.toString(),
                           ),
                         );
@@ -106,22 +122,30 @@ class HostelResultsScreen extends StatelessWidget {
   }
 }
 
-Widget _buildLargeHostelCard(BuildContext context, QueryDocumentSnapshot doc, {int matchPercent = 0}) {
+// ── Large result card with Match % badge ─────────────────────────────────────
+
+class _SearchResultCard extends StatelessWidget {
+  final QueryDocumentSnapshot doc;
+  final int matchPercent;
+
+  const _SearchResultCard({required this.doc, required this.matchPercent});
+
+  @override
+  Widget build(BuildContext context) {
     final data = doc.data() as Map<String, dynamic>;
     final name = data['hostelName'] ?? 'Unnamed Hostel';
-    final distance = data['location'] ?? '';
+    final location = data['location'] ?? '';
     final singlePrice = data['singlePrice'] ?? '0';
-    final rating = ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1);
+    final rating =
+        ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1);
 
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HostelDetailsScreen(hostelId: doc.id),
-          ),
-        );
-      },
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => HostelDetailsScreen(hostelId: doc.id),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         child: Column(
@@ -129,6 +153,7 @@ Widget _buildLargeHostelCard(BuildContext context, QueryDocumentSnapshot doc, {i
           children: [
             Stack(
               children: [
+                // Hostel image placeholder
                 ClipRRect(
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
@@ -140,23 +165,31 @@ Widget _buildLargeHostelCard(BuildContext context, QueryDocumentSnapshot doc, {i
                     ),
                   ),
                 ),
-                // Match % badge
+
+                // Match % badge — only shown when criteria were provided.
                 if (matchPercent > 0)
                   Positioned(
                     top: 14,
                     left: 14,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: Colors.green.shade600,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         '$matchPercent% match',
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
+
+                // Wishlist icon
                 Positioned(
                   top: 14,
                   right: 14,
@@ -166,12 +199,19 @@ Widget _buildLargeHostelCard(BuildContext context, QueryDocumentSnapshot doc, {i
                       color: Colors.white,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.favorite_border, size: 20, color: Colors.black87),
+                    child: const Icon(
+                      Icons.favorite_border,
+                      size: 20,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
               ],
             ),
+
             const SizedBox(height: 10),
+
+            // Name + rating row
             Row(
               children: [
                 Expanded(
@@ -179,18 +219,24 @@ Widget _buildLargeHostelCard(BuildContext context, QueryDocumentSnapshot doc, {i
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                 ),
                 const SizedBox(width: 4),
                 const Icon(Icons.star, size: 14, color: Colors.black87),
                 const SizedBox(width: 2),
-                Text(rating, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(
+                  rating,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
+                ),
               ],
             ),
+
             const SizedBox(height: 4),
             Text(
-              distance,
+              location,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
@@ -207,3 +253,4 @@ Widget _buildLargeHostelCard(BuildContext context, QueryDocumentSnapshot doc, {i
       ),
     );
   }
+}
