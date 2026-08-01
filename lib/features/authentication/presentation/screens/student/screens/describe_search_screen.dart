@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import '/algorithms/text_preference_extractor.dart';
+import '/models/search_criteria.dart';
+import '/algorithms/recent_search_service.dart';
 import 'hostel_results_screen.dart';
 
 class DescribeSearchScreen extends StatefulWidget {
@@ -23,14 +25,38 @@ class _DescribeSearchScreenState extends State<DescribeSearchScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    final preferences = TextPreferenceExtractor.extract(text);
+    // Parse the free-text description into a raw map then convert it into
+    // the typed SearchCriteria object.  TextPreferenceExtractor returns null
+    // for fields it could not detect — which is exactly what we want so the
+    // SearchMatchAlgorithm does not assume defaults.
+    final raw = TextPreferenceExtractor.extract(text);
+
+    final criteria = SearchCriteria(
+      location: _emptyToNull(raw['preferredLocation']?.toString()),
+      distanceRange: _emptyToNull(raw['distanceRange']?.toString()),
+      hostelType: _emptyToNull(raw['preferredType']?.toString()),
+      roomType: _emptyToNull(raw['roomType']?.toString()),
+      minBudget: (raw['minBudget'] as num?)?.toInt(),
+      maxBudget: (raw['maxBudgetValue'] as num?)?.toInt(),
+      facilities: List<String>.from(raw['facilities'] ?? []),
+    );
+
+    // Persist as the student's latest search (fire-and-forget).
+    RecentSearchService.instance.save(criteria);
 
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => HostelResultsScreen(preferences: preferences),
+        builder: (context) => HostelResultsScreen(criteria: criteria),
       ),
     );
+  }
+
+  /// Converts an empty or whitespace-only string to null so the algorithm
+  /// treats it as "not specified".
+  static String? _emptyToNull(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return value.trim();
   }
 
   @override

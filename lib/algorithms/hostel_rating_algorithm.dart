@@ -3,8 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Computes and persists the average rating for a hostel.
 ///
 /// Reviews are stored at:
-///   hostels/{hostelId}/reviews/{reviewId}
-///   Fields: { rating: num (1–5), userId: string, comment: string, createdAt: Timestamp }
+///   reviews/{reviewId}   (TOP-LEVEL collection)
+///   Fields: { hostelId: string, rating: num (1–5), userId: string,
+///             comment/review: string, createdAt: Timestamp }
 ///
 /// After computing, the average is written back to the hostel document as
 ///   { averageRating: double, reviewCount: int }
@@ -29,11 +30,15 @@ class HostelRatingAlgorithm {
   }
 
   /// Computes the average without writing to Firestore.
+  ///
+  /// Reviews are stored in the TOP-LEVEL `reviews` collection with a
+  /// `hostelId` field — NOT in the `hostels/{id}/reviews` sub-collection.
+  /// Querying the sub-collection always returns empty, which is why the
+  /// rating badge showed "0.0 (0)".
   static Future<RatingResult> compute(String hostelId) async {
     final snapshot = await FirebaseFirestore.instance
-        .collection('hostels')
-        .doc(hostelId)
         .collection('reviews')
+        .where('hostelId', isEqualTo: hostelId)
         .get();
 
     if (snapshot.docs.isEmpty) {
@@ -59,8 +64,13 @@ class HostelRatingAlgorithm {
     return RatingResult(average: avg, count: validCount);
   }
 
-  /// Adds a new review and recomputes the average immediately.
+  /// Adds a new review to the TOP-LEVEL `reviews` collection and
+  /// recomputes the average immediately.
   /// Returns the updated [RatingResult].
+  ///
+  /// Note: the main review submission path is in [StudentReviewsScreen],
+  /// which also writes to `reviews` (top-level).  This helper exists for
+  /// callers that need a single-call add+recompute convenience.
   static Future<RatingResult> addReview({
     required String hostelId,
     required String userId,
@@ -70,10 +80,9 @@ class HostelRatingAlgorithm {
     assert(rating >= 1 && rating <= 5, 'Rating must be between 1 and 5');
 
     await FirebaseFirestore.instance
-        .collection('hostels')
-        .doc(hostelId)
         .collection('reviews')
         .add({
+      'hostelId': hostelId,
       'userId': userId,
       'rating': rating,
       'comment': comment.trim(),

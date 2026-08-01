@@ -18,6 +18,11 @@ class HostelCard extends StatefulWidget {
   /// Optional — if absent the distance badge is omitted.
   final String? distanceFromCampus;
 
+  /// Number of available rooms remaining on this hostel.
+  /// When non-null and below 15, a small availability indicator is shown.
+  /// Pass null (default) to hide the indicator entirely.
+  final int? availableRooms;
+
   const HostelCard({
     super.key,
     required this.hostelId,
@@ -28,6 +33,7 @@ class HostelCard extends StatefulWidget {
     required this.rating,
     this.reviewCount = 0,
     this.distanceFromCampus,
+    this.availableRooms,
   });
 
   // ── Public static helpers so other widgets (e.g. WishlistScreen) can
@@ -274,6 +280,15 @@ class _HostelCardState extends State<HostelCard> {
                 ],
               ),
 
+            // ── Availability indicator (optional) ─────────────────────────
+            // Shown only when availableRooms is non-null and below 15.
+            // Orange for 4–14 rooms remaining; red for 3 or fewer.
+            if (widget.availableRooms != null &&
+                widget.availableRooms! < 15) ...[
+              const SizedBox(height: 3),
+              _AvailabilityIndicator(rooms: widget.availableRooms!),
+            ],
+
             const SizedBox(height: 3),
 
             // ── Prices (single · double) ───────────────────────────────────
@@ -331,6 +346,53 @@ class _RatingBadge extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Availability indicator — shown when a hostel has fewer than 15 rooms left.
+//
+// Colour rules:
+//   ≤  3 rooms  → red    ("Only 3 rooms remaining")
+//   4–14 rooms  → orange ("8 rooms remaining")
+//   ≥ 15 rooms  → hidden (caller must gate on availableRooms < 15)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AvailabilityIndicator extends StatelessWidget {
+  final int rooms;
+
+  const _AvailabilityIndicator({required this.rooms});
+
+  @override
+  Widget build(BuildContext context) {
+    // Colour: red for critically low (≤ 3), orange accent otherwise.
+    final Color indicatorColor =
+        rooms <= 3 ? const Color(0xFFE53935) : const Color(0xFFFF8A00);
+
+    // Label: highlight urgency when critically low.
+    final String label =
+        rooms <= 3 ? 'Only $rooms room${rooms == 1 ? '' : 's'} remaining'
+                   : '$rooms rooms remaining';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.meeting_room_outlined, size: 11, color: indicatorColor),
+        const SizedBox(width: 3),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: indicatorColor,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

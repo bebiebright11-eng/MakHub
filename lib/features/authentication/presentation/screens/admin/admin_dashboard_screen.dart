@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '/core/constants/app_colors.dart';
 import '/algorithms/occupancy_algorithm.dart';
 import '/algorithms/revenue_algorithm.dart';
+import '/algorithms/rating_backfill_service.dart';
 import 'admin_hostels_screen.dart';
 import 'admin_bookings_screen.dart';
 import 'admin_notification_screen.dart';
@@ -23,6 +24,11 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // ── Live data futures ──────────────────────────────────────────────────
   late Future<_DashboardStats> _statsFuture;
+
+  // ── Rating backfill state ─────────────────────────────────────────────
+  bool _backfillRunning = false;
+  int  _backfillDone    = 0;
+  int  _backfillTotal   = 0;
 
   @override
   void initState() {
@@ -119,6 +125,53 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   static final DateTime _epoch = DateTime(2000);
 
   void _refresh() => setState(() => _statsFuture = _loadStats());
+
+  /// Runs the one-time rating backfill and shows progress + result via
+  /// a SnackBar.  Safe to call multiple times — each call re-reads all
+  /// reviews from Firestore and overwrites the hostel document values.
+  Future<void> _runBackfill() async {
+    if (_backfillRunning) return;
+    setState(() {
+      _backfillRunning = true;
+      _backfillDone    = 0;
+      _backfillTotal   = 0;
+    });
+
+    // Show a persistent "in progress" snack while running.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Recalculating ratings… please wait.'),
+        duration: Duration(minutes: 5),
+      ),
+    );
+
+    final result = await RatingBackfillService.instance.runBackfill(
+      onProgress: (done, total) {
+        if (!mounted) return;
+        setState(() {
+          _backfillDone  = done;
+          _backfillTotal = total;
+        });
+      },
+    );
+
+    if (!mounted) return;
+    setState(() => _backfillRunning = false);
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: result.failed == 0 ? Colors.green : Colors.orange,
+        duration: const Duration(seconds: 6),
+        content: Text(
+          'Ratings updated ✓  '
+          '${result.updated} hostel${result.updated == 1 ? '' : 's'} updated, '
+          '${result.noReviews} with no reviews'
+          '${result.failed > 0 ? ', ${result.failed} failed' : ''}.',
+        ),
+      ),
+    );
+  }
 
   // ── Build ──────────────────────────────────────────────────────────────
   @override
@@ -473,6 +526,132 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         Expanded(
                           child: Text(
                             'System Health Normal\nAll servers operational.',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Maintenance ────────────────────────────────────
+                  _sectionLabel('MAINTENANCE'),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Title row
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.star_rate_outlined,
+                                color: AppColors.primary,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Recalculate All Ratings',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Recomputes averageRating and reviewCount '
+                                    'on every hostel document from the '
+                                    'reviews collection.',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Progress indicator (visible while running)
+                        if (_backfillRunning) ...[
+                          const SizedBox(height: 14),
+                          LinearProgressIndicator(
+                            value: _backfillTotal > 0
+                                ? _backfillDone / _backfillTotal
+                                : null,
+                            backgroundColor: Colors.grey.shade200,
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _backfillTotal > 0
+                                ? 'Processing $_backfillDone / $_backfillTotal hostels…'
+                                : 'Loading hostel list…',
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.grey),
+                          ),
+                        ],
+
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed:
+                                _backfillRunning ? null : _runBackfill,
+                            icon: _backfillRunning
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.refresh, size: 16),
+                            label: Text(
+                              _backfillRunning
+                                  ? 'Running…'
+                                  : 'Run Now',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor:
+                                  AppColors.primary.withValues(alpha: 0.5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 12),
+                            ),
                           ),
                         ),
                       ],
