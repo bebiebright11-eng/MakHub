@@ -132,9 +132,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       // Load the student's first name for the discovery section heading.
       _loadStudentFirstName(user.uid);
     }
-    // Load the student's most recent search so the home screen can display
-    // the "Based on your recent search" section on first render.
-    _recentSearchFuture = RecentSearchService.instance.load();
   }
 
   @override
@@ -214,14 +211,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               }
 
           final filteredDocs = _filterHostels(snapshot.data!.docs);
-
-          // ── Trigger popularity fetch when the hostel set changes ─────────
-          // This is called during build; it only issues a new Firestore request
-          // when the hostel ID set differs from the previous render, so it is
-          // cheap on subsequent stream ticks.
-          final hostelIds = filteredDocs.map((d) => d.id).toList();
-          _refreshPopularityIfNeeded(hostelIds);
-          _refreshTrendingIfNeeded(hostelIds);
 
           // recommendHostels returns List<HostelRecommendation>; unwrap to docs for _buildHostelList
           final recommendedDocs =
@@ -430,138 +419,25 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 child: _buildSectionHeader("Trending Now"),
               ),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
-              SliverToBoxAdapter(
-                child: FutureBuilder<Map<String, HostelTrendingData>>(
-                  future: _trendingFuture,
-                  builder: (context, trendingSnap) {
-                    final List<QueryDocumentSnapshot> displayDocs;
-
-                    if (trendingSnap.connectionState == ConnectionState.done &&
-                        trendingSnap.hasData) {
-                      // Trending data ready — rank by weighted recent activity.
-                      displayDocs = TrendingRecommendationAlgorithm.rank(
-                        hostels: filteredDocs,
-                        trendingData: trendingSnap.data!,
-                      ).map((r) => r.doc).toList();
-                    } else {
-                      // Still loading — fall back to preference-based order.
-                      displayDocs = recommendedDocs;
-                    }
-
-                    return _buildHostelList(
-                      displayDocs,
-                      scrollController: _trendingScrollController,
-                    );
-                  },
-                ),
-              ),
-              SliverToBoxAdapter(child: const SizedBox(height: 24)),
-
-              // ── Budget Friendly ──────────────────────────────────────
-              // Ranks hostels by value-for-money:
-              //   price 50% (inverted — lower = better), rating 20%,
-              //   wishlist 15%, confirmed bookings 10%, views 5%.
-              // Reuses _popularityFuture — no extra Firestore reads.
-              SliverToBoxAdapter(
-                child: _buildSectionHeader("Budget Friendly"),
-              ),
+              SliverToBoxAdapter(child: _buildHostelList(recommendedDocs)),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
-              SliverToBoxAdapter(
-                child: FutureBuilder<Map<String, HostelPopularityData>>(
-                  future: _popularityFuture,
-                  builder: (context, popularitySnap) {
-                    final List<QueryDocumentSnapshot> displayDocs;
-
-                    if (popularitySnap.connectionState == ConnectionState.done &&
-                        popularitySnap.hasData) {
-                      // Convert popularity data → budget data (no extra reads).
-                      final budgetData = BudgetService.instance
-                          .fromPopularityData(popularitySnap.data!);
-
-                      // Rank by value-for-money score.
-                      displayDocs = BudgetRecommendationAlgorithm.rank(
-                        hostels: filteredDocs,
-                        budgetData: budgetData,
-                      ).map((r) => r.doc).toList();
-                    } else {
-                      // Still loading — fall back to preference-based order.
-                      displayDocs = recommendedDocs;
-                    }
-
-                    return _buildHostelList(
-                      displayDocs,
-                      scrollController: _budgetFriendlyScrollController,
-                    );
-                  },
-                ),
-              ),
-              SliverToBoxAdapter(child: const SizedBox(height: 24)),
-
-              // ── Location-based sections ──────────────────────────────
-              // Each section filters to its own location then ranks by:
-              // distance 50% (closer=higher), rating 20%, wishlist 15%,
-              // bookings 10%, views 5%. Reuses _popularityFuture — no
-              // extra Firestore reads.
-              for (final entry in [
-                MapEntry("Kikumi",        _kikumiScrollController),
-                MapEntry("Near Main Gate", _mainGateScrollController),
-                MapEntry("Kikoni",        _kikoniScrollController),
-              ])
-                if (_hostelsForLocation(filteredDocs, entry.key).isNotEmpty) ...[
-                  SliverToBoxAdapter(
-                    child: _buildSectionHeader(
-                      "Hostels near ${entry.key}",
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          // Location sections are recommendation-based — no
-                          // Match % badge.  Pass the location as a criteria so
-                          // the results screen filters to that area.
-                          builder: (_) => HostelResultsScreen(
-                            criteria: SearchCriteria(location: entry.key),
-                          ),
-                        ),
+              for (var location in ["Kikumi", "Near Main Gate", "Kikoni"])
+                if (_hostelsForLocation(filteredDocs, location).isNotEmpty) ...[
+                  SliverToBoxAdapter(child: _buildSectionHeader("Hostels near $location", onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HostelResultsScreen(preferences: {
+                          ...preferences,
+                          'preferredLocation': location,
+                        }),
                       ),
-                    ),
-                  ),
+                    );
+                  })),
                   SliverToBoxAdapter(child: const SizedBox(height: 12)),
-                  SliverToBoxAdapter(
-                    child: FutureBuilder<Map<String, HostelPopularityData>>(
-                      future: _popularityFuture,
-                      builder: (context, popularitySnap) {
-                        // Filter to this location's hostels only.
-                        final locationDocs =
-                            _hostelsForLocation(filteredDocs, entry.key);
-
-                        final List<QueryDocumentSnapshot> displayDocs;
-
-                        if (popularitySnap.connectionState ==
-                                ConnectionState.done &&
-                            popularitySnap.hasData) {
-                          // Convert popularity → location data (no extra reads).
-                          final locationData = LocationService.instance
-                              .fromPopularityData(popularitySnap.data!);
-
-                          // Rank by proximity + quality score.
-                          displayDocs = LocationRecommendationAlgorithm.rank(
-                            hostels: locationDocs,
-                            locationData: locationData,
-                          ).map((r) => r.doc).toList();
-                        } else {
-                          // Still loading — show unranked location filter.
-                          displayDocs = locationDocs;
-                        }
-
-                        return _buildHostelList(
-                          displayDocs,
-                          scrollController: entry.value,
-                        );
-                      },
-                    ),
-                  ),
-                  SliverToBoxAdapter(child: const SizedBox(height: 24)),
+                  SliverToBoxAdapter(child: _buildHostelList(_hostelsForLocation(filteredDocs, location))),
+                  SliverToBoxAdapter(child: const SizedBox(height: 20)),
                 ],
-
               SliverToBoxAdapter(child: const SizedBox(height: 30)),
 
               // ── 😊 "You're lucky! New hostels" discovery section ─────
@@ -635,29 +511,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         case "Boys":
           return hostelType == "boys";
 
-        case "Mixed":
-          return hostelType == "mixed";
-
         case "Single":
           return singlePrice.isNotEmpty;
 
         case "Budget":
           if (singlePrice.isEmpty) return false;
           return int.parse(singlePrice) <= 500000;
-
-        case "Luxury":
-          if (singlePrice.isEmpty) return false;
-          return int.parse(singlePrice) > 500000;
-
-        case "Cheap":
-          if (singlePrice.isEmpty) return false;
-          return int.parse(singlePrice) <= 300000;
-
-        case "Double":
-          final doublePrice = (data['doublePrice'] ?? '')
-              .toString()
-              .replaceAll(RegExp(r'[^0-9]'), '');
-          return doublePrice.isNotEmpty;
 
         default:
           return true;
@@ -750,7 +609,7 @@ void _removeSearchOverlay() {
                             MaterialPageRoute(
                               builder: (_) => const DescribeSearchScreen(),
                             ),
-                          ).then((_) => _reloadRecentSearch());
+                          );
                         },
                       ),
                       const SizedBox(height: 12),
@@ -765,7 +624,7 @@ void _removeSearchOverlay() {
                             MaterialPageRoute(
                               builder: (_) => const GuidedSearchScreen(),
                             ),
-                          ).then((_) => _reloadRecentSearch());
+                          );
                         },
                       ),
                     ],
@@ -1072,10 +931,7 @@ List<QueryDocumentSnapshot> _hostelsForLocation(
   }).toList();
 }
 
-Widget _buildHostelList(
-    List<QueryDocumentSnapshot> hostelDocs, {
-    required ScrollController scrollController,
-  }) {
+Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
     if (hostelDocs.isEmpty) {
       return const Center(
         child: Padding(
@@ -1088,30 +944,25 @@ Widget _buildHostelList(
     return SizedBox(
       height: 260,
       child: ListView.builder(
-        controller: scrollController,
+        controller: _hostelsScrollController,
         physics: const BouncingScrollPhysics(),
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 24),
         itemCount: hostelDocs.length,
         itemBuilder: (context, index) {
           final data = hostelDocs[index].data() as Map<String, dynamic>;
-          // Parse availableRooms safely — null when field is absent.
-          final int? availableRooms =
-              (data['availableRooms'] as num?)?.toInt();
           return Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: HostelCard(
-              hostelId: hostelDocs[index].id,
-              name: data['hostelName'] ?? 'Unnamed Hostel',
-              distance: data['location'] ?? '',
-              singlePrice: data['singlePrice'] ?? '0',
-              doublePrice: data['doublePrice'] ?? '0',
-              rating: ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1),
-              reviewCount: (data['reviewCount'] as num?)?.toInt() ?? 0,
-              distanceFromCampus: data['distance']?.toString(),
-              availableRooms: availableRooms,
-            ),
-          );
+              padding: const EdgeInsets.only(right: 16),
+              child: HostelCard(
+                hostelId: hostelDocs[index].id,
+                name: data['hostelName'] ?? 'Unnamed Hostel',
+                distance: data['location'] ?? '',
+                singlePrice: data['singlePrice'] ?? '0',
+                doublePrice: data['doublePrice'] ?? '0',
+                rating: ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1),
+                distanceFromCampus: data['distance']?.toString(),
+              ),
+            );
         },
       ),
     );

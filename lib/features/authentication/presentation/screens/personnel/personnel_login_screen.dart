@@ -19,10 +19,20 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
 Future<void> _handleLogin() async {
-  try {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+  final email = _emailController.text.trim().toLowerCase();
+  final password = _passwordController.text;
 
+  if (email.isEmpty || password.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Enter both your email address and password.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
+
+  try {
     // Login with Firebase Authentication
     final credential =
         await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -42,6 +52,8 @@ Future<void> _handleLogin() async {
     if (!mounted) return;
 
     if (result.docs.isEmpty) {
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Personnel account not found."),
@@ -57,10 +69,28 @@ final data = doc.data();
 
 // Check activation
 if (data['activated'] != true) {
+  await FirebaseAuth.instance.signOut();
+  if (!mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
       content: Text("Please activate your account first."),
       backgroundColor: Colors.orange,
+    ),
+  );
+  return;
+}
+
+// A roster entry must be bound to the same Firebase account that signed in.
+// This prevents an account from being accepted merely because it matches a
+// personnel email address.
+final linkedUid = (data['firebaseUid'] ?? '').toString();
+if (linkedUid.isNotEmpty && linkedUid != uid) {
+  await FirebaseAuth.instance.signOut();
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('This account is not linked to the personnel record.'),
+      backgroundColor: Colors.red,
     ),
   );
   return;
@@ -123,6 +153,38 @@ Navigator.pushReplacementNamed(context, '/dashboard');
         content: Text(message),
         backgroundColor: Colors.red,
       ),
+    );
+  } catch (_) {
+    await FirebaseAuth.instance.signOut();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Could not verify this personnel account. Please try again.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+}
+
+Future<void> _sendPasswordReset() async {
+  final email = _emailController.text.trim();
+  if (email.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Enter your email address first.')),
+    );
+    return;
+  }
+
+  try {
+    await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Password reset link sent. Check your email.')),
+    );
+  } on FirebaseAuthException catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(e.message ?? 'Could not send the reset link.')),
     );
   }
 }
@@ -299,7 +361,7 @@ Center(
                       // FORGOT PASSWORD - Orange
                       Center(
                         child: TextButton(
-                          onPressed: () {},
+                          onPressed: _sendPasswordReset,
                           child: const Text(
                             'Forgot Password',
                             style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600, fontSize: 14),

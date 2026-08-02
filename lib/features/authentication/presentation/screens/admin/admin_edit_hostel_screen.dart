@@ -46,9 +46,8 @@ class _AdminEditHostelScreenState extends State<AdminEditHostelScreen>
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isSaving = false;
 
-  // URLs of media already stored in Firestore for this hostel
+  // URLs of photos already stored in Firestore for this hostel
   List<String> _existingPhotos = [];
-  List<String> _existingVideos = [];
 
   final List<String> _facilities = [
     "WiFi",
@@ -119,9 +118,6 @@ void initState() {
 
   _existingPhotos = List<String>.from(
     (widget.hostelData['photos'] ?? const <String>[]).whereType<String>(),
-  );
-  _existingVideos = List<String>.from(
-    (widget.hostelData['videos'] ?? const <String>[]).whereType<String>(),
   );
 }
 
@@ -455,7 +451,7 @@ const SizedBox(height: 10),
                   ],
                 ),
 
-                _sectionTitle("Media Uploads", "Add photos and a tour video for better visibility."),
+                _sectionTitle("Media Uploads", "Add up to 30 photos for better visibility."),
 
                 // ── Existing photos (from Firestore) ──
                 if (_existingPhotos.isNotEmpty) ...[                   
@@ -516,57 +512,6 @@ const SizedBox(height: 10),
                 ],
 
                 buildPhotosTile(),
-                const SizedBox(height: 10),
-
-                // ── Existing videos (from Firestore) ──
-                if (_existingVideos.isNotEmpty) ...[                   
-                  const Text(
-                    "Current Videos",
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                  ),
-                  const SizedBox(height: 6),
-                  ...List.generate(_existingVideos.length, (index) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.video_file,
-                                color: Colors.deepPurple, size: 18),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _existingVideos[index]
-                                    .split('/')
-                                    .last
-                                    .split('?')
-                                    .first,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: () => setState(
-                                  () => _existingVideos.removeAt(index)),
-                              child: const Icon(Icons.close,
-                                  size: 16, color: Colors.red),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 6),
-                ],
-
-                buildVideoTile(),
 
                 _sectionTitle("Facilities", "Select the amenities available at this hostel."),
 
@@ -617,6 +562,52 @@ const SizedBox(height: 10),
 
                 SizedBox(
                   width: double.infinity,
+<<<<<<< HEAD
+                  child: ElevatedButton(
+                    onPressed: _isSaving
+                        ? null
+                        : () async {
+                            if (!_formKey.currentState!.validate()) return;
+                            setState(() => _isSaving = true);
+                            try {
+                              // Upload newly picked photos (if any) and merge with existing URLs
+                              List<String> finalPhotos = List.from(_existingPhotos);
+
+                              if (hasPickedMedia) {
+                                final newUrls =
+                                    await uploadNewMedia(widget.hostelId);
+                                finalPhotos.addAll(newUrls);
+                              }
+
+                              await _firestore
+                                  .collection('hostels')
+                                  .doc(widget.hostelId)
+                                  .update({
+                                'hostelName': _nameController.text.trim(),
+                                'location': _locationController.text.trim(),
+                                'description':
+                                    _descriptionController.text.trim(),
+                                'type': _selectedType,
+                                'distance': _distanceController.text.trim(),
+                                'walkingTime':
+                                    _walkingTimeController.text.trim(),
+                                'mapsLink': _mapsLinkController.text.trim(),
+                                'singlePrice':
+                                    _singlePriceController.text.trim(),
+                                'doublePrice':
+                                    _doublePriceController.text.trim(),
+                                'singleRoomSize':
+                                    _singleRoomSizeController.text.trim(),
+                                'doubleRoomSize':
+                                    _doubleRoomSizeController.text.trim(),
+                                'facilities': _selectedFacilities.toList(),
+                                'shops': _shopsController.text.trim(),
+                                'hospital': _hospitalController.text.trim(),
+                                'atm': _atmController.text.trim(),
+                                'photos': finalPhotos,
+                                'updatedAt': FieldValue.serverTimestamp(),
+                              });
+=======
 child: ElevatedButton(
   onPressed: () async {
     if (_formKey.currentState!.validate()) {
@@ -697,6 +688,7 @@ child: ElevatedButton(
   ),
 ),
 
+>>>>>>> d06751c9c5ce7be79582978ec0583449ca768518
 
                 ),
                 const SizedBox(height: 20),
