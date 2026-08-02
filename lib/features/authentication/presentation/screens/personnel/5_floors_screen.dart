@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '6_room_list_screen.dart';
+import 'room_list_screen.dart';
 
 class FloorsScreen extends StatefulWidget {
   const FloorsScreen({super.key});

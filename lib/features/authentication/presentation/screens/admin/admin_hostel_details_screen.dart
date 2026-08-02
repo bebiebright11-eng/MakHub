@@ -27,14 +27,31 @@ class AdminHostelDetailsScreen extends StatefulWidget {
 
 class _AdminHostelDetailsScreenState extends State<AdminHostelDetailsScreen> {
   late Future<List<Map<String, dynamic>>> _reviewsFuture;
+  late Map<String, dynamic> _hostelData;
 
   String get hostelId => widget.hostelId;
-  Map<String, dynamic> get hostelData => widget.hostelData;
+  Map<String, dynamic> get hostelData => _hostelData;
 
   @override
   void initState() {
     super.initState();
+    _hostelData = Map<String, dynamic>.from(widget.hostelData);
     _reviewsFuture = _loadReviews();
+  }
+
+  /// Re-fetches the hostel document from Firestore and rebuilds the screen
+  /// so photos and other edits are immediately visible after returning from
+  /// the edit screen.
+  Future<void> _refreshHostelData() async {
+    final doc = await FirebaseFirestore.instance
+        .collection('hostels')
+        .doc(hostelId)
+        .get();
+    if (doc.exists && mounted) {
+      setState(() {
+        _hostelData = doc.data()!;
+      });
+    }
   }
 
   // Reviews live at the top-level `reviews` collection (with a hostelId field),
@@ -396,7 +413,7 @@ ElevatedButton.icon(
           hostelData: hostelData,
         ),
       ),
-    );
+    ).then((_) => _refreshHostelData());
   },
   style: ElevatedButton.styleFrom(
     backgroundColor: AppColors.primary,
