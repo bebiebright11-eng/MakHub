@@ -4,17 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '/algorithms/search_algorithm.dart';
 import '/algorithms/recommendation_algorithm.dart';
-import '/algorithms/popularity_service.dart';
-import '/algorithms/popularity_recommendation_algorithm.dart';
-import '/algorithms/trending_service.dart';
-import '/algorithms/trending_recommendation_algorithm.dart';
-import '/algorithms/budget_service.dart';
-import '/algorithms/budget_recommendation_algorithm.dart';
-import '/algorithms/location_service.dart';
-import '/algorithms/location_recommendation_algorithm.dart';
-import '/algorithms/recent_search_service.dart';
-import '/algorithms/search_match_algorithm.dart';
-import '/models/search_criteria.dart';
 import 'guided_search_screen.dart';
 import '../widgets/hostel_card.dart';
 import 'describe_search_screen.dart';
@@ -43,74 +32,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _chipsScrollController = ScrollController();
-
-  // One independent ScrollController per horizontal section so each list
-  // scrolls independently without interfering with the others.
-  final ScrollController _recentSearchScrollController = ScrollController();
-  final ScrollController _recommendedScrollController = ScrollController();
-  final ScrollController _trendingScrollController = ScrollController();
-  final ScrollController _budgetFriendlyScrollController = ScrollController();
-  final ScrollController _kikumiScrollController = ScrollController();
-  final ScrollController _mainGateScrollController = ScrollController();
-  final ScrollController _kikoniScrollController = ScrollController();
+  final ScrollController _hostelsScrollController = ScrollController();
 
   final GlobalKey _searchBarKey = GlobalKey();
   OverlayEntry? _searchOverlay;
-
-  // ── Popularity data cache ─────────────────────────────────────────────────
-  // Fetched once per hostel-list snapshot. Storing the Future (not the result)
-  // means the FutureBuilder keeps showing the previous data while a refresh
-  // is in-flight, and avoids redundant Firestore calls on every stream event.
-  Future<Map<String, HostelPopularityData>>? _popularityFuture;
-
-  // The last set of hostel IDs for which we fetched popularity data.
-  // Used to skip re-fetching when the stream ticks but the hostel set hasn't
-  // changed (e.g. a rating or price edit on a single hostel).
-  List<String> _lastPopularityHostelIds = [];
-
-  /// Triggers a popularity fetch only when the hostel ID set has changed.
-  void _refreshPopularityIfNeeded(List<String> hostelIds) {
-    // Sort both lists before comparing so order differences don't cause
-    // unnecessary re-fetches.
-    final sorted = [...hostelIds]..sort();
-    final lastSorted = [..._lastPopularityHostelIds]..sort();
-    if (sorted.toString() == lastSorted.toString()) return;
-
-    _lastPopularityHostelIds = hostelIds;
-    _popularityFuture =
-        PopularityService.instance.fetchPopularityData(hostelIds);
-  }
-
-  // ── Trending data cache ───────────────────────────────────────────────────
-  // Same caching pattern as popularity: store the Future, not the result.
-  // The TrendingService handles the 30-day window and 90-day fallback
-  // internally, so the home screen has no time-window logic of its own.
-  Future<Map<String, HostelTrendingData>>? _trendingFuture;
-
-  // The last set of hostel IDs for which we fetched trending data.
-  List<String> _lastTrendingHostelIds = [];
-
-  /// Triggers a trending fetch only when the hostel ID set has changed.
-  void _refreshTrendingIfNeeded(List<String> hostelIds) {
-    final sorted = [...hostelIds]..sort();
-    final lastSorted = [..._lastTrendingHostelIds]..sort();
-    if (sorted.toString() == lastSorted.toString()) return;
-
-    _lastTrendingHostelIds = hostelIds;
-    _trendingFuture = TrendingService.instance.fetchTrendingData(hostelIds);
-  }
-
-  // ── Recent search cache ───────────────────────────────────────────────────
-  // Loaded once on init and refreshed each time the student returns from a
-  // search screen.  Null means the student has never searched.
-  Future<SearchCriteria?>? _recentSearchFuture;
-
-  /// Reloads the recent search from Firestore.
-  void _reloadRecentSearch() {
-    setState(() {
-      _recentSearchFuture = RecentSearchService.instance.load();
-    });
-  }
 
   @override
   void initState() {
@@ -122,22 +47,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           .doc(user.uid)
           .snapshots();
     }
-    // Load the student's most recent search so the home screen can display
-    // the "Based on your recent search" section on first render.
-    _recentSearchFuture = RecentSearchService.instance.load();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _chipsScrollController.dispose();
-    _recentSearchScrollController.dispose();
-    _recommendedScrollController.dispose();
-    _trendingScrollController.dispose();
-    _budgetFriendlyScrollController.dispose();
-    _kikumiScrollController.dispose();
-    _mainGateScrollController.dispose();
-    _kikoniScrollController.dispose();
+    _hostelsScrollController.dispose();
     _removeSearchOverlay();
     super.dispose();
   }
@@ -183,14 +99,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
           final filteredDocs = _filterHostels(snapshot.data!.docs);
 
-          // ── Trigger popularity fetch when the hostel set changes ─────────
-          // This is called during build; it only issues a new Firestore request
-          // when the hostel ID set differs from the previous render, so it is
-          // cheap on subsequent stream ticks.
-          final hostelIds = filteredDocs.map((d) => d.id).toList();
-          _refreshPopularityIfNeeded(hostelIds);
-          _refreshTrendingIfNeeded(hostelIds);
-
           // recommendHostels returns List<HostelRecommendation>; unwrap to docs for _buildHostelList
           final recommendedDocs =
               RecommendationAlgorithm.recommendHostels(
@@ -198,259 +106,40 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             preferences: preferences,
           ).map((r) => r.doc).toList();
 
-          // Map each location keyword to its dedicated ScrollController.
-          // (Kept for reference — controllers are now accessed directly
-          //  via the MapEntry loop in the location sections below.)
-
           return CustomScrollView(
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
               SliverToBoxAdapter(child: const SizedBox(height: 20)),
               SliverToBoxAdapter(child: _buildCategoryChips()),
-              SliverToBoxAdapter(child: const SizedBox(height: 20)),
-
-              // ── Based on your recent search ──────────────────────────
-              // Shown only when the student has previously performed a
-              // search.  Uses SearchMatchAlgorithm to rank hostels in the
-              // same order as the search results screen, but shows standard
-              // HostelCards with no Match % badge.
-              SliverToBoxAdapter(
-                child: FutureBuilder<SearchCriteria?>(
-                  future: _recentSearchFuture,
-                  builder: (context, recentSnap) {
-                    // Hide the section entirely while loading or when there
-                    // is no recent search.
-                    if (!recentSnap.hasData || recentSnap.data == null) {
-                      return const SizedBox.shrink();
-                    }
-
-                    final recentCriteria = recentSnap.data!;
-
-                    // Rank the current hostel set using SearchMatchAlgorithm
-                    // so the order matches what the student saw on the
-                    // results screen.
-                    final recentDocs = SearchMatchAlgorithm.score(
-                      hostels: filteredDocs,
-                      criteria: recentCriteria,
-                    ).map((r) => r.doc).toList();
-
-                    if (recentDocs.isEmpty) return const SizedBox.shrink();
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSectionHeader(
-                          "Based on your recent search",
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => HostelResultsScreen(
-                                criteria: recentCriteria,
-                              ),
-                            ),
-                          ).then((_) => _reloadRecentSearch()),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildHostelList(
-                          recentDocs,
-                          scrollController: _recentSearchScrollController,
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    );
-                  },
-                ),
-              ),
-
-              // ── Recommended For You ──────────────────────────────────
-              SliverToBoxAdapter(
-                child: _buildSectionHeader(
-                  "Recommended For You",
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      // Recommendation sections never show Match % — pass an
-                      // empty SearchCriteria so no badge appears.
-                      builder: (_) => const HostelResultsScreen(
-                        criteria: SearchCriteria(),
-                      ),
-                    ),
+              SliverToBoxAdapter(child: const SizedBox(height: 12)),
+              SliverToBoxAdapter(child: _buildSectionHeader("Recommended Hostels", onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => HostelResultsScreen(preferences: preferences),
                   ),
-                ),
-              ),
+                );
+              })),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
-              // FutureBuilder wraps only this section so the popularity fetch
-              // never blocks or re-renders the rest of the dashboard.
-              SliverToBoxAdapter(
-                child: FutureBuilder<Map<String, HostelPopularityData>>(
-                  future: _popularityFuture,
-                  builder: (context, popularitySnap) {
-                    // While loading, show the preference-based order as a
-                    // graceful fallback so the section is never empty.
-                    final List<QueryDocumentSnapshot> displayDocs;
-
-                    if (popularitySnap.connectionState == ConnectionState.done &&
-                        popularitySnap.hasData) {
-                      // Popularity data ready — rank by weighted score.
-                      displayDocs = PopularityRecommendationAlgorithm.rank(
-                        hostels: filteredDocs,
-                        popularityData: popularitySnap.data!,
-                      ).map((r) => r.doc).toList();
-                    } else {
-                      // Still loading — fall back to preference-based order.
-                      displayDocs = recommendedDocs;
-                    }
-
-                    return _buildHostelList(
-                      displayDocs,
-                      scrollController: _recommendedScrollController,
-                    );
-                  },
-                ),
-              ),
-              SliverToBoxAdapter(child: const SizedBox(height: 24)),
-
-              // ── Trending Now ─────────────────────────────────────────
-              // Ranks hostels by recent activity (last 30 days):
-              // bookings 40%, reviews 30%, wishlist adds 20%, views 10%.
-              // Falls back to preference-based order while the fetch is
-              // in-flight so the section is never blank.
-              SliverToBoxAdapter(
-                child: _buildSectionHeader("Trending Now"),
-              ),
+              SliverToBoxAdapter(child: _buildHostelList(recommendedDocs)),
               SliverToBoxAdapter(child: const SizedBox(height: 12)),
-              SliverToBoxAdapter(
-                child: FutureBuilder<Map<String, HostelTrendingData>>(
-                  future: _trendingFuture,
-                  builder: (context, trendingSnap) {
-                    final List<QueryDocumentSnapshot> displayDocs;
-
-                    if (trendingSnap.connectionState == ConnectionState.done &&
-                        trendingSnap.hasData) {
-                      // Trending data ready — rank by weighted recent activity.
-                      displayDocs = TrendingRecommendationAlgorithm.rank(
-                        hostels: filteredDocs,
-                        trendingData: trendingSnap.data!,
-                      ).map((r) => r.doc).toList();
-                    } else {
-                      // Still loading — fall back to preference-based order.
-                      displayDocs = recommendedDocs;
-                    }
-
-                    return _buildHostelList(
-                      displayDocs,
-                      scrollController: _trendingScrollController,
-                    );
-                  },
-                ),
-              ),
-              SliverToBoxAdapter(child: const SizedBox(height: 24)),
-
-              // ── Budget Friendly ──────────────────────────────────────
-              // Ranks hostels by value-for-money:
-              //   price 50% (inverted — lower = better), rating 20%,
-              //   wishlist 15%, confirmed bookings 10%, views 5%.
-              // Reuses _popularityFuture — no extra Firestore reads.
-              SliverToBoxAdapter(
-                child: _buildSectionHeader("Budget Friendly"),
-              ),
-              SliverToBoxAdapter(child: const SizedBox(height: 12)),
-              SliverToBoxAdapter(
-                child: FutureBuilder<Map<String, HostelPopularityData>>(
-                  future: _popularityFuture,
-                  builder: (context, popularitySnap) {
-                    final List<QueryDocumentSnapshot> displayDocs;
-
-                    if (popularitySnap.connectionState == ConnectionState.done &&
-                        popularitySnap.hasData) {
-                      // Convert popularity data → budget data (no extra reads).
-                      final budgetData = BudgetService.instance
-                          .fromPopularityData(popularitySnap.data!);
-
-                      // Rank by value-for-money score.
-                      displayDocs = BudgetRecommendationAlgorithm.rank(
-                        hostels: filteredDocs,
-                        budgetData: budgetData,
-                      ).map((r) => r.doc).toList();
-                    } else {
-                      // Still loading — fall back to preference-based order.
-                      displayDocs = recommendedDocs;
-                    }
-
-                    return _buildHostelList(
-                      displayDocs,
-                      scrollController: _budgetFriendlyScrollController,
-                    );
-                  },
-                ),
-              ),
-              SliverToBoxAdapter(child: const SizedBox(height: 24)),
-
-              // ── Location-based sections ──────────────────────────────
-              // Each section filters to its own location then ranks by:
-              // distance 50% (closer=higher), rating 20%, wishlist 15%,
-              // bookings 10%, views 5%. Reuses _popularityFuture — no
-              // extra Firestore reads.
-              for (final entry in [
-                MapEntry("Kikumi",        _kikumiScrollController),
-                MapEntry("Near Main Gate", _mainGateScrollController),
-                MapEntry("Kikoni",        _kikoniScrollController),
-              ])
-                if (_hostelsForLocation(filteredDocs, entry.key).isNotEmpty) ...[
-                  SliverToBoxAdapter(
-                    child: _buildSectionHeader(
-                      "Hostels near ${entry.key}",
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          // Location sections are recommendation-based — no
-                          // Match % badge.  Pass the location as a criteria so
-                          // the results screen filters to that area.
-                          builder: (_) => HostelResultsScreen(
-                            criteria: SearchCriteria(location: entry.key),
-                          ),
-                        ),
+              for (var location in ["Kikumi", "Near Main Gate", "Kikoni"])
+                if (_hostelsForLocation(filteredDocs, location).isNotEmpty) ...[
+                  SliverToBoxAdapter(child: _buildSectionHeader("Hostels near $location", onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HostelResultsScreen(preferences: {
+                          ...preferences,
+                          'preferredLocation': location,
+                        }),
                       ),
-                    ),
-                  ),
+                    );
+                  })),
                   SliverToBoxAdapter(child: const SizedBox(height: 12)),
-                  SliverToBoxAdapter(
-                    child: FutureBuilder<Map<String, HostelPopularityData>>(
-                      future: _popularityFuture,
-                      builder: (context, popularitySnap) {
-                        // Filter to this location's hostels only.
-                        final locationDocs =
-                            _hostelsForLocation(filteredDocs, entry.key);
-
-                        final List<QueryDocumentSnapshot> displayDocs;
-
-                        if (popularitySnap.connectionState ==
-                                ConnectionState.done &&
-                            popularitySnap.hasData) {
-                          // Convert popularity → location data (no extra reads).
-                          final locationData = LocationService.instance
-                              .fromPopularityData(popularitySnap.data!);
-
-                          // Rank by proximity + quality score.
-                          displayDocs = LocationRecommendationAlgorithm.rank(
-                            hostels: locationDocs,
-                            locationData: locationData,
-                          ).map((r) => r.doc).toList();
-                        } else {
-                          // Still loading — show unranked location filter.
-                          displayDocs = locationDocs;
-                        }
-
-                        return _buildHostelList(
-                          displayDocs,
-                          scrollController: entry.value,
-                        );
-                      },
-                    ),
-                  ),
-                  SliverToBoxAdapter(child: const SizedBox(height: 24)),
+                  SliverToBoxAdapter(child: _buildHostelList(_hostelsForLocation(filteredDocs, location))),
+                  SliverToBoxAdapter(child: const SizedBox(height: 20)),
                 ],
-
               SliverToBoxAdapter(child: const SizedBox(height: 30)),
             ],
           );
@@ -486,29 +175,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         case "Boys":
           return hostelType == "boys";
 
-        case "Mixed":
-          return hostelType == "mixed";
-
         case "Single":
           return singlePrice.isNotEmpty;
 
         case "Budget":
           if (singlePrice.isEmpty) return false;
           return int.parse(singlePrice) <= 500000;
-
-        case "Luxury":
-          if (singlePrice.isEmpty) return false;
-          return int.parse(singlePrice) > 500000;
-
-        case "Cheap":
-          if (singlePrice.isEmpty) return false;
-          return int.parse(singlePrice) <= 300000;
-
-        case "Double":
-          final doublePrice = (data['doublePrice'] ?? '')
-              .toString()
-              .replaceAll(RegExp(r'[^0-9]'), '');
-          return doublePrice.isNotEmpty;
 
         default:
           return true;
@@ -601,7 +273,7 @@ void _removeSearchOverlay() {
                             MaterialPageRoute(
                               builder: (_) => const DescribeSearchScreen(),
                             ),
-                          ).then((_) => _reloadRecentSearch());
+                          );
                         },
                       ),
                       const SizedBox(height: 12),
@@ -616,7 +288,7 @@ void _removeSearchOverlay() {
                             MaterialPageRoute(
                               builder: (_) => const GuidedSearchScreen(),
                             ),
-                          ).then((_) => _reloadRecentSearch());
+                          );
                         },
                       ),
                     ],
@@ -911,10 +583,7 @@ List<QueryDocumentSnapshot> _hostelsForLocation(
   }).toList();
 }
 
-Widget _buildHostelList(
-    List<QueryDocumentSnapshot> hostelDocs, {
-    required ScrollController scrollController,
-  }) {
+Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
     if (hostelDocs.isEmpty) {
       return const Center(
         child: Padding(
@@ -927,30 +596,25 @@ Widget _buildHostelList(
     return SizedBox(
       height: 260,
       child: ListView.builder(
-        controller: scrollController,
+        controller: _hostelsScrollController,
         physics: const BouncingScrollPhysics(),
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 24),
         itemCount: hostelDocs.length,
         itemBuilder: (context, index) {
           final data = hostelDocs[index].data() as Map<String, dynamic>;
-          // Parse availableRooms safely — null when field is absent.
-          final int? availableRooms =
-              (data['availableRooms'] as num?)?.toInt();
           return Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: HostelCard(
-              hostelId: hostelDocs[index].id,
-              name: data['hostelName'] ?? 'Unnamed Hostel',
-              distance: data['location'] ?? '',
-              singlePrice: data['singlePrice'] ?? '0',
-              doublePrice: data['doublePrice'] ?? '0',
-              rating: ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1),
-              reviewCount: (data['reviewCount'] as num?)?.toInt() ?? 0,
-              distanceFromCampus: data['distance']?.toString(),
-              availableRooms: availableRooms,
-            ),
-          );
+              padding: const EdgeInsets.only(right: 16),
+              child: HostelCard(
+                hostelId: hostelDocs[index].id,
+                name: data['hostelName'] ?? 'Unnamed Hostel',
+                distance: data['location'] ?? '',
+                singlePrice: data['singlePrice'] ?? '0',
+                doublePrice: data['doublePrice'] ?? '0',
+                rating: ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1),
+                distanceFromCampus: data['distance']?.toString(),
+              ),
+            );
         },
       ),
     );
