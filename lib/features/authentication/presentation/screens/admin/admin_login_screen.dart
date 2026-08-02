@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
-import 'admin_register_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'forgot_password_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -46,6 +45,8 @@ Future<void> _loginAdmin() async {
     if (!mounted) return;
 
     if (!userDoc.exists) {
+      await _auth.signOut();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("User record not found."),
@@ -67,6 +68,8 @@ Future<void> _loginAdmin() async {
         ),
       );
     } else {
+      await _auth.signOut();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Access denied."),
@@ -79,6 +82,12 @@ Future<void> _loginAdmin() async {
       SnackBar(
         content: Text(e.message ?? "Login failed"),
       ),
+    );
+  } catch (_) {
+    await _auth.signOut();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not verify administrator access.')),
     );
   }
 }
@@ -277,30 +286,6 @@ ElevatedButton(
   ),
 ),
                 const SizedBox(height: 16),
-                // Create Account button
-                OutlinedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AdminRegisterScreen(),
-                      ),
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    "Create Account",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const SizedBox(height: 24),
                 const Text(
                   "MakHub Admin v2.1 · Secure Login",
                   textAlign: TextAlign.center,
