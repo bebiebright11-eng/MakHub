@@ -28,7 +28,6 @@ class HostelMapScreen extends StatefulWidget {
 }
 
 class _HostelMapScreenState extends State<HostelMapScreen> {
-  GoogleMapController? _mapController;
   final Set<Marker> _markers = {};
 
   @override
@@ -103,26 +102,13 @@ class _HostelMapScreenState extends State<HostelMapScreen> {
 
   /// Calculate straight-line distance in metres between two coordinates.
   double _distanceMetres(LatLng a, LatLng b) {
-    const double earthR = 6371000;
-    final double dLat =
-        (b.latitude - a.latitude) * (3.141592653589793 / 180);
-    final double dLon =
-        (b.longitude - a.longitude) * (3.141592653589793 / 180);
-    final double sinLat = dLat / 2;
-    final double sinLon = dLon / 2;
-    final double aa = sinLat * sinLat +
-        (a.latitude * 3.141592653589793 / 180).abs().ceil() *
-            0 +
-        // simplified Haversine
-        sinLon * sinLon;
-    // Use simple Pythagorean approximation for short distances
+    // Simple Pythagorean approximation for short distances
     final double latDiff = (b.latitude - a.latitude) * 111320;
     final double lonDiff = (b.longitude - a.longitude) *
         111320 *
         _cos(a.latitude * 3.141592653589793 / 180);
-    return (latDiff * latDiff + lonDiff * lonDiff) < 0
-        ? 0
-        : _sqrt(latDiff * latDiff + lonDiff * lonDiff);
+    final double hypot = latDiff * latDiff + lonDiff * lonDiff;
+    return hypot < 0 ? 0 : _sqrt(hypot);
   }
 
   double _sqrt(double x) {
@@ -191,7 +177,6 @@ class _HostelMapScreenState extends State<HostelMapScreen> {
               ),
               markers: _markers,
               onMapCreated: (controller) {
-                _mapController = controller;
                 // Show the info window on the hostel marker automatically
                 Future.delayed(const Duration(milliseconds: 500), () {
                   controller.showMarkerInfoWindow(const MarkerId('hostel'));

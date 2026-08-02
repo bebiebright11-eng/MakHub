@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'hostel_media_mixin.dart';
 
 class AdminEditHostelScreen extends StatefulWidget {
   final String hostelId;
@@ -17,7 +18,8 @@ class AdminEditHostelScreen extends StatefulWidget {
       _AdminEditHostelScreenState();
 }
 
-class _AdminEditHostelScreenState extends State<AdminEditHostelScreen> {
+class _AdminEditHostelScreenState extends State<AdminEditHostelScreen>
+    with HostelMediaMixin {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
@@ -37,6 +39,11 @@ class _AdminEditHostelScreenState extends State<AdminEditHostelScreen> {
   String _selectedType = "Mixed";
   final Set<String> _selectedFacilities = {};
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _isSaving = false;
+
+  // URLs of media already stored in Firestore for this hostel
+  List<String> _existingPhotos = [];
+  List<String> _existingVideos = [];
 
   final List<String> _facilities = [
     "WiFi",
@@ -100,6 +107,13 @@ void initState() {
     List<String>.from(
       widget.hostelData['facilities'] ?? [],
     ),
+  );
+
+  _existingPhotos = List<String>.from(
+    (widget.hostelData['photos'] ?? const <String>[]).whereType<String>(),
+  );
+  _existingVideos = List<String>.from(
+    (widget.hostelData['videos'] ?? const <String>[]).whereType<String>(),
   );
 }
 
@@ -334,17 +348,116 @@ const SizedBox(height: 10),
 
                 _sectionTitle("Media Uploads", "Add photos and a tour video for better visibility."),
 
-                _uploadTile(
-                  icon: Icons.photo,
-                  title: "Upload Photos",
-                  subtitle: "PNG, JPG up to 10MB each",
-                ),
+                // ── Existing photos (from Firestore) ──
+                if (_existingPhotos.isNotEmpty) ...[                   
+                  const Text(
+                    "Current Photos",
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    height: 100,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _existingPhotos.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.network(
+                                _existingPhotos[index],
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Container(
+                                  width: 100,
+                                  height: 100,
+                                  color: Colors.grey.shade300,
+                                  child: const Icon(Icons.broken_image,
+                                      color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: -6,
+                              right: -6,
+                              child: GestureDetector(
+                                onTap: () => setState(
+                                    () => _existingPhotos.removeAt(index)),
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.close,
+                                      size: 14, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                buildPhotosTile(),
                 const SizedBox(height: 10),
-                _uploadTile(
-                  icon: Icons.videocam,
-                  title: "Upload Tour Video",
-                  subtitle: "MP4, MOV up to 100MB",
-                ),
+
+                // ── Existing videos (from Firestore) ──
+                if (_existingVideos.isNotEmpty) ...[                   
+                  const Text(
+                    "Current Videos",
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  ...List.generate(_existingVideos.length, (index) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.video_file,
+                                color: Colors.deepPurple, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _existingVideos[index]
+                                    .split('/')
+                                    .last
+                                    .split('?')
+                                    .first,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => setState(
+                                  () => _existingVideos.removeAt(index)),
+                              child: const Icon(Icons.close,
+                                  size: 16, color: Colors.red),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 6),
+                ],
+
+                buildVideoTile(),
 
                 _sectionTitle("Facilities", "Select the amenities available at this hostel."),
 
@@ -395,113 +508,104 @@ const SizedBox(height: 10),
 
                 SizedBox(
                   width: double.infinity,
-child: ElevatedButton(
-  onPressed: () async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        await _firestore
-    .collection('hostels')
-    .doc(widget.hostelId)
-    .update({
-          'hostelName': _nameController.text.trim(),
-          'location': _locationController.text.trim(),
-          'description': _descriptionController.text.trim(),
-          'type': _selectedType,
-          'distance': _distanceController.text.trim(),
-          'walkingTime': _walkingTimeController.text.trim(),
-          'mapsLink': _mapsLinkController.text.trim(),
-          'singlePrice': _singlePriceController.text.trim(),
-          'doublePrice': _doublePriceController.text.trim(),
-          'singleRoomSize': _singleRoomSizeController.text.trim(),
-          'doubleRoomSize': _doubleRoomSizeController.text.trim(),
-          'facilities': _selectedFacilities.toList(),
-          'shops': _shopsController.text.trim(),
-          'hospital': _hospitalController.text.trim(),
-          'atm': _atmController.text.trim(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+                  child: ElevatedButton(
+                    onPressed: _isSaving
+                        ? null
+                        : () async {
+                            if (!_formKey.currentState!.validate()) return;
+                            setState(() => _isSaving = true);
+                            try {
+                              // Upload newly picked media (if any) and merge with existing URLs
+                              List<String> finalPhotos = List.from(_existingPhotos);
+                              List<String> finalVideos = List.from(_existingVideos);
 
-        if (!context.mounted) return;
+                              if (hasPickedMedia) {
+                                final uploaded =
+                                    await uploadNewMedia(widget.hostelId);
+                                finalPhotos.addAll(uploaded['photos']!);
+                                finalVideos.addAll(uploaded['videos']!);
+                              }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Hostel updated successfully'),
-          ),
-        );
+                              await _firestore
+                                  .collection('hostels')
+                                  .doc(widget.hostelId)
+                                  .update({
+                                'hostelName': _nameController.text.trim(),
+                                'location': _locationController.text.trim(),
+                                'description':
+                                    _descriptionController.text.trim(),
+                                'type': _selectedType,
+                                'distance': _distanceController.text.trim(),
+                                'walkingTime':
+                                    _walkingTimeController.text.trim(),
+                                'mapsLink': _mapsLinkController.text.trim(),
+                                'singlePrice':
+                                    _singlePriceController.text.trim(),
+                                'doublePrice':
+                                    _doublePriceController.text.trim(),
+                                'singleRoomSize':
+                                    _singleRoomSizeController.text.trim(),
+                                'doubleRoomSize':
+                                    _doubleRoomSizeController.text.trim(),
+                                'facilities': _selectedFacilities.toList(),
+                                'shops': _shopsController.text.trim(),
+                                'hospital': _hospitalController.text.trim(),
+                                'atm': _atmController.text.trim(),
+                                'photos': finalPhotos,
+                                'videos': finalVideos,
+                                'updatedAt': FieldValue.serverTimestamp(),
+                              });
 
-        Navigator.pop(context);
-      } catch (e) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-          ),
-        );
-      }
-    }
-  },
-
-  style: ElevatedButton.styleFrom(
-    backgroundColor: AppColors.primary,
-    foregroundColor: Colors.white,
-    padding: const EdgeInsets.symmetric(vertical: 16),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-  ),
-
-  child: const Text(
-    "Update Hostel",
-    style: TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w600,
-    ),
-  ),
-),
-
-
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text('Hostel updated successfully'),
+                                ),
+                              );
+                              Navigator.pop(context);
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $e')),
+                              );
+                            } finally {
+                              if (mounted) {
+                                setState(() => _isSaving = false);
+                              }
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: _isSaving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            "Update Hostel",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
                 ),
                 const SizedBox(height: 20),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _uploadTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(subtitle,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ),
-          ),
-          OutlinedButton(
-            onPressed: () {
-              // File picker logic goes here later
-            },
-            child: const Text("Choose File"),
-          ),
-        ],
       ),
     );
   }
