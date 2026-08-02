@@ -2,7 +2,7 @@
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'active_booking_screen.dart';
+import 'booking_tab_router.dart';
 import 'notifications_screen.dart';
 import 'help_center_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -24,11 +24,11 @@ class StudentMenuScreen extends StatelessWidget {
       return;
     }
 
+    // Check whether the student has any booking at all before navigating.
     try {
       final bookingQuery = await FirebaseFirestore.instance
           .collection('bookings')
           .where('studentId', isEqualTo: user.uid)
-          .orderBy('bookingDate', descending: true)
           .limit(1)
           .get();
 
@@ -36,39 +36,18 @@ class StudentMenuScreen extends StatelessWidget {
 
       if (bookingQuery.docs.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("You don't have any bookings yet.")),
+          const SnackBar(
+              content: Text("You don't have any bookings yet.")),
         );
         return;
       }
 
-      final bookingDoc  = bookingQuery.docs.first;
-      final bookingData = bookingDoc.data();
-      final hostelId    = bookingData['hostelId'] ?? '';
-      final roomId      = bookingData['roomId']   ?? '';
-      final floorId     = bookingData['floorId']  ?? '';
-
-      final hostelDoc = await FirebaseFirestore.instance
-          .collection('hostels')
-          .doc(hostelId)
-          .get();
-
-      if (!context.mounted) return;
-
-      final hostelName = hostelDoc.data()?['hostelName'] ?? 'Unknown Hostel';
-
+      // Navigate to BookingTabRouter — it streams live booking data,
+      // reads booking['bookingId'] for the human-readable ID, and
+      // automatically routes to the correct screen based on status.
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => StudentActiveBookingScreen(
-            bookingId:     bookingDoc.id,
-            hostelName:    hostelName,
-            roomNumber:    roomId,
-            bookingStatus: bookingData['bookingStatus'] ?? 'Pending',
-            hostelId:      hostelId,
-            roomId:        roomId,
-            floorId:       floorId,
-          ),
-        ),
+        MaterialPageRoute(builder: (_) => const BookingTabRouter()),
       );
     } catch (e) {
       if (!context.mounted) return;
@@ -209,7 +188,9 @@ class StudentMenuScreen extends StatelessWidget {
     await FirebaseAuth.instance.signOut();
 
     if (!context.mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil(
+    // rootNavigator: true escapes the per-tab nested Navigator inside
+    // StudentMainScreen so the full stack is cleared at the MaterialApp level.
+    Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
       '/role-selection',
       (route) => false,
     );

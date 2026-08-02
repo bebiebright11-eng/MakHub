@@ -382,7 +382,7 @@ class _RecentHostelCard extends StatelessWidget {
   }
 }
 
-// Small dark badge used on the recently-viewed card thumbnail
+// Rating badge — matches the orange _RatingBadge used on the Home page hostel cards.
 class _RecentRatingBadge extends StatelessWidget {
   final String rating;
   final int reviewCount;
@@ -393,23 +393,25 @@ class _RecentRatingBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double parsed = double.tryParse(rating) ?? 0;
-    final bool hasRating = parsed > 0 && reviewCount > 0;
+    final String label = '${parsed.toStringAsFixed(1)} ($reviewCount)';
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(16),
+        // Orange badge — identical to the Home page hostel card rating badge
+        color: const Color(0xFFFF8A00),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star, size: 10, color: Colors.amber),
-          const SizedBox(width: 3),
+          const Icon(Icons.star, size: 12, color: Colors.white),
+          const SizedBox(width: 4),
           Text(
-            hasRating ? '$rating ($reviewCount)' : 'New',
+            label,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
             ),
           ),

@@ -71,6 +71,9 @@ class BookingTabRouter extends StatelessWidget {
         final roomId        = data['roomId'] ?? '';
         final floorId       = data['floorId'] ?? '';
         final bookingStatus = (data['bookingStatus'] ?? 'pending').toString().toLowerCase();
+        // Human-readable ID written after successful payment — may be empty
+        // for pending bookings that have not yet completed payment.
+        final humanBookingId = (data['bookingId'] ?? '').toString();
 
         // Render Active Booking screen for in-progress stages
         if (bookingStatus == 'pending' || bookingStatus == 'payment_received') {
@@ -82,13 +85,14 @@ class BookingTabRouter extends StatelessWidget {
               final displayStatus = _mapStatusToDisplayLabel(bookingStatus);
 
               return StudentActiveBookingScreen(
-                bookingId:     bookingId,
-                hostelName:    hostelName,
-                roomNumber:    roomId,
-                bookingStatus: displayStatus,
-                hostelId:      hostelId,
-                roomId:        roomId,
-                floorId:       floorId,
+                bookingId:       bookingId,
+                humanBookingId:  humanBookingId,
+                hostelName:      hostelName,
+                roomNumber:      roomId,
+                bookingStatus:   displayStatus,
+                hostelId:        hostelId,
+                roomId:          roomId,
+                floorId:         floorId,
               );
             },
           );

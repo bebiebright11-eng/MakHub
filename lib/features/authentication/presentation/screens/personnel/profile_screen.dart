@@ -10,10 +10,35 @@ class ProfileScreen extends StatelessWidget {
 
   // Handle Logout with Firebase Auth
   Future<void> _handleLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Yes',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     try {
       await FirebaseAuth.instance.signOut();
       if (context.mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil(
+        // rootNavigator: true ensures we escape any nested navigator context
+        // and navigate at the MaterialApp level, clearing the full stack.
+        Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
           '/role-selection',
           (route) => false,
         );

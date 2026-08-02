@@ -379,7 +379,11 @@ class FinanceService {
 
       result.add(ResolvedBooking(
         bookingDocId: doc.id,
-        shortBookingId: _shortId(doc.id),
+        // Prefer the human-readable bookingId field written by BookingIdService.
+        // Fall back to the last-8-chars shorthand for older bookings.
+        shortBookingId: (data['bookingId'] ?? '').toString().isNotEmpty
+            ? data['bookingId'].toString()
+            : _shortId(doc.id),
         studentName: studentName,
         hostelName: hostelName,
         floorName: floorName,
