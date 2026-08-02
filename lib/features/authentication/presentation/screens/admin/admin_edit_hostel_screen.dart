@@ -563,9 +563,20 @@ const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
 child: ElevatedButton(
-  onPressed: () async {
-    if (_formKey.currentState!.validate()) {
-      try {
+  onPressed: _isSaving
+      ? null
+      : () async {
+          if (!_formKey.currentState!.validate()) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please correct the highlighted fields before updating.'),
+              ),
+            );
+            return;
+          }
+
+          setState(() => _isSaving = true);
+          try {
         final code = _hostelCodeController.text.trim().toUpperCase();
 
         // Uniqueness check — reject if another hostel already uses this code
@@ -620,16 +631,15 @@ child: ElevatedButton(
         );
 
         Navigator.pop(context);
-      } catch (e) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-          ),
-        );
-      }
-    }
-  },
+          } catch (e) {
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not update hostel: $e')),
+            );
+          } finally {
+            if (mounted) setState(() => _isSaving = false);
+          }
+        },
 
   style: ElevatedButton.styleFrom(
     backgroundColor: AppColors.primary,
@@ -640,13 +650,19 @@ child: ElevatedButton(
     ),
   ),
 
-  child: const Text(
-    "Update Hostel",
-    style: TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w600,
-    ),
-  ),
+  child: _isSaving
+      ? const SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+        )
+      : const Text(
+          "Update Hostel",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
 ),
 
 
