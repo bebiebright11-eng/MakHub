@@ -16,6 +16,7 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen>
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
+  final _hostelCodeController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _distanceController = TextEditingController();
   final _walkingTimeController = TextEditingController();
@@ -53,6 +54,7 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen>
   @override
   void dispose() {
     _nameController.dispose();
+    _hostelCodeController.dispose();
     _descriptionController.dispose();
     _distanceController.dispose();
     _walkingTimeController.dispose();
@@ -111,6 +113,16 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen>
     );
   }
 
+  /// Returns true when [code] is already used by another hostel document.
+  Future<bool> _hostelCodeExists(String code) async {
+    final snap = await _firestore
+        .collection('hostels')
+        .where('hostelCode', isEqualTo: code)
+        .limit(1)
+        .get();
+    return snap.docs.isNotEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,6 +151,36 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen>
                   decoration: _decoration("e.g. Green Valley Hostel"),
                   validator: (v) =>
                       (v == null || v.isEmpty) ? "Please enter hostel name" : null,
+                ),
+
+                _fieldLabel("Hostel Code"),
+                TextFormField(
+                  controller: _hostelCodeController,
+                  decoration: _decoration("e.g. DW, OL, DC  (2–3 letters)"),
+                  // Force uppercase as the user types
+                  onChanged: (v) {
+                    final upper = v.toUpperCase();
+                    if (v != upper) {
+                      _hostelCodeController.value =
+                          _hostelCodeController.value.copyWith(
+                        text: upper,
+                        selection: TextSelection.collapsed(offset: upper.length),
+                      );
+                    }
+                  },
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Hostel Code is required';
+                    }
+                    final code = v.trim().toUpperCase();
+                    if (code.length < 2 || code.length > 3) {
+                      return 'Code must be 2 or 3 letters';
+                    }
+                    if (!RegExp(r'^[A-Z]+$').hasMatch(code)) {
+                      return 'Only letters A–Z are allowed (no numbers or symbols)';
+                    }
+                    return null;
+                  },
                 ),
 
                 _fieldLabel("Location"),
@@ -341,101 +383,85 @@ const SizedBox(height: 10),
 
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isSaving
-                        ? null
-                        : () async {
-                            if (!_formKey.currentState!.validate()) return;
-                            setState(() => _isSaving = true);
-                            try {
-                              // 1. Create the hostel document first to get its ID
-                              final docRef =
-                                  await _firestore.collection('hostels').add({
-                                'hostelName': _nameController.text.trim(),
-                                'location': _selectedLocation,
-                                'description':
-                                    _descriptionController.text.trim(),
-                                'type': _selectedType,
-                                'distance': _distanceController.text.trim(),
-                                'walkingTime':
-                                    _walkingTimeController.text.trim(),
-                                'mapsLink': _mapsLinkController.text.trim(),
-                                'singleRoomSize':
-                                    _singleRoomSizeController.text.trim(),
-                                'doubleRoomSize':
-                                    _doubleRoomSizeController.text.trim(),
-                                'singlePrice':
-                                    _singlePriceController.text.trim(),
-                                'doublePrice':
-                                    _doublePriceController.text.trim(),
-                                'facilities': _selectedFacilities.toList(),
-                                'shops': _shopsController.text.trim(),
-                                'hospital': _hospitalController.text.trim(),
-                                'atm': _atmController.text.trim(),
-                                'createdBy': _auth.currentUser!.uid,
-                                'createdAt': FieldValue.serverTimestamp(),
-                                'photos': <String>[],
-                                'videos': <String>[],
-                              });
+child: ElevatedButton(
+  onPressed: () async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        final code = _hostelCodeController.text.trim().toUpperCase();
 
-                              // 2. Upload picked media under hostels/{id}/...
-                              List<String> photoUrls = const [];
-                              List<String> videoUrls = const [];
-                              if (hasPickedMedia) {
-                                final uploaded =
-                                    await uploadNewMedia(docRef.id);
-                                photoUrls = uploaded['photos']!;
-                                videoUrls = uploaded['videos']!;
-                                await docRef.update({
-                                  'photos': photoUrls,
-                                  'videos': videoUrls,
-                                });
-                              }
+        // Uniqueness check — no two hostels may share the same code
+        final codeInUse = await _hostelCodeExists(code);
+        if (codeInUse) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Hostel Code "$code" is already used by another hostel. Please choose a different code.'),
+            ),
+          );
+          return;
+        }
 
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content:
-                                      Text('Hostel added successfully'),
-                                ),
-                              );
-                              Navigator.pop(context);
-                            } catch (e) {
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error: $e')),
-                              );
-                            } finally {
-                              if (mounted) {
-                                setState(() => _isSaving = false);
-                              }
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isSaving
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            "Save Hostel",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                  ),
+        await _firestore.collection('hostels').add({
+          'hostelName': _nameController.text.trim(),
+          'hostelCode': code,
+          'location': _selectedLocation,
+          'description': _descriptionController.text.trim(),
+          'type': _selectedType,
+          'distance': _distanceController.text.trim(),
+          'walkingTime': _walkingTimeController.text.trim(),
+          'mapsLink': _mapsLinkController.text.trim(),
+          'singleRoomSize': _singleRoomSizeController.text.trim(),
+          'doubleRoomSize': _doubleRoomSizeController.text.trim(),
+          'singlePrice': _singlePriceController.text.trim(),
+          'doublePrice': _doublePriceController.text.trim(),
+          'facilities': _selectedFacilities.toList(),
+          'shops': _shopsController.text.trim(),
+          'hospital': _hospitalController.text.trim(),
+          'atm': _atmController.text.trim(),
+          'createdBy': _auth.currentUser!.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        if (!context.mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Hostel added successfully'),
+          ),
+        );
+
+        Navigator.pop(context);
+      } catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+          ),
+        );
+      }
+    }
+  },
+
+  style: ElevatedButton.styleFrom(
+    backgroundColor: AppColors.primary,
+    foregroundColor: Colors.white,
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+
+  child: const Text(
+    "Save Hostel",
+    style: TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+    ),
+  ),
+),
+
+
                 ),
                 const SizedBox(height: 20),
               ],

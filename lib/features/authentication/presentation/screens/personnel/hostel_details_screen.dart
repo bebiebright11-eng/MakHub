@@ -118,6 +118,39 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // ── Hostel Code (read-only for personnel) ─────────────
+                if ((data['hostelCode'] ?? '').toString().isNotEmpty) ...[
+                  const Text(
+                    'Hostel Code',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.tag,
+                            color: AppColors.primary, size: 20),
+                        const SizedBox(width: 12),
+                        Text(
+                          data['hostelCode'].toString().toUpperCase(),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
             // Video Tour Button
             SizedBox(
               width: double.infinity,

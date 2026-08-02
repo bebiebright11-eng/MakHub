@@ -51,8 +51,11 @@ Future<void> _loadReceipt() async {
 
     final booking = bookingSnapshot.data()!;
 
-
-    bookingId = widget.bookingId;
+    // Use the human-readable bookingId field; fall back to doc ID for
+    // bookings that predate this feature.
+    bookingId = (booking["bookingId"] ?? '').toString().isNotEmpty
+        ? booking["bookingId"].toString()
+        : widget.bookingId;
 
     final studentId = booking["studentId"];
     final hostelId = booking["hostelId"];
@@ -136,8 +139,9 @@ Future<void> _loadReceipt() async {
       transactionId = "N/A";
     }
 
-    receiptNumber =
-        "RCPT-${widget.bookingId.substring(widget.bookingId.length - 5)}";
+    // Receipt number is derived from the human-readable bookingId
+    // (or last 5 chars of doc ID as a legacy fallback).
+    receiptNumber = "RCPT-${bookingId.length >= 5 ? bookingId.substring(bookingId.length - 5) : bookingId}";
 
 
     setState(() {
