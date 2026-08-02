@@ -1,8 +1,7 @@
 ﻿// ignore_for_file: file_names, deprecated_member_use
 import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 
 class ActivateAccountScreen extends StatefulWidget {
@@ -24,6 +23,7 @@ class _ActivateAccountScreenState extends State<ActivateAccountScreen> {
 
   double _passwordStrength = 0.0;
   String _strengthText = '';
+  bool _isLoading = false;
 
   void _checkStrength(String password) {
     if (password.isEmpty) {
@@ -43,6 +43,15 @@ class _ActivateAccountScreenState extends State<ActivateAccountScreen> {
   }
 
   Future<void> _activateAccount() async {
+  final email = _emailController.text.trim().toLowerCase();
+  final phone = _phoneController.text.trim();
+
+  if (email.isEmpty || phone.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Enter your email address and phone number.'), backgroundColor: Colors.red),
+    );
+    return;
+  }
 
   if (_newPassController.text != _confirmPassController.text) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -64,57 +73,30 @@ class _ActivateAccountScreenState extends State<ActivateAccountScreen> {
     return;
   }
 
-  final email = _emailController.text.trim();
-  final phone = _phoneController.text.trim();
-
-  final result = await FirebaseFirestore.instance
-      .collection('personnel')
-      .where('email', isEqualTo: email)
-      .where('phoneNumber', isEqualTo: phone)
-      .limit(1)
-      .get();
-
-  if (!mounted) return;
-
-  if (result.docs.isEmpty) {
-
+  setState(() => _isLoading = true);
+  try {
+    await FirebaseFunctions.instanceFor(region: 'europe-west1')
+        .httpsCallable('activatePersonnelAccount')
+        .call({
+      'email': email,
+      'phoneNumber': phone,
+      'password': _newPassController.text,
+    });
+  } on FirebaseFunctionsException catch (e) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Account does not exist."),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(e.message ?? 'Could not activate the account.'), backgroundColor: Colors.red),
     );
-
     return;
+  } catch (_) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not activate the account. Try again.'), backgroundColor: Colors.red),
+    );
+    return;
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
   }
-
-  final data = result.docs.first.data();
-  final docId = result.docs.first.id;
-
-if (data['activated'] == true) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('This account has already been activated. Please login.'),
-      backgroundColor: Colors.orange,
-    ),
-  );
-  return;
-}
-
-await FirebaseAuth.instance.createUserWithEmailAndPassword(
-  email: email,
-  password: _newPassController.text,
-);
-
-final user = FirebaseAuth.instance.currentUser;
-
-await FirebaseFirestore.instance
-    .collection('personnel')
-    .doc(docId)
-    .update({
-  'activated': true,
-  'firebaseUid': user!.uid,
-});
 
   if (!mounted) return;
 
@@ -262,14 +244,16 @@ const SizedBox(height: 16),
                 width: double.infinity,
                 height: 54,
                 child: ElevatedButton(
-                  onPressed: _activateAccount,
+                  onPressed: _isLoading ? null : _activateAccount,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                     elevation: 4,
                     shadowColor: AppColors.primary.withOpacity(0.4),
                   ),
-                  child: const Text('Activate Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: _isLoading
+                      ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Activate Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
             ],

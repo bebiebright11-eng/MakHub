@@ -1,31 +1,22 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'booking_status_screen.dart';
-import 'active_booking_screen.dart';
 import 'package:makhub/core/constants/payment_constants.dart';
-import '/algorithms/notification_algorithm.dart';
-import '/algorithms/booking_id_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class StudentPaymentScreen extends StatefulWidget {
   final String bookingId;
 
-  const StudentPaymentScreen({
-    super.key,
-    required this.bookingId,
-  });
+  const StudentPaymentScreen({super.key, required this.bookingId});
 
   @override
-  State<StudentPaymentScreen> createState() =>
-      _StudentPaymentScreenState();
+  State<StudentPaymentScreen> createState() => _StudentPaymentScreenState();
 }
 
-class _StudentPaymentScreenState
-    extends State<StudentPaymentScreen> {
+class _StudentPaymentScreenState extends State<StudentPaymentScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _mobileNumberController =
-      TextEditingController();
+  final TextEditingController _mobileNumberController = TextEditingController();
 
   bool _isSaving = false;
   String hostelName = "";
@@ -35,75 +26,66 @@ class _StudentPaymentScreenState
   String floorId = "";
   String roomId = "";
 
+  bool isLoadingDetails = true;
 
-bool isLoadingDetails = true;
+  @override
+  void initState() {
+    super.initState();
+    _loadBookingDetails();
+  }
 
-@override
-void initState() {
-  super.initState();
-  _loadBookingDetails();
-}
+  Future<void> _loadBookingDetails() async {
+    final bookingDoc = await FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(widget.bookingId)
+        .get();
 
+    if (!bookingDoc.exists) return;
 
-Future<void> _loadBookingDetails() async {
-  final bookingDoc = await FirebaseFirestore.instance
+    final booking = bookingDoc.data()!;
+
+    hostelId = booking['hostelId'] ?? '';
+    floorId = booking['floorId'] ?? '';
+    roomId = booking['roomId'] ?? '';
+
+    final hostelDoc = await FirebaseFirestore.instance
+        .collection('hostels')
+        .doc(hostelId)
+        .get();
+
+    final floorDoc = await FirebaseFirestore.instance
+        .collection('hostels')
+        .doc(hostelId)
+        .collection('floors')
+        .doc(floorId)
+        .get();
+
+    final roomDoc = await FirebaseFirestore.instance
+        .collection('hostels')
+        .doc(hostelId)
+        .collection('floors')
+        .doc(floorId)
+        .collection('rooms')
+        .doc(roomId)
+        .get();
+
+    setState(() {
+      hostelName = hostelDoc.data()?['hostelName'] ?? "Unknown Hostel";
+
+      floorNumber =
+          floorDoc.data()?['floorNumber']?.toString() ?? "Unknown Floor";
+
+      roomNumber = roomDoc.data()?['roomNumber'] ?? "Unknown Room";
+
+      isLoadingDetails = false;
+    });
+  }
+
+  late final Stream<DocumentSnapshot> _bookingStream = FirebaseFirestore
+      .instance
       .collection('bookings')
       .doc(widget.bookingId)
-      .get();
-
-  if (!bookingDoc.exists) return;
-
-  final booking = bookingDoc.data()!;
-
-  hostelId = booking['hostelId'] ?? '';
-  floorId = booking['floorId'] ?? '';
-  roomId = booking['roomId'] ?? '';
-
-  final hostelDoc = await FirebaseFirestore.instance
-      .collection('hostels')
-      .doc(hostelId)
-      .get();
-
-  final floorDoc = await FirebaseFirestore.instance
-      .collection('hostels')
-      .doc(hostelId)
-      .collection('floors')
-      .doc(floorId)
-      .get();
-
-  final roomDoc = await FirebaseFirestore.instance
-      .collection('hostels')
-      .doc(hostelId)
-      .collection('floors')
-      .doc(floorId)
-      .collection('rooms')
-      .doc(roomId)
-      .get();
-
-  setState(() {
-    hostelName =
-        hostelDoc.data()?['hostelName'] ?? "Unknown Hostel";
-
-    floorNumber =
-        floorDoc.data()?['floorNumber']?.toString() ??
-            "Unknown Floor";
-
-    roomNumber =
-        roomDoc.data()?['roomNumber'] ?? "Unknown Room";
-
-    isLoadingDetails = false;
-  });
-}
-
-
-
-
-
-  late final Stream<DocumentSnapshot> _bookingStream =
-      FirebaseFirestore.instance
-          .collection('bookings')
-          .doc(widget.bookingId)
-          .snapshots();
+      .snapshots();
 
   @override
   void dispose() {
@@ -117,156 +99,63 @@ Future<void> _loadBookingDetails() async {
     setState(() => _isSaving = true);
 
     try {
-      // ── Step 1: write payment record as 'confirmed' immediately
-      //    (simulated payment — no real MNO call yet)
-      await FirebaseFirestore.instance
+      final studentId = FirebaseAuth.instance.currentUser?.uid;
+      if (studentId == null) {
+        throw StateError('You must be signed in to submit a payment.');
+      }
+
+      final bookingRef = FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(widget.bookingId);
+      final booking = await bookingRef.get();
+      if (!booking.exists || booking.data()?['studentId'] != studentId) {
+        throw StateError('This booking does not belong to your account.');
+      }
+      if (booking.data()?['bookingStatus'] != 'pending') {
+        throw StateError(
+          'This booking can no longer accept a payment request.',
+        );
+      }
+
+      final existingRequest = await FirebaseFirestore.instance
           .collection('payments')
-          .add({
+          .where('bookingId', isEqualTo: widget.bookingId)
+          .where('paymentStatus', isEqualTo: 'pending')
+          .limit(1)
+          .get();
+      if (existingRequest.docs.isNotEmpty) {
+        throw StateError(
+          'A payment request for this booking is already pending.',
+        );
+      }
+
+      // A student can submit a payment request, but cannot confirm it or
+      // reserve a room. Confirmation is performed by authorised personnel
+      // after payment verification.
+      await FirebaseFirestore.instance.collection('payments').add({
         'bookingId': widget.bookingId,
+        'studentId': studentId,
         'amount': PaymentConstants.totalAmount,
         'mobileNumber': _mobileNumberController.text.trim(),
-        'paymentStatus': 'confirmed',
+        'paymentStatus': 'pending',
         'paymentMethod': 'Mobile Money',
         'paymentTime': FieldValue.serverTimestamp(),
-        'confirmedAt': FieldValue.serverTimestamp(),
       });
-
-      // ── Step 2: mark booking as 'confirmed' (Room Reserved stage)
-      await FirebaseFirestore.instance
-          .collection('bookings')
-          .doc(widget.bookingId)
-          .update({'bookingStatus': 'confirmed'});
-
-      // ── Step 3: update room occupancy
-      //    Read current occupied + capacity, increment, set status.
-      //
-      //    Single  capacity=1:  0→1  status='Occupied'
-      //    Double  capacity=2:  0→1  status='Available'
-      //                         1→2  status='Occupied'
-      if (hostelId.isNotEmpty && floorId.isNotEmpty && roomId.isNotEmpty) {
-        final roomRef = FirebaseFirestore.instance
-            .collection('hostels')
-            .doc(hostelId)
-            .collection('floors')
-            .doc(floorId)
-            .collection('rooms')
-            .doc(roomId);
-
-        final roomSnap = await roomRef.get();
-        if (roomSnap.exists) {
-          final rd = roomSnap.data()!;
-
-          final int capacity = rd['capacity'] is int
-              ? rd['capacity'] as int
-              : int.tryParse(rd['capacity'].toString()) ?? 1;
-
-          final int currentOccupied = rd['occupied'] is int
-              ? rd['occupied'] as int
-              : int.tryParse(rd['occupied'].toString()) ?? 0;
-
-          final int newOccupied = (currentOccupied + 1).clamp(0, capacity);
-
-          await roomRef.update({
-            'occupied': newOccupied,
-            'status': newOccupied >= capacity ? 'Occupied' : 'Available',
-          });
-        }
-      }
-
-      // ── Step 4: send in-app notification to the student
-      final studentId = FirebaseAuth.instance.currentUser?.uid ?? '';
-      if (studentId.isNotEmpty) {
-        await NotificationAlgorithm.roomReserved(
-          studentId: studentId,
-          bookingId: widget.bookingId,
-        );
-      }
-
-      // ── Step 5: generate and store the human-readable Booking ID.
-      //    This runs only after payment, room reservation, and notification
-      //    have all succeeded, ensuring no ID is wasted on failed bookings.
-      String assignedBookingId = widget.bookingId; // safe fallback
-      try {
-        assignedBookingId = await BookingIdService.assignBookingId(
-          bookingDocId: widget.bookingId,
-          hostelId: hostelId,
-        );
-      } catch (_) {
-        // ID generation failure must not block the student — they already
-        // have a confirmed reservation.  The ID can be backfilled later.
-      }
-
-      // ── Step 5: notify the hostel personnel responsible for this hostel
-      //    Look up all personnel whose hostelId matches, then write one
-      //    notification per matching personnel account.
-      try {
-        // Resolve the student's display name for the notification message.
-        String studentName = 'A student';
-        if (studentId.isNotEmpty) {
-          final userDoc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(studentId)
-              .get();
-          if (userDoc.exists) {
-            studentName = (userDoc.data()?['fullName'] ?? studentName).toString();
-          }
-        }
-
-        final personnelSnap = await FirebaseFirestore.instance
-            .collection('personnel')
-            .where('hostelId', isEqualTo: hostelId)
-            .get();
-
-        for (final pDoc in personnelSnap.docs) {
-          final pData = pDoc.data();
-          // Personnel notifications use their Firebase Auth UID stored in
-          // the 'firebaseUid' field (set on first login) or fall back to
-          // the Firestore document ID.
-          final pUid = (pData['firebaseUid'] ?? pDoc.id).toString();
-          if (pUid.isEmpty) continue;
-
-          await NotificationAlgorithm.newReservationForPersonnel(
-            personnelId: pUid,
-            roomNumber: roomNumber,
-            studentName: studentName,
-            bookingId: widget.bookingId,
-            bookingDate: DateTime.now(),
-          );
-        }
-      } catch (_) {
-        // Personnel notification failure must not block the student flow.
-      }
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Payment confirmed. Your room is reserved!'),
-          backgroundColor: Colors.green,
+          content: Text('Payment submitted. Awaiting verification.'),
+          backgroundColor: Colors.orange,
         ),
       );
-
-      // ── Step 6: navigate to Active Booking showing all three stages done
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => StudentActiveBookingScreen(
-            bookingId: widget.bookingId,
-            humanBookingId: assignedBookingId,
-            hostelName: hostelName,
-            roomNumber: roomNumber,
-            hostelId: hostelId,
-            roomId: roomId,
-            floorId: floorId,
-            bookingStatus: 'Room Reserved',
-          ),
-        ),
-      );
+      Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Payment failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Payment failed: $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -275,23 +164,16 @@ Future<void> _loadBookingDetails() async {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Payment"),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text("Payment"), centerTitle: true),
       body: StreamBuilder<DocumentSnapshot>(
         stream: _bookingStream,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (!snapshot.data!.exists) {
-            return const Center(
-              child: Text("Booking not found"),
-            );
+            return const Center(child: Text("Booking not found"));
           }
 
           return SafeArea(
@@ -300,86 +182,69 @@ Future<void> _loadBookingDetails() async {
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    
-              Container(
-  padding: const EdgeInsets.all(18),
-  decoration: BoxDecoration(
-    color: Colors.grey.shade100,
-    borderRadius: BorderRadius.circular(12),
-  ),
-  child: Column(
-    children: [
-
-      _summaryRow(
-        "Booking ID",
-        widget.bookingId,
-      ),
-
-      const SizedBox(height: 12),
-
-      _summaryRow(
-        "Hostel",
-        hostelName,
-      ),
-
-      const SizedBox(height: 12),
-
-      _summaryRow(
-        "Floor",
-        floorNumber,
-      ),
-
-      const SizedBox(height: 12),
-
-      _summaryRow(
-        "Room",
-        roomNumber,
-      ),
-    ],
-  ),
-),
-
-const SizedBox(height: 20),
-
                     Container(
-                      padding:
-                          const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade100,
-                        borderRadius:
-                            BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          _summaryRow("Booking ID", widget.bookingId),
+
+                          const SizedBox(height: 12),
+
+                          _summaryRow("Hostel", hostelName),
+
+                          const SizedBox(height: 12),
+
+                          _summaryRow("Floor", floorNumber),
+
+                          const SizedBox(height: 12),
+
+                          _summaryRow("Room", roomNumber),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         children: [
                           _summaryRow(
-  "Booking Fee",
-  "UGX ${PaymentConstants.bookingFee}",
-),
+                            "Booking Fee",
+                            "UGX ${PaymentConstants.bookingFee}",
+                          ),
 
-const SizedBox(height: 10),
+                          const SizedBox(height: 10),
 
-_summaryRow(
-  "Mobile Money Charges",
-  "UGX ${PaymentConstants.mobileMoneyCharge}",
-),
+                          _summaryRow(
+                            "Mobile Money Charges",
+                            "UGX ${PaymentConstants.mobileMoneyCharge}",
+                          ),
 
-const SizedBox(height: 10),
+                          const SizedBox(height: 10),
 
-_summaryRow(
-  "Service Fee",
-  "UGX ${PaymentConstants.serviceFee}",
-),
+                          _summaryRow(
+                            "Service Fee",
+                            "UGX ${PaymentConstants.serviceFee}",
+                          ),
 
-const Divider(),
+                          const Divider(),
 
-_summaryRow(
-  "Total",
-  "UGX ${PaymentConstants.totalAmount}",
-  bold: true,
-),
+                          _summaryRow(
+                            "Total",
+                            "UGX ${PaymentConstants.totalAmount}",
+                            bold: true,
+                          ),
                         ],
                       ),
                     ),
@@ -388,38 +253,26 @@ _summaryRow(
 
                     const Text(
                       "Mobile Money Number",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
 
                     const SizedBox(height: 10),
 
                     TextFormField(
-                      controller:
-                          _mobileNumberController,
-                      keyboardType:
-                          TextInputType.phone,
+                      controller: _mobileNumberController,
+                      keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
-                        hintText:
-                            "e.g. 0700000000",
-                        prefixIcon:
-                            const Icon(Icons.phone),
+                        hintText: "e.g. 0700000000",
+                        prefixIcon: const Icon(Icons.phone),
                         filled: true,
-                        fillColor:
-                            Colors.grey.shade100,
-                        border:
-                            OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(
-                                  12),
-                          borderSide:
-                              BorderSide.none,
+                        fillColor: Colors.grey.shade100,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
                         ),
                       ),
                       validator: (value) {
-                        if (value == null ||
-                            value.isEmpty) {
+                        if (value == null || value.isEmpty) {
                           return "Enter your phone number";
                         }
 
@@ -436,34 +289,21 @@ _summaryRow(
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _isSaving
-                            ? null
-                            : _payNow,
-                        style:
-                            ElevatedButton.styleFrom(
-                          backgroundColor:
-                              AppColors.primary,
-                          foregroundColor:
-                              Colors.white,
-                          padding:
-                              const EdgeInsets.symmetric(
-                            vertical: 16,
-                          ),
-                          shape:
-                              RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(
-                                    12),
+                        onPressed: _isSaving ? null : _payNow,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         child: _isSaving
                             ? const SizedBox(
                                 width: 22,
                                 height: 22,
-                                child:
-                                    CircularProgressIndicator(
-                                  color:
-                                      Colors.white,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
                                   strokeWidth: 2,
                                 ),
                               )
@@ -471,8 +311,7 @@ _summaryRow(
                                 "Reserve Room & Pay Now",
                                 style: TextStyle(
                                   fontSize: 16,
-                                  fontWeight:
-                                      FontWeight.bold,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                       ),
@@ -487,29 +326,20 @@ _summaryRow(
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  StudentBookingStatusScreen(
-                                bookingId:
-                                    widget.bookingId,
+                              builder: (_) => StudentBookingStatusScreen(
+                                bookingId: widget.bookingId,
                               ),
                             ),
                           );
                         },
-                        style:
-                            OutlinedButton.styleFrom(
+                        style: OutlinedButton.styleFrom(
                           side: const BorderSide(
                             color: AppColors.primary,
                             width: 1.5,
                           ),
-                          padding:
-                              const EdgeInsets.symmetric(
-                            vertical: 16,
-                          ),
-                          shape:
-                              RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(
-                                    12),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         child: const Text(
@@ -517,8 +347,7 @@ _summaryRow(
                           style: TextStyle(
                             color: AppColors.primary,
                             fontSize: 16,
-                            fontWeight:
-                                FontWeight.bold,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
@@ -533,30 +362,21 @@ _summaryRow(
     );
   }
 
-  Widget _summaryRow(
-    String label,
-    String value, {
-    bool bold = false,
-  }) {
+  Widget _summaryRow(String label, String value, {bool bold = false}) {
     return Row(
-      mainAxisAlignment:
-          MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
           style: TextStyle(
             color: Colors.grey.shade700,
-            fontWeight: bold
-                ? FontWeight.bold
-                : FontWeight.normal,
+            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            color: bold
-                ? AppColors.primary
-                : Colors.black,
+            color: bold ? AppColors.primary : Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: bold ? 18 : 15,
           ),

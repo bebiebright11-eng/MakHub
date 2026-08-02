@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function user() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return signedIn() && user().data.role == 'admin';
+    }
+
+    function isPersonnelForHostel(hostelId) {
+      return signedIn() && user().data.role == 'hostelPersonnel'
+          && user().data.hostelId == hostelId;
+    }
+
+    function isStudent() {
+      return signedIn() && user().data.role == 'student';
+    }
+
+    match /users/{userId} {
+      allow get: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if signedIn() && request.auth.uid == userId
+          && request.resource.data.role == 'student';
+      allow update: if signedIn() && request.auth.uid == userId
+          && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
+
+      match /notifications/{notificationId} {
+        allow read, update, delete: if signedIn() && request.auth.uid == userId;
+        allow create: if isAdmin();
+      }
+    }
+
+    match /hostels/{hostelId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+
+      match /floors/{floorId} {
+        allow read: if signedIn();
+        allow create, update, delete: if isAdmin() || isPersonnelForHostel(hostelId);
+
+        match /rooms/{roomId} {
+          allow read: if signedIn();
+          allow create, update, delete: if isAdmin() || isPersonnelForHostel(hostelId);
+        }
+      }
+    }
+
+    match /bookings/{bookingId} {
+      allow get, list: if signedIn() && (
+          resource.data.studentId == request.auth.uid || isAdmin() ||
+          isPersonnelForHostel(resource.data.hostelId));
+      allow create: if isStudent()
+          && request.resource.data.studentId == request.auth.uid
+          && request.resource.data.bookingStatus == 'pending';
+      allow update: if isAdmin() || isPersonnelForHostel(resource.data.hostelId)
+          || (resource.data.studentId == request.auth.uid
+              && resource.data.bookingStatus == 'pending'
+              && request.resource.data.bookingStatus == 'cancelled'
+              && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['bookingStatus', 'cancelledAt']));
+      allow delete: if isAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow get, list: if signedIn() && (
+          resource.data.studentId == request.auth.uid || isAdmin() ||
+          isPersonnelForHostel(
+              get(/databases/$(database)/documents/bookings/$(resource.data.bookingId))
+                  .data.hostelId));
+      allow create: if isStudent()
+          && request.resource.data.studentId == request.auth.uid
+          && request.resource.data.paymentStatus == 'pending'
+          && get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId))
+              .data.studentId == request.auth.uid;
+      allow update: if isAdmin() || isPersonnelForHostel(
+          get(/databases/$(database)/documents/bookings/$(resource.data.bookingId))
+              .data.hostelId);
+      allow delete: if false;
+    }
+
+    match /personnel/{personnelId} {
+      allow get, list: if isAdmin() || (signedIn()
+          && resource.data.email == request.auth.token.email);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (signedIn()
+          && resource.data.email == request.auth.token.email
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['firebaseUid']));
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if signedIn();
+      allow create: if isStudent() && request.resource.data.studentId == request.auth.uid;
+      allow update, delete: if isAdmin() ||
+          (signedIn() && resource.data.studentId == request.auth.uid);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

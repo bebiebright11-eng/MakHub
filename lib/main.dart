@@ -47,10 +47,14 @@ class MakHubApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/activate-account': (context) => const ActivateAccountScreen(),
         '/dashboard': (context) => const AuthGuard(
+              requiredRole: 'hostelPersonnel',
               child: DashboardScreen(),
             ),
         '/student-login': (context) => const StudentLoginScreen(),
-        '/student-home': (context) => const StudentHomeScreen(),
+        '/student-home': (context) => const AuthGuard(
+              requiredRole: 'student',
+              child: StudentHomeScreen(),
+            ),
         '/admin-login': (context) => const AdminLoginScreen(),
       },
     );
