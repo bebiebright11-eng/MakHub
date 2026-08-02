@@ -5,6 +5,7 @@ import 'booking_status_screen.dart';
 import 'active_booking_screen.dart';
 import 'package:makhub/core/constants/payment_constants.dart';
 import '/algorithms/notification_algorithm.dart';
+import '/algorithms/booking_id_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class StudentPaymentScreen extends StatefulWidget {
@@ -181,6 +182,20 @@ Future<void> _loadBookingDetails() async {
         );
       }
 
+      // ── Step 5: generate and store the human-readable Booking ID.
+      //    This runs only after payment, room reservation, and notification
+      //    have all succeeded, ensuring no ID is wasted on failed bookings.
+      String assignedBookingId = widget.bookingId; // safe fallback
+      try {
+        assignedBookingId = await BookingIdService.assignBookingId(
+          bookingDocId: widget.bookingId,
+          hostelId: hostelId,
+        );
+      } catch (_) {
+        // ID generation failure must not block the student — they already
+        // have a confirmed reservation.  The ID can be backfilled later.
+      }
+
       // ── Step 5: notify the hostel personnel responsible for this hostel
       //    Look up all personnel whose hostelId matches, then write one
       //    notification per matching personnel account.
@@ -237,6 +252,7 @@ Future<void> _loadBookingDetails() async {
         MaterialPageRoute(
           builder: (_) => StudentActiveBookingScreen(
             bookingId: widget.bookingId,
+            humanBookingId: assignedBookingId,
             hostelName: hostelName,
             roomNumber: roomNumber,
             hostelId: hostelId,

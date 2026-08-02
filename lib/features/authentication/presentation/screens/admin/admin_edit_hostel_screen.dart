@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'admin_dashboard_screen.dart';
+import 'admin_bookings_screen.dart';
+import 'admin_notification_screen.dart';
+import 'admin_profile_screen.dart';
 
 class AdminEditHostelScreen extends StatefulWidget {
   final String hostelId;
@@ -21,6 +25,7 @@ class _AdminEditHostelScreenState extends State<AdminEditHostelScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
+  final _hostelCodeController = TextEditingController();
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _distanceController = TextEditingController();
@@ -56,6 +61,9 @@ void initState() {
 
   _nameController.text =
       widget.hostelData['hostelName'] ?? '';
+
+  _hostelCodeController.text =
+      (widget.hostelData['hostelCode'] ?? '').toString().toUpperCase();
 
   _locationController.text =
       widget.hostelData['location'] ?? '';
@@ -106,6 +114,7 @@ void initState() {
   @override
   void dispose() {
     _nameController.dispose();
+    _hostelCodeController.dispose();
     _locationController.dispose();
     _descriptionController.dispose();
     _distanceController.dispose();
@@ -165,12 +174,81 @@ void initState() {
     );
   }
 
+  /// Returns true when [code] is already used by a *different* hostel.
+  Future<bool> _hostelCodeTaken(String code) async {
+    final snap = await _firestore
+        .collection('hostels')
+        .where('hostelCode', isEqualTo: code)
+        .limit(2)
+        .get();
+    // Allow the code if the only match is this hostel itself.
+    return snap.docs.any((doc) => doc.id != widget.hostelId);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Edit Hostel"),
         centerTitle: true,
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 1,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        onTap: (index) {
+          if (index == 1) {
+            Navigator.pop(context);
+            return;
+          }
+          switch (index) {
+            case 0:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminDashboardScreen()),
+                (route) => false,
+              );
+              break;
+            case 2:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminBookingsScreen()),
+                (route) => false,
+              );
+              break;
+            case 3:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminNotificationsScreen()),
+                (route) => false,
+              );
+              break;
+            case 4:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminProfileScreen()),
+                (route) => false,
+              );
+              break;
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home), label: 'Dashboard'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.apartment), label: 'Hostels'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.book), label: 'Bookings'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.notifications), label: 'Alerts'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person), label: 'Profile'),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -193,6 +271,37 @@ void initState() {
                   decoration: _decoration("e.g. Green Valley Hostel"),
                   validator: (v) =>
                       (v == null || v.isEmpty) ? "Please enter hostel name" : null,
+                ),
+
+                _fieldLabel("Hostel Code"),
+                TextFormField(
+                  controller: _hostelCodeController,
+                  decoration: _decoration("e.g. DW, OL, DC  (2–3 letters)"),
+                  // Force uppercase as the user types
+                  onChanged: (v) {
+                    final upper = v.toUpperCase();
+                    if (v != upper) {
+                      _hostelCodeController.value =
+                          _hostelCodeController.value.copyWith(
+                        text: upper,
+                        selection:
+                            TextSelection.collapsed(offset: upper.length),
+                      );
+                    }
+                  },
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Hostel Code is required';
+                    }
+                    final code = v.trim().toUpperCase();
+                    if (code.length < 2 || code.length > 3) {
+                      return 'Code must be 2 or 3 letters';
+                    }
+                    if (!RegExp(r'^[A-Z]+$').hasMatch(code)) {
+                      return 'Only letters A–Z are allowed (no numbers or symbols)';
+                    }
+                    return null;
+                  },
                 ),
 
                 _fieldLabel("Location"),
@@ -399,11 +508,27 @@ child: ElevatedButton(
   onPressed: () async {
     if (_formKey.currentState!.validate()) {
       try {
+        final code = _hostelCodeController.text.trim().toUpperCase();
+
+        // Uniqueness check — reject if another hostel already uses this code
+        final codeTaken = await _hostelCodeTaken(code);
+        if (codeTaken) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Hostel Code "$code" is already used by another hostel. Please choose a different code.'),
+            ),
+          );
+          return;
+        }
+
         await _firestore
     .collection('hostels')
     .doc(widget.hostelId)
     .update({
           'hostelName': _nameController.text.trim(),
+          'hostelCode': code,
           'location': _locationController.text.trim(),
           'description': _descriptionController.text.trim(),
           'type': _selectedType,

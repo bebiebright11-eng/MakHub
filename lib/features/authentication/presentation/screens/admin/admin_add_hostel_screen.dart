@@ -14,6 +14,7 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
+  final _hostelCodeController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _distanceController = TextEditingController();
   final _walkingTimeController = TextEditingController();
@@ -50,6 +51,7 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _hostelCodeController.dispose();
     _descriptionController.dispose();
     _distanceController.dispose();
     _walkingTimeController.dispose();
@@ -108,6 +110,16 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
     );
   }
 
+  /// Returns true when [code] is already used by another hostel document.
+  Future<bool> _hostelCodeExists(String code) async {
+    final snap = await _firestore
+        .collection('hostels')
+        .where('hostelCode', isEqualTo: code)
+        .limit(1)
+        .get();
+    return snap.docs.isNotEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -136,6 +148,36 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
                   decoration: _decoration("e.g. Green Valley Hostel"),
                   validator: (v) =>
                       (v == null || v.isEmpty) ? "Please enter hostel name" : null,
+                ),
+
+                _fieldLabel("Hostel Code"),
+                TextFormField(
+                  controller: _hostelCodeController,
+                  decoration: _decoration("e.g. DW, OL, DC  (2–3 letters)"),
+                  // Force uppercase as the user types
+                  onChanged: (v) {
+                    final upper = v.toUpperCase();
+                    if (v != upper) {
+                      _hostelCodeController.value =
+                          _hostelCodeController.value.copyWith(
+                        text: upper,
+                        selection: TextSelection.collapsed(offset: upper.length),
+                      );
+                    }
+                  },
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Hostel Code is required';
+                    }
+                    final code = v.trim().toUpperCase();
+                    if (code.length < 2 || code.length > 3) {
+                      return 'Code must be 2 or 3 letters';
+                    }
+                    if (!RegExp(r'^[A-Z]+$').hasMatch(code)) {
+                      return 'Only letters A–Z are allowed (no numbers or symbols)';
+                    }
+                    return null;
+                  },
                 ),
 
                 _fieldLabel("Location"),
@@ -350,8 +392,24 @@ child: ElevatedButton(
   onPressed: () async {
     if (_formKey.currentState!.validate()) {
       try {
+        final code = _hostelCodeController.text.trim().toUpperCase();
+
+        // Uniqueness check — no two hostels may share the same code
+        final codeInUse = await _hostelCodeExists(code);
+        if (codeInUse) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Hostel Code "$code" is already used by another hostel. Please choose a different code.'),
+            ),
+          );
+          return;
+        }
+
         await _firestore.collection('hostels').add({
           'hostelName': _nameController.text.trim(),
+          'hostelCode': code,
           'location': _selectedLocation,
           'description': _descriptionController.text.trim(),
           'type': _selectedType,

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'notification_algorithm.dart';
+import 'booking_id_service.dart';
 import '/core/constants/payment_constants.dart';
 
 /// Expected payment amount — reads from PaymentConstants so it stays
@@ -121,6 +122,19 @@ class PaymentVerificationAlgorithm {
         studentId: studentId,
         bookingId: bookingId,
       );
+    }
+
+    // ── 7. Generate human-readable Booking ID ─────────────────────────────
+    //    Runs only after all prior steps succeed so no ID is wasted.
+    if (bookingId.isNotEmpty && hostelId.isNotEmpty) {
+      try {
+        await BookingIdService.assignBookingId(
+          bookingDocId: bookingId,
+          hostelId: hostelId,
+        );
+      } catch (_) {
+        // Non-fatal — the booking is already confirmed.  ID can be backfilled.
+      }
     }
 
     return const PaymentVerificationResult.success();
