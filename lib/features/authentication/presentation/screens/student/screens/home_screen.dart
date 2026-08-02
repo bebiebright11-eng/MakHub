@@ -7,11 +7,6 @@ import '/algorithms/recommendation_algorithm.dart';
 import '/algorithms/popularity_service.dart';
 import '/algorithms/popularity_recommendation_algorithm.dart';
 import '/algorithms/trending_service.dart';
-import '/algorithms/trending_recommendation_algorithm.dart';
-import '/algorithms/budget_service.dart';
-import '/algorithms/budget_recommendation_algorithm.dart';
-import '/algorithms/location_service.dart';
-import '/algorithms/location_recommendation_algorithm.dart';
 import '/algorithms/recent_search_service.dart';
 import '/algorithms/search_match_algorithm.dart';
 import '/algorithms/discovery_service.dart';
@@ -57,6 +52,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   // ── Discovery section scroll controllers ─────────────────────────────────
   final ScrollController _moreWaitingScrollController = ScrollController();
   final ScrollController _newHostelsScrollController = ScrollController();
+  final ScrollController _hostelsScrollController = ScrollController();
 
   final GlobalKey _searchBarKey = GlobalKey();
   OverlayEntry? _searchOverlay;
@@ -70,20 +66,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   // The last set of hostel IDs for which we fetched popularity data.
   // Used to skip re-fetching when the stream ticks but the hostel set hasn't
   // changed (e.g. a rating or price edit on a single hostel).
-  List<String> _lastPopularityHostelIds = [];
-
-  /// Triggers a popularity fetch only when the hostel ID set has changed.
-  void _refreshPopularityIfNeeded(List<String> hostelIds) {
-    // Sort both lists before comparing so order differences don't cause
-    // unnecessary re-fetches.
-    final sorted = [...hostelIds]..sort();
-    final lastSorted = [..._lastPopularityHostelIds]..sort();
-    if (sorted.toString() == lastSorted.toString()) return;
-
-    _lastPopularityHostelIds = hostelIds;
-    _popularityFuture =
-        PopularityService.instance.fetchPopularityData(hostelIds);
-  }
 
   // ── Trending data cache ───────────────────────────────────────────────────
   // Same caching pattern as popularity: store the Future, not the result.
@@ -91,18 +73,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   // internally, so the home screen has no time-window logic of its own.
   Future<Map<String, HostelTrendingData>>? _trendingFuture;
 
-  // The last set of hostel IDs for which we fetched trending data.
-  List<String> _lastTrendingHostelIds = [];
-
-  /// Triggers a trending fetch only when the hostel ID set has changed.
-  void _refreshTrendingIfNeeded(List<String> hostelIds) {
-    final sorted = [...hostelIds]..sort();
-    final lastSorted = [..._lastTrendingHostelIds]..sort();
-    if (sorted.toString() == lastSorted.toString()) return;
-
-    _lastTrendingHostelIds = hostelIds;
-    _trendingFuture = TrendingService.instance.fetchTrendingData(hostelIds);
-  }
 
   // ── Recent search cache ───────────────────────────────────────────────────
   // Loaded once on init and refreshed each time the student returns from a
@@ -147,6 +117,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     _kikoniScrollController.dispose();
     _moreWaitingScrollController.dispose();
     _newHostelsScrollController.dispose();
+    _hostelsScrollController.dispose();
     _removeSearchOverlay();
     super.dispose();
   }
@@ -930,7 +901,7 @@ List<QueryDocumentSnapshot> _hostelsForLocation(
   }).toList();
 }
 
-Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
+Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs, {ScrollController? scrollController}) {
     if (hostelDocs.isEmpty) {
       return const Center(
         child: Padding(
@@ -943,7 +914,7 @@ Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
     return SizedBox(
       height: 260,
       child: ListView.builder(
-        controller: _hostelsScrollController,
+        controller: scrollController ?? _hostelsScrollController,
         physics: const BouncingScrollPhysics(),
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 24),
