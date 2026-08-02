@@ -98,7 +98,7 @@ class DailyBookingGroup {
 
   int get count => bookings.length;
   double get dailyRevenue =>
-      bookings.fold(0, (sum, b) => sum + b.amountPaid);
+      bookings.fold(0, (total, b) => total + b.amountPaid);
 
   String get formattedRevenue => _formatUGX(dailyRevenue);
 
@@ -300,7 +300,7 @@ class FinanceService {
     final List<ResolvedBooking> result = [];
 
     for (final doc in bookingsSnap.docs) {
-      final data = doc.data() as Map<String, dynamic>;
+      final data = doc.data();
 
       // Student name
       final studentId = (data['studentId'] ?? '').toString();
@@ -474,7 +474,7 @@ class FinanceService {
     // Count bookings per hostel
     final Map<String, int> countPerHostel = {};
     for (final doc in bookingsSnap.docs) {
-      final data = doc.data() as Map<String, dynamic>;
+      final data = doc.data();
       final hId = (data['hostelId'] ?? '').toString();
       if (hId.isNotEmpty) {
         countPerHostel[hId] = (countPerHostel[hId] ?? 0) + 1;
@@ -482,7 +482,7 @@ class FinanceService {
     }
 
     return hostelsSnap.docs.map((hostelDoc) {
-      final data = hostelDoc.data() as Map<String, dynamic>;
+      final data = hostelDoc.data();
       final hostelName = (data['hostelName'] ?? 'Unknown Hostel').toString();
       final count = countPerHostel[hostelDoc.id] ?? 0;
 

@@ -105,19 +105,85 @@ class _AdminHostelDetailsScreenState extends State<AdminHostelDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            // Photo gallery placeholder
-            Container(
-              height: 180,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(15),
+            // Photo gallery (live from Firestore)
+            if ((hostelData['photos'] is List) &&
+                (hostelData['photos'] as List).isNotEmpty) ...[
+              SizedBox(
+                height: 180,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: (hostelData['photos'] as List).length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) {
+                    final url = (hostelData['photos'] as List)[index].toString();
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Image.network(
+                        url,
+                        width: 260,
+                        height: 180,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          width: 260,
+                          height: 180,
+                          color: Colors.grey.shade300,
+                          child: const Icon(Icons.broken_image,
+                              color: Colors.grey),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
-              child: const Center(
-                child: Icon(Icons.photo_library, size: 60, color: Colors.grey),
+              const SizedBox(height: 20),
+            ] else
+              Container(
+                height: 180,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Center(
+                  child:
+                      Text('No photos uploaded yet',
+                          style: TextStyle(color: Colors.grey)),
+                ),
               ),
-            ),
             const SizedBox(height: 20),
+
+            // Tour video (live from Firestore)
+            if ((hostelData['videos'] is List) &&
+                (hostelData['videos'] as List).isNotEmpty) ...[
+              const Text(
+                'Tour Video',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.play_circle_fill,
+                        color: AppColors.primary, size: 30),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        (hostelData['videos'] as List).length == 1
+                            ? '1 tour video available'
+                            : '${(hostelData['videos'] as List).length} tour videos available',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
 
             // Facilities
             const Text(

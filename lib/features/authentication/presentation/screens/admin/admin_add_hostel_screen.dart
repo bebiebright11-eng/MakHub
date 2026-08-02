@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'hostel_media_mixin.dart';
 
 class AdminAddHostelScreen extends StatefulWidget {
   const AdminAddHostelScreen({super.key});
@@ -10,7 +11,8 @@ class AdminAddHostelScreen extends StatefulWidget {
   State<AdminAddHostelScreen> createState() => _AdminAddHostelScreenState();
 }
 
-class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
+class _AdminAddHostelScreenState extends State<AdminAddHostelScreen>
+    with HostelMediaMixin {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
@@ -35,6 +37,7 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen> {
   final Set<String> _selectedFacilities = {};
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isSaving = false;
 
   final List<String> _facilities = [
     "WiFi",
@@ -327,17 +330,9 @@ const SizedBox(height: 10),
 
                 _sectionTitle("Media Uploads", "Add photos and a tour video for better visibility."),
 
-                _uploadTile(
-                  icon: Icons.photo,
-                  title: "Upload Photos",
-                  subtitle: "PNG, JPG up to 10MB each",
-                ),
+                buildPhotosTile(),
                 const SizedBox(height: 10),
-                _uploadTile(
-                  icon: Icons.videocam,
-                  title: "Upload Tour Video",
-                  subtitle: "MP4, MOV up to 100MB",
-                ),
+                buildVideoTile(),
 
                 _sectionTitle("Facilities", "Select the amenities available at this hostel."),
 
@@ -473,42 +468,6 @@ child: ElevatedButton(
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _uploadTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(subtitle,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ),
-          ),
-          OutlinedButton(
-            onPressed: () {
-              // File picker logic goes here later
-            },
-            child: const Text("Choose File"),
-          ),
-        ],
       ),
     );
   }
