@@ -5,51 +5,90 @@ import '/core/constants/app_colors.dart';
 /// Displayed when hostel personnel taps a reservation card in the
 /// Students tab.  Loads all required fields from Firestore using the
 /// booking document ID.
-class ReservationDetailsScreen extends StatelessWidget {
+///
+/// Uses a Firestore stream so booking status updates automatically.
+class ReservationDetailsScreen extends StatefulWidget {
+  /// The Firestore document ID — used only for internal lookups.
   final String bookingId;
 
   const ReservationDetailsScreen({super.key, required this.bookingId});
 
-  // ── Data loader ──────────────────────────────────────────────────────────
+  @override
+  State<ReservationDetailsScreen> createState() =>
+      _ReservationDetailsScreenState();
+}
 
-  Future<Map<String, String>> _load() async {
+class _ReservationDetailsScreenState
+    extends State<ReservationDetailsScreen> {
+  // ── Cached side-data (student, hostel, room) loaded once ─────────────────
+  bool _sideDataLoaded = false;
+  String _studentName = 'Unknown';
+  String _studentEmail = 'N/A';
+  String _studentPhone = 'N/A';
+  String _hostelName = 'Unknown Hostel';
+  String _floorNumber = 'N/A';
+  String _roomNumber = 'N/A';
+  String _roomType = 'N/A';
+  String _reportingDate = 'Not set';
+  String _bookingDate = 'N/A';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSideData();
+  }
+
+  /// Loads student / hostel / room data once — these fields never change
+  /// after a booking is created.  Only bookingStatus needs live updates,
+  /// which is handled by the StreamBuilder below.
+  Future<void> _loadSideData() async {
     final fs = FirebaseFirestore.instance;
 
-    final bookingDoc = await fs.collection('bookings').doc(bookingId).get();
-    if (!bookingDoc.exists) throw Exception('Booking not found.');
+    final bookingDoc =
+        await fs.collection('bookings').doc(widget.bookingId).get();
+    if (!bookingDoc.exists) return;
 
     final b = bookingDoc.data()!;
     final studentId = (b['studentId'] ?? '').toString();
-    final hostelId  = (b['hostelId']  ?? '').toString();
-    final floorId   = (b['floorId']   ?? '').toString();
-    final roomId    = (b['roomId']    ?? '').toString();
+    final hostelId = (b['hostelId'] ?? '').toString();
+    final floorId = (b['floorId'] ?? '').toString();
+    final roomId = (b['roomId'] ?? '').toString();
 
-    // ── Student details ──────────────────────────────────────────────────
-    String studentName  = 'Unknown';
-    String studentEmail = 'N/A';
-    String studentPhone = 'N/A';
+    // Booking date
+    final bts = b['bookingDate'] as Timestamp?;
+    if (bts != null) {
+      final d = bts.toDate();
+      _bookingDate =
+          '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+    }
 
+    // Student
     if (studentId.isNotEmpty) {
       final uDoc = await fs.collection('users').doc(studentId).get();
       if (uDoc.exists) {
         final u = uDoc.data()!;
-        studentName  = (u['fullName']    ?? studentName ).toString();
-        studentEmail = (u['email']       ?? studentEmail).toString();
-        studentPhone = (u['phoneNumber'] ?? studentPhone).toString();
+        _studentName = (u['fullName'] ?? _studentName).toString();
+        _studentEmail = (u['email'] ?? _studentEmail).toString();
+        _studentPhone = (u['phoneNumber'] ?? _studentPhone).toString();
       }
     }
 
-    // ── Hostel details ───────────────────────────────────────────────────
-    String hostelName = 'Unknown Hostel';
+    // Hostel + reporting date
     if (hostelId.isNotEmpty) {
       final hDoc = await fs.collection('hostels').doc(hostelId).get();
       if (hDoc.exists) {
-        hostelName = (hDoc.data()?['hostelName'] ?? hostelName).toString();
+        _hostelName =
+            (hDoc.data()?['hostelName'] ?? _hostelName).toString();
+        final ts = hDoc.data()?['reportingDate'] as Timestamp?;
+        if (ts != null) {
+          final d = ts.toDate();
+          _reportingDate =
+              '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+        }
       }
     }
 
-    // ── Floor details ────────────────────────────────────────────────────
-    String floorNumber = 'N/A';
+    // Floor
     if (hostelId.isNotEmpty && floorId.isNotEmpty) {
       final fDoc = await fs
           .collection('hostels')
@@ -58,16 +97,14 @@ class ReservationDetailsScreen extends StatelessWidget {
           .doc(floorId)
           .get();
       if (fDoc.exists) {
-        floorNumber = (fDoc.data()?['floorName'] ??
-                       fDoc.data()?['floorNumber'] ??
-                       floorNumber)
+        _floorNumber = (fDoc.data()?['floorName'] ??
+                fDoc.data()?['floorNumber'] ??
+                _floorNumber)
             .toString();
       }
     }
 
-    // ── Room details ─────────────────────────────────────────────────────
-    String roomNumber = 'N/A';
-    String roomType   = 'N/A';
+    // Room
     if (hostelId.isNotEmpty && floorId.isNotEmpty && roomId.isNotEmpty) {
       final rDoc = await fs
           .collection('hostels')
@@ -78,54 +115,49 @@ class ReservationDetailsScreen extends StatelessWidget {
           .doc(roomId)
           .get();
       if (rDoc.exists) {
-        roomNumber = (rDoc.data()?['roomNumber'] ?? roomNumber).toString();
-        roomType   = (rDoc.data()?['roomType']   ?? roomType  ).toString();
+        _roomNumber =
+            (rDoc.data()?['roomNumber'] ?? _roomNumber).toString();
+        _roomType = (rDoc.data()?['roomType'] ?? _roomType).toString();
       }
     }
 
-    // ── Hostel reporting date ────────────────────────────────────────────
-    String reportingDate = 'Not set';
-    if (hostelId.isNotEmpty) {
-      final hDoc = await fs.collection('hostels').doc(hostelId).get();
-      if (hDoc.exists) {
-        final ts = hDoc.data()?['reportingDate'] as Timestamp?;
-        if (ts != null) {
-          final d = ts.toDate();
-          reportingDate =
-              '${d.day.toString().padLeft(2, '0')}/'
-              '${d.month.toString().padLeft(2, '0')}/'
-              '${d.year}';
-        }
-      }
-    }
+    if (mounted) setState(() => _sideDataLoaded = true);
+  }
 
-    // ── Booking date ─────────────────────────────────────────────────────
-    String bookingDate = 'N/A';
-    final bts = b['bookingDate'] as Timestamp?;
-    if (bts != null) {
-      final d = bts.toDate();
-      bookingDate =
-          '${d.day.toString().padLeft(2, '0')}/'
-          '${d.month.toString().padLeft(2, '0')}/'
-          '${d.year}';
-    }
+  // ── Status helpers ────────────────────────────────────────────────────────
 
-    return {
-      'bookingId':     bookingId,
-      'studentName':   studentName,
-      'studentEmail':  studentEmail,
-      'studentPhone':  studentPhone,
-      'hostelName':    hostelName,
-      'floorNumber':   floorNumber,
-      'roomNumber':    roomNumber,
-      'roomType':      roomType,
-      'bookingDate':   bookingDate,
-      'reportingDate': reportingDate,
-      // All three statuses are 'Reserved' once bookingStatus == 'confirmed'
-      'paymentStatus': 'Reserved',
-      'roomStatus':    'Reserved',
-      'bookingStatus': 'Reserved',
-    };
+  /// Converts the raw Firestore bookingStatus to a display label.
+  String _statusLabel(String raw) {
+    switch (raw.toLowerCase()) {
+      case 'confirmed':
+        return 'Room Reserved';
+      case 'payment_received':
+        return 'Payment Received';
+      case 'pending':
+        return 'Pending Payment';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'checked_in':
+        return 'Checked In';
+      default:
+        return raw.isNotEmpty ? raw : 'Unknown';
+    }
+  }
+
+  Color _statusColor(String raw) {
+    switch (raw.toLowerCase()) {
+      case 'confirmed':
+      case 'checked_in':
+        return Colors.green;
+      case 'payment_received':
+        return Colors.blue;
+      case 'pending':
+        return Colors.orange;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 
   // ── Build ────────────────────────────────────────────────────────────────
@@ -142,10 +174,15 @@ class ReservationDetailsScreen extends StatelessWidget {
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: FutureBuilder<Map<String, String>>(
-        future: _load(),
+      // Stream the booking document so status updates in real time.
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('bookings')
+            .doc(widget.bookingId)
+            .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !_sideDataLoaded) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -162,14 +199,23 @@ class ReservationDetailsScreen extends StatelessWidget {
             );
           }
 
-          final d = snapshot.data!;
+          // Extract live fields from the booking document.
+          final liveData = snapshot.data?.data() as Map<String, dynamic>?;
+          final rawStatus =
+              (liveData?['bookingStatus'] ?? 'pending').toString();
+
+          // Human-readable Booking ID — prefer stored field, fall back to doc ID.
+          final humanBookingId =
+              (liveData?['bookingId'] ?? '').toString().isNotEmpty
+                  ? liveData!['bookingId'].toString()
+                  : widget.bookingId;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Student avatar + name ──────────────────────────────
+                // ── Student avatar + name ────────────────────────────
                 Center(
                   child: Column(
                     children: [
@@ -184,7 +230,7 @@ class ReservationDetailsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        d['studentName']!,
+                        _sideDataLoaded ? _studentName : '...',
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -196,43 +242,50 @@ class ReservationDetailsScreen extends StatelessWidget {
 
                 const SizedBox(height: 28),
 
-                // ── Booking information ────────────────────────────────
+                // ── Booking information ──────────────────────────────
                 _sectionTitle('Booking Information'),
                 _card([
-                  _row('Booking ID',     d['bookingId']!),
-                  _row('Booking Date',   d['bookingDate']!),
-                  _row('Reporting Date', d['reportingDate']!),
+                  _row('Booking ID', humanBookingId),
+                  _row('Booking Date',
+                      _sideDataLoaded ? _bookingDate : '...'),
+                  _row('Reporting Date',
+                      _sideDataLoaded ? _reportingDate : '...'),
                 ]),
 
                 const SizedBox(height: 20),
 
-                // ── Student information ────────────────────────────────
+                // ── Student information ──────────────────────────────
                 _sectionTitle('Student Information'),
                 _card([
-                  _row('Full Name',    d['studentName']!),
-                  _row('Email',        d['studentEmail']!),
-                  _row('Phone Number', d['studentPhone']!),
+                  _row('Full Name',
+                      _sideDataLoaded ? _studentName : '...'),
+                  _row('Email',
+                      _sideDataLoaded ? _studentEmail : '...'),
+                  _row('Phone Number',
+                      _sideDataLoaded ? _studentPhone : '...'),
                 ]),
 
                 const SizedBox(height: 20),
 
-                // ── Room information ───────────────────────────────────
+                // ── Room information ─────────────────────────────────
                 _sectionTitle('Room Information'),
                 _card([
-                  _row('Hostel',       d['hostelName']!),
-                  _row('Floor',        d['floorNumber']!),
-                  _row('Room Number',  d['roomNumber']!),
-                  _row('Room Type',    d['roomType']!),
+                  _row('Hostel',
+                      _sideDataLoaded ? _hostelName : '...'),
+                  _row('Floor',
+                      _sideDataLoaded ? _floorNumber : '...'),
+                  _row('Room Number',
+                      _sideDataLoaded ? _roomNumber : '...'),
+                  _row('Room Type',
+                      _sideDataLoaded ? _roomType : '...'),
                 ]),
 
                 const SizedBox(height: 20),
 
-                // ── Status ────────────────────────────────────────────
+                // ── Status (live from Firestore stream) ───────────────
                 _sectionTitle('Status'),
                 _card([
-                  _statusRow('Payment Status', d['paymentStatus']!),
-                  _statusRow('Room Status',    d['roomStatus']!),
-                  _statusRow('Booking Status', d['bookingStatus']!),
+                  _statusRow('Booking Status', rawStatus),
                 ]),
 
                 const SizedBox(height: 30),
@@ -244,13 +297,14 @@ class ReservationDetailsScreen extends StatelessWidget {
     );
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   Widget _sectionTitle(String text) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Text(
           text,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style:
+              const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       );
 
@@ -262,9 +316,7 @@ class ReservationDetailsScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.grey.shade200),
         ),
-        child: Column(
-          children: children,
-        ),
+        child: Column(children: children),
       );
 
   Widget _row(String label, String value) => Padding(
@@ -276,46 +328,53 @@ class ReservationDetailsScreen extends StatelessWidget {
               width: 130,
               child: Text(
                 label,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                style: TextStyle(
+                    color: Colors.grey.shade600, fontSize: 13),
               ),
             ),
             Expanded(
               child: Text(
                 value,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 13),
               ),
             ),
           ],
         ),
       );
 
-  Widget _statusRow(String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+  Widget _statusRow(String label, String rawStatus) {
+    final displayLabel = _statusLabel(rawStatus);
+    final color = _statusColor(rawStatus);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style:
+                TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
             ),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.green.shade200),
-              ),
-              child: Text(
-                value,
-                style: TextStyle(
-                  color: Colors.green.shade700,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
+            child: Text(
+              displayLabel,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
               ),
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
+  }
 }

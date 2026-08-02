@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '/core/constants/app_colors.dart';
 import 'admin_bookings_details_screen.dart';
+import 'admin_dashboard_screen.dart';
+import 'admin_hostels_screen.dart';
+import 'admin_bookings_screen.dart';
+import 'admin_notification_screen.dart';
+import 'admin_profile_screen.dart';
 
 /// Screen 2 — Hostel Bookings.
 ///
@@ -116,12 +121,17 @@ class _AdminHostelBookingsScreenState
       : id.toUpperCase();
 
   /// Returns true when a resolved booking matches the current search query.
-  /// Matches against student name OR the short booking ID (case-insensitive).
-  bool _matchesSearch(String docId, Map<String, String> details) {
+  /// Matches against student name OR the human-readable bookingId field
+  /// (falling back to the short doc ID for older bookings).
+  bool _matchesSearch(String docId, Map<String, dynamic> rawData, Map<String, String> details) {
     if (_searchQuery.isEmpty) return true;
     final nameMatch =
         details['studentName']!.toLowerCase().contains(_searchQuery);
-    final idMatch = _shortId(docId).toLowerCase().contains(_searchQuery);
+    // Prefer the stored human-readable ID; fall back to short doc ID.
+    final displayId = (rawData['bookingId'] ?? '').toString().isNotEmpty
+        ? rawData['bookingId'].toString().toLowerCase()
+        : _shortId(docId).toLowerCase();
+    final idMatch = displayId.contains(_searchQuery);
     return nameMatch || idMatch;
   }
 
@@ -152,6 +162,64 @@ class _AdminHostelBookingsScreenState
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 2,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        onTap: (index) {
+          if (index == 2) {
+            Navigator.pop(context);
+            return;
+          }
+          switch (index) {
+            case 0:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminDashboardScreen()),
+                (route) => false,
+              );
+              break;
+            case 1:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminHostelsScreen()),
+                (route) => false,
+              );
+              break;
+            case 3:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminNotificationsScreen()),
+                (route) => false,
+              );
+              break;
+            case 4:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminProfileScreen()),
+                (route) => false,
+              );
+              break;
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home), label: 'Dashboard'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.apartment), label: 'Hostels'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.book), label: 'Bookings'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.notifications), label: 'Alerts'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person), label: 'Profile'),
+        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         // Stream all bookings for this hostel, newest first.
@@ -240,7 +308,11 @@ class _AdminHostelBookingsScreenState
                               doc.data() as Map<String, dynamic>;
                           final bookingDate = _formatDate(
                               data['bookingDate'] as Timestamp?);
-                          final bookingId = _shortId(doc.id);
+                          // Use the stored human-readable ID when available;
+                          // fall back to last-8-chars of doc ID for older bookings.
+                          final bookingId = (data['bookingId'] ?? '').toString().isNotEmpty
+                              ? data['bookingId'].toString()
+                              : _shortId(doc.id);
 
                           return FutureBuilder<Map<String, String>>(
                             future: _resolveBooking(doc),
@@ -273,9 +345,8 @@ class _AdminHostelBookingsScreenState
                               final details = detailsSnap.data!;
 
                               // Apply in-memory search filter after
-                              // details have been resolved. No Firestore
-                              // call — pure local string comparison.
-                              if (!_matchesSearch(doc.id, details)) {
+                              // details have been resolved.
+                              if (!_matchesSearch(doc.id, data, details)) {
                                 return const SizedBox.shrink();
                               }
 

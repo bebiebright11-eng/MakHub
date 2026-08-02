@@ -4,7 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_manage_floors_screen.dart';
 
 import 'admin_edit_hostel_screen.dart';
-import 'admin_add_personnel_screen.dart';
+import 'admin_manage_personnel_screen.dart';
+import 'admin_dashboard_screen.dart';
+import 'admin_bookings_screen.dart';
+import 'admin_notification_screen.dart';
+import 'admin_profile_screen.dart';
 
 class AdminHostelDetailsScreen extends StatefulWidget {
   final String hostelId;
@@ -144,6 +148,17 @@ class _AdminHostelDetailsScreenState extends State<AdminHostelDetailsScreen> {
 ),
 
 const SizedBox(height: 12),
+
+// ── Hostel Code ───────────────────────────────────────────────────
+if ((hostelData['hostelCode'] ?? '').toString().isNotEmpty)
+  Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: _infoCard(
+      Icons.tag,
+      "Hostel Code",
+      hostelData['hostelCode'].toString().toUpperCase(),
+    ),
+  ),
 
 _infoCard(
   Icons.location_on,
@@ -389,21 +404,79 @@ ElevatedButton.icon(
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AdminAddPersonnelScreen(
+        builder: (_) => AdminManagePersonnelScreen(
           hostelId: hostelId,
-          hostelName: hostelData['hostelName'],
+          hostelName: hostelData['hostelName']?.toString() ?? '',
         ),
       ),
     );
   },
-  icon: const Icon(Icons.person_add),
-  label: const Text("Add Personnel"),
+  icon: const Icon(Icons.manage_accounts),
+  label: const Text("Manage Personnel"),
 ),
                 ),
               ],
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 1,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        onTap: (index) {
+          if (index == 1) {
+            Navigator.pop(context);
+            return;
+          }
+          switch (index) {
+            case 0:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminDashboardScreen()),
+                (route) => false,
+              );
+              break;
+            case 2:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminBookingsScreen()),
+                (route) => false,
+              );
+              break;
+            case 3:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminNotificationsScreen()),
+                (route) => false,
+              );
+              break;
+            case 4:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminProfileScreen()),
+                (route) => false,
+              );
+              break;
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home), label: 'Dashboard'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.apartment), label: 'Hostels'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.book), label: 'Bookings'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.notifications), label: 'Alerts'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person), label: 'Profile'),
+        ],
       ),
     );
   }

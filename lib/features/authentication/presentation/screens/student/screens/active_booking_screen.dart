@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'booking_information_screen.dart';
 
 class StudentActiveBookingScreen extends StatelessWidget {
+  /// The Firestore document ID — used internally for navigation only.
   final String bookingId;
+
+  /// Human-readable Booking ID (e.g. DW-260802-001).
+  /// Populated after a successful payment+reservation.
+  /// Falls back to an empty string for pending/pre-payment bookings.
+  final String humanBookingId;
+
   final String hostelName;
   final String roomNumber;
   final String bookingStatus;
@@ -13,6 +20,7 @@ class StudentActiveBookingScreen extends StatelessWidget {
   const StudentActiveBookingScreen({
     super.key,
     required this.bookingId,
+    this.humanBookingId = '',
     required this.hostelName,
     required this.roomNumber,
     this.bookingStatus = "Pending",
@@ -121,10 +129,15 @@ class StudentActiveBookingScreen extends StatelessWidget {
                           const Text("Booking ID",
                               style: TextStyle(
                                   color: Colors.grey, fontSize: 12)),
-                          Text(bookingId,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16)),
+                          Text(
+                            // Show human-readable ID when available;
+                            // fall back to doc ID for pending bookings.
+                            humanBookingId.isNotEmpty
+                                ? humanBookingId
+                                : bookingId,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16)),
                         ],
                       ),
                       _statusPill(bookingStatus, _statusColor, filled: true),

@@ -127,6 +127,9 @@ class _StudentBookingInformationScreenState
   String bookingDate = "N/A";
   String status = "Pending";
   String paymentMethod = "Mobile Money";
+  // Human-readable Booking ID stored in the booking doc after payment.
+  // Falls back to the Firestore doc ID for backward compatibility.
+  String _humanBookingId = "";
 
 Future<void> _loadRemainingBalance() async {
   try {
@@ -200,6 +203,12 @@ Future<void> _loadRemainingBalance() async {
                 'Mobile Money')
             .toString();
       }
+      // Use the human-readable bookingId field; fall back to doc ID for
+      // bookings created before this feature was introduced.
+      _humanBookingId =
+          (bookingData?['bookingId'] ?? '').toString().isNotEmpty
+              ? bookingData!['bookingId'].toString()
+              : widget.bookingId;
       isLoading = false;
     });
   } catch (e) {
@@ -258,7 +267,7 @@ void initState() {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                 _infoRow("Booking ID", widget.bookingId),
+                 _infoRow("Booking ID", isLoading ? "Loading..." : _humanBookingId),
                   const SizedBox(height: 10),
                   _infoRow("Hostel", isLoading ? "Loading..." : hostelName),
                   const SizedBox(height: 10),

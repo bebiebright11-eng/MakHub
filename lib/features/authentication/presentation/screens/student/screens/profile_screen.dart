@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'preference_screen.dart';
 
-
 class StudentProfileScreen extends StatefulWidget {
   const StudentProfileScreen({super.key});
 
@@ -20,6 +19,47 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           .collection('users')
           .doc(user!.uid)
           .snapshots();
+
+  Future<void> _handleLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Yes',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      // rootNavigator: true ensures we escape any nested tab Navigator
+      // and navigate at the MaterialApp level, clearing the full stack.
+      Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
+        '/role-selection',
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sign out: ${e.toString()}')),
+      );
+    }
+  }
           
     @override
   Widget build(BuildContext context) {
@@ -117,6 +157,15 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           ),
 
           _menuRow(Icons.lock, "Change Password", () {}),
+
+          const SizedBox(height: 8),
+
+          _menuRow(
+            Icons.logout,
+            "Logout",
+            _handleLogout,
+            isDestructive: true,
+          ),
         ],
       ),
     );
@@ -150,7 +199,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     );
   }
 
-  Widget _menuRow(IconData icon, String label, VoidCallback onTap) {
+  Widget _menuRow(IconData icon, String label, VoidCallback onTap,
+      {bool isDestructive = false}) {
+    final color = isDestructive ? Colors.red : AppColors.primary;
+    final textColor = isDestructive ? Colors.red : Colors.black;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -163,10 +215,19 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         ),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.primary, size: 20),
+            Icon(icon, color: color, size: 20),
             const SizedBox(width: 12),
-            Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600))),
-            const Icon(Icons.chevron_right, color: Colors.grey),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right,
+                color: isDestructive ? Colors.red.shade200 : Colors.grey),
           ],
         ),
       ),

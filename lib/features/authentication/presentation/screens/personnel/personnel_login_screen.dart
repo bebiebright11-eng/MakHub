@@ -66,6 +66,23 @@ if (data['activated'] != true) {
   return;
 }
 
+// Check account status — Inactive accounts are blocked from logging in.
+final status = (data['status'] ?? 'Active').toString();
+if (status == 'Inactive') {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text(
+          "Your account has been deactivated. Please contact the administrator."),
+      backgroundColor: Colors.red,
+      duration: Duration(seconds: 5),
+    ),
+  );
+  // Sign out immediately — Firebase Auth succeeded but we must not
+  // allow access to the dashboard.
+  await FirebaseAuth.instance.signOut();
+  return;
+}
+
 // Save Firebase UID if it hasn't been saved yet
 if ((data['firebaseUid'] ?? '') == '') {
   await doc.reference.update({

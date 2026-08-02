@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
+import 'admin_dashboard_screen.dart';
+import 'admin_hostels_screen.dart';
+import 'admin_notification_screen.dart';
+import 'admin_profile_screen.dart';
 
 class AdminBookingDetailsScreen extends StatelessWidget {
   final String studentName;
@@ -27,6 +31,64 @@ class AdminBookingDetailsScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 2,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        onTap: (index) {
+          if (index == 2) {
+            Navigator.pop(context);
+            return;
+          }
+          switch (index) {
+            case 0:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminDashboardScreen()),
+                (route) => false,
+              );
+              break;
+            case 1:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminHostelsScreen()),
+                (route) => false,
+              );
+              break;
+            case 3:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminNotificationsScreen()),
+                (route) => false,
+              );
+              break;
+            case 4:
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const AdminProfileScreen()),
+                (route) => false,
+              );
+              break;
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home), label: 'Dashboard'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.apartment), label: 'Hostels'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.book), label: 'Bookings'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.notifications), label: 'Alerts'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person), label: 'Profile'),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
