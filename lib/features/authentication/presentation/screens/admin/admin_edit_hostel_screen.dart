@@ -5,6 +5,7 @@ import 'admin_dashboard_screen.dart';
 import 'admin_bookings_screen.dart';
 import 'admin_notification_screen.dart';
 import 'admin_profile_screen.dart';
+import 'hostel_media_mixin.dart';
 
 class AdminEditHostelScreen extends StatefulWidget {
   final String hostelId;

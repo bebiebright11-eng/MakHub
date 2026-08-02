@@ -14,6 +14,7 @@ import '/algorithms/location_service.dart';
 import '/algorithms/location_recommendation_algorithm.dart';
 import '/algorithms/recent_search_service.dart';
 import '/algorithms/search_match_algorithm.dart';
+import '/algorithms/discovery_service.dart';
 import '/models/search_criteria.dart';
 import 'guided_search_screen.dart';
 import '../widgets/hostel_card.dart';
@@ -53,6 +54,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   final ScrollController _kikumiScrollController = ScrollController();
   final ScrollController _mainGateScrollController = ScrollController();
   final ScrollController _kikoniScrollController = ScrollController();
+  // ── Discovery section scroll controllers ─────────────────────────────────
+  final ScrollController _moreWaitingScrollController = ScrollController();
+  final ScrollController _newHostelsScrollController = ScrollController();
 
   final GlobalKey _searchBarKey = GlobalKey();
   OverlayEntry? _searchOverlay;
@@ -105,6 +109,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   // search screen.  Null means the student has never searched.
   Future<SearchCriteria?>? _recentSearchFuture;
 
+  // ── Student first name ────────────────────────────────────────────────────
+  // Read from the user document so the discovery section heading is personal.
+  String _studentFirstName = '';
+
   /// Reloads the recent search from Firestore.
   void _reloadRecentSearch() {
     setState(() {
@@ -121,6 +129,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           .collection('users')
           .doc(user.uid)
           .snapshots();
+      // Load the student's first name for the discovery section heading.
+      _loadStudentFirstName(user.uid);
     }
     // Load the student's most recent search so the home screen can display
     // the "Based on your recent search" section on first render.
@@ -138,8 +148,30 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     _kikumiScrollController.dispose();
     _mainGateScrollController.dispose();
     _kikoniScrollController.dispose();
+    _moreWaitingScrollController.dispose();
+    _newHostelsScrollController.dispose();
     _removeSearchOverlay();
     super.dispose();
+  }
+
+  /// Reads the student's full name from Firestore and extracts the first word
+  /// as the display first name used in the discovery section heading.
+  Future<void> _loadStudentFirstName(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final fullName =
+          (doc.data()?['fullName'] ?? '').toString().trim();
+      if (fullName.isNotEmpty && mounted) {
+        setState(() {
+          _studentFirstName = fullName.split(' ').first;
+        });
+      }
+    } catch (_) {
+      // Non-fatal — heading falls back to the emoji-only variant.
+    }
   }
   
 @override
@@ -198,9 +230,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             preferences: preferences,
           ).map((r) => r.doc).toList();
 
-          // Map each location keyword to its dedicated ScrollController.
-          // (Kept for reference — controllers are now accessed directly
-          //  via the MapEntry loop in the location sections below.)
+          // ── Discovery pools ────────────────────────────────────────────────
+          // Recomputed on every build so the shuffle is fresh on each
+          // dashboard open.  Zero extra Firestore reads — reuses trending data
+          // already held in _trendingFuture via the FutureBuilder below.
 
           return CustomScrollView(
             slivers: [
@@ -262,6 +295,59 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 ),
               ),
 
+              // ── 😂 "More waiting for you!" discovery section ─────────
+              // Shown only when the student has done at least one search.
+              // Contains a random shuffle of low-exposure + new hostels.
+              SliverToBoxAdapter(
+                child: FutureBuilder<SearchCriteria?>(
+                  future: _recentSearchFuture,
+                  builder: (context, recentSnap) {
+                    // Only show this section after the student has searched.
+                    if (!recentSnap.hasData || recentSnap.data == null) {
+                      return const SizedBox.shrink();
+                    }
+                    return FutureBuilder<Map<String, HostelTrendingData>>(
+                      future: _trendingFuture,
+                      builder: (context, trendSnap) {
+                        final trendingData =
+                            trendSnap.data ?? const {};
+                        final discovery = DiscoveryService.instance.fetch(
+                          allHostels: filteredDocs,
+                          trendingData: trendingData,
+                        );
+                        // Combine low-exposure and new hostels, deduplicate,
+                        // then shuffle the combined list for variety.
+                        final seen = <String>{};
+                        final combined = [
+                          ...discovery.lowExposure,
+                          ...discovery.newHostels,
+                        ].where((d) => seen.add(d.id)).toList();
+
+                        if (combined.isEmpty) return const SizedBox.shrink();
+
+                        final heading = _studentFirstName.isNotEmpty
+                            ? '😂 $_studentFirstName, there is more waiting for you!'
+                            : '😂 There is more waiting for you!';
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDiscoverySectionHeader(heading),
+                            const SizedBox(height: 12),
+                            _buildHostelList(
+                              combined,
+                              scrollController:
+                                  _moreWaitingScrollController,
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+
               // ── Recommended For You ──────────────────────────────────
               SliverToBoxAdapter(
                 child: _buildSectionHeader(
@@ -287,23 +373,48 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   builder: (context, popularitySnap) {
                     // While loading, show the preference-based order as a
                     // graceful fallback so the section is never empty.
-                    final List<QueryDocumentSnapshot> displayDocs;
+                    final List<QueryDocumentSnapshot> baseDisplayDocs;
 
                     if (popularitySnap.connectionState == ConnectionState.done &&
                         popularitySnap.hasData) {
                       // Popularity data ready — rank by weighted score.
-                      displayDocs = PopularityRecommendationAlgorithm.rank(
+                      baseDisplayDocs = PopularityRecommendationAlgorithm.rank(
                         hostels: filteredDocs,
                         popularityData: popularitySnap.data!,
                       ).map((r) => r.doc).toList();
                     } else {
                       // Still loading — fall back to preference-based order.
-                      displayDocs = recommendedDocs;
+                      baseDisplayDocs = recommendedDocs;
                     }
 
-                    return _buildHostelList(
-                      displayDocs,
-                      scrollController: _recommendedScrollController,
+                    // ── Mix in ~2 discovery hostels ───────────────────
+                    // Take the top 8 from the ranked list, then append up
+                    // to 2 random low-exposure hostels not already shown.
+                    final top8 = baseDisplayDocs.take(8).toList();
+                    final excludeIds = top8.map((d) => d.id).toSet();
+
+                    return FutureBuilder<Map<String, HostelTrendingData>>(
+                      future: _trendingFuture,
+                      builder: (context, trendSnap) {
+                        final trendingData = trendSnap.data ?? const {};
+                        final discovery = DiscoveryService.instance.fetch(
+                          allHostels: filteredDocs,
+                          trendingData: trendingData,
+                        );
+                        final mix =
+                            DiscoveryService.instance.pickDiscoveryMix(
+                          lowExposure: discovery.lowExposure,
+                          excludeIds: excludeIds,
+                          count: 2,
+                        );
+
+                        final displayDocs = [...top8, ...mix];
+
+                        return _buildHostelList(
+                          displayDocs,
+                          scrollController: _recommendedScrollController,
+                        );
+                      },
                     );
                   },
                 ),
@@ -450,6 +561,44 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   ),
                   SliverToBoxAdapter(child: const SizedBox(height: 24)),
                 ],
+
+              SliverToBoxAdapter(child: const SizedBox(height: 30)),
+
+              // ── 😊 "You're lucky! New hostels" discovery section ─────
+              // Always shown (no search required).
+              // Contains ONLY newly added hostels, randomly reshuffled
+              // on every dashboard open.
+              SliverToBoxAdapter(
+                child: FutureBuilder<Map<String, HostelTrendingData>>(
+                  future: _trendingFuture,
+                  builder: (context, trendSnap) {
+                    final trendingData = trendSnap.data ?? const {};
+                    final discovery = DiscoveryService.instance.fetch(
+                      allHostels: filteredDocs,
+                      trendingData: trendingData,
+                    );
+
+                    if (discovery.newHostels.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDiscoverySectionHeader(
+                          '😊 You\'re lucky! Be among the first to explore these new hostels.',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildHostelList(
+                          discovery.newHostels,
+                          scrollController: _newHostelsScrollController,
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    );
+                  },
+                ),
+              ),
 
               SliverToBoxAdapter(child: const SizedBox(height: 30)),
             ],
@@ -896,6 +1045,18 @@ Widget _buildChip(String label, IconData icon) {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Discovery section header — no arrow button, wraps long headings,
+  /// uses the same bold style as the regular header.
+  Widget _buildDiscoverySectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
       ),
     );
   }
