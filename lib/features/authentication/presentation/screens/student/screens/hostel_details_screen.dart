@@ -135,15 +135,6 @@ _buildSectionTitle('Facilities'),
             image: DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover),
           ),
         ),
-        Positioned.fill(
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), shape: BoxShape.circle),
-              child: const Icon(Icons.play_arrow, color: AppColors.primary, size: 32),
-            ),
-          ),
-        ),
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -189,21 +180,6 @@ _buildSectionTitle('Facilities'),
                 shape: BoxShape.circle,
               ),
             )),
-          ),
-        ),
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(20)),
-            child: const Row(
-              children: [
-                Icon(Icons.videocam_outlined, color: Colors.white, size: 14),
-                SizedBox(width: 4),
-                Text('Tour', style: TextStyle(color: Colors.white, fontSize: 12)),
-              ],
-            ),
           ),
         ),
       ],

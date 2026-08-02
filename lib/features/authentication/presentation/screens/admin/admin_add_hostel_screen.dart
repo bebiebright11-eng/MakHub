@@ -286,11 +286,9 @@ const SizedBox(height: 10),
                   ],
                 ),
 
-                _sectionTitle("Media Uploads", "Add photos and a tour video for better visibility."),
+                _sectionTitle("Media Uploads", "Add up to 30 photos for better visibility."),
 
                 buildPhotosTile(),
-                const SizedBox(height: 10),
-                buildVideoTile(),
 
                 _sectionTitle("Facilities", "Select the amenities available at this hostel."),
 
@@ -375,20 +373,14 @@ const SizedBox(height: 10),
                                 'createdBy': _auth.currentUser!.uid,
                                 'createdAt': FieldValue.serverTimestamp(),
                                 'photos': <String>[],
-                                'videos': <String>[],
                               });
 
-                              // 2. Upload picked media under hostels/{id}/...
+                              // 2. Upload picked photos under hostels/{id}/...
                               List<String> photoUrls = const [];
-                              List<String> videoUrls = const [];
                               if (hasPickedMedia) {
-                                final uploaded =
-                                    await uploadNewMedia(docRef.id);
-                                photoUrls = uploaded['photos']!;
-                                videoUrls = uploaded['videos']!;
+                                photoUrls = await uploadNewMedia(docRef.id);
                                 await docRef.update({
                                   'photos': photoUrls,
-                                  'videos': videoUrls,
                                 });
                               }
 
