@@ -300,9 +300,9 @@ void initState() {
                     }
                   },
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return 'Hostel Code is required';
-                    }
+                    // Existing listings created before hostel codes were
+                    // introduced may not have one. Keep those editable.
+                    if (v == null || v.trim().isEmpty) return null;
                     final code = v.trim().toUpperCase();
                     if (code.length < 2 || code.length > 3) {
                       return 'Code must be 2 or 3 letters';
@@ -562,60 +562,26 @@ const SizedBox(height: 10),
 
                 SizedBox(
                   width: double.infinity,
-<<<<<<< HEAD
-                  child: ElevatedButton(
-                    onPressed: _isSaving
-                        ? null
-                        : () async {
-                            if (!_formKey.currentState!.validate()) return;
-                            setState(() => _isSaving = true);
-                            try {
-                              // Upload newly picked photos (if any) and merge with existing URLs
-                              List<String> finalPhotos = List.from(_existingPhotos);
-
-                              if (hasPickedMedia) {
-                                final newUrls =
-                                    await uploadNewMedia(widget.hostelId);
-                                finalPhotos.addAll(newUrls);
-                              }
-
-                              await _firestore
-                                  .collection('hostels')
-                                  .doc(widget.hostelId)
-                                  .update({
-                                'hostelName': _nameController.text.trim(),
-                                'location': _locationController.text.trim(),
-                                'description':
-                                    _descriptionController.text.trim(),
-                                'type': _selectedType,
-                                'distance': _distanceController.text.trim(),
-                                'walkingTime':
-                                    _walkingTimeController.text.trim(),
-                                'mapsLink': _mapsLinkController.text.trim(),
-                                'singlePrice':
-                                    _singlePriceController.text.trim(),
-                                'doublePrice':
-                                    _doublePriceController.text.trim(),
-                                'singleRoomSize':
-                                    _singleRoomSizeController.text.trim(),
-                                'doubleRoomSize':
-                                    _doubleRoomSizeController.text.trim(),
-                                'facilities': _selectedFacilities.toList(),
-                                'shops': _shopsController.text.trim(),
-                                'hospital': _hospitalController.text.trim(),
-                                'atm': _atmController.text.trim(),
-                                'photos': finalPhotos,
-                                'updatedAt': FieldValue.serverTimestamp(),
-                              });
-=======
 child: ElevatedButton(
-  onPressed: () async {
-    if (_formKey.currentState!.validate()) {
-      try {
+  onPressed: _isSaving
+      ? null
+      : () async {
+          if (!_formKey.currentState!.validate()) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please correct the highlighted fields before updating.'),
+              ),
+            );
+            return;
+          }
+
+          setState(() => _isSaving = true);
+          try {
         final code = _hostelCodeController.text.trim().toUpperCase();
 
         // Uniqueness check — reject if another hostel already uses this code
-        final codeTaken = await _hostelCodeTaken(code);
+        final codeTaken =
+            code.isNotEmpty ? await _hostelCodeTaken(code) : false;
         if (codeTaken) {
           if (!context.mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -627,12 +593,17 @@ child: ElevatedButton(
           return;
         }
 
+        final photos = List<String>.from(_existingPhotos);
+        if (hasPickedMedia) {
+          photos.addAll(await uploadNewMedia(widget.hostelId));
+        }
+
         await _firestore
     .collection('hostels')
     .doc(widget.hostelId)
     .update({
           'hostelName': _nameController.text.trim(),
-          'hostelCode': code,
+          if (code.isNotEmpty) 'hostelCode': code,
           'location': _locationController.text.trim(),
           'description': _descriptionController.text.trim(),
           'type': _selectedType,
@@ -647,6 +618,7 @@ child: ElevatedButton(
           'shops': _shopsController.text.trim(),
           'hospital': _hospitalController.text.trim(),
           'atm': _atmController.text.trim(),
+          'photos': photos,
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
@@ -659,16 +631,15 @@ child: ElevatedButton(
         );
 
         Navigator.pop(context);
-      } catch (e) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-          ),
-        );
-      }
-    }
-  },
+          } catch (e) {
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not update hostel: $e')),
+            );
+          } finally {
+            if (mounted) setState(() => _isSaving = false);
+          }
+        },
 
   style: ElevatedButton.styleFrom(
     backgroundColor: AppColors.primary,
@@ -679,16 +650,21 @@ child: ElevatedButton(
     ),
   ),
 
-  child: const Text(
-    "Update Hostel",
-    style: TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w600,
-    ),
-  ),
+  child: _isSaving
+      ? const SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+        )
+      : const Text(
+          "Update Hostel",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
 ),
 
->>>>>>> d06751c9c5ce7be79582978ec0583449ca768518
 
                 ),
                 const SizedBox(height: 20),

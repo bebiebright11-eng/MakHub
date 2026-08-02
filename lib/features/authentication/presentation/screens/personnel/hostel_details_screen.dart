@@ -117,8 +117,6 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-<<<<<<< HEAD
-=======
 
                 // ── Hostel Code (read-only for personnel) ─────────────
                 if ((data['hostelCode'] ?? '').toString().isNotEmpty) ...[
@@ -169,7 +167,6 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
               ),
             ),
             const SizedBox(height: 24),
->>>>>>> d06751c9c5ce7be79582978ec0583449ca768518
 const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Text(

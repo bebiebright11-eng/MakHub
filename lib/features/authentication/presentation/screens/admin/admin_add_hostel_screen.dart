@@ -381,52 +381,6 @@ const SizedBox(height: 10),
 
                 SizedBox(
                   width: double.infinity,
-<<<<<<< HEAD
-                  child: ElevatedButton(
-                    onPressed: _isSaving
-                        ? null
-                        : () async {
-                            if (!_formKey.currentState!.validate()) return;
-                            setState(() => _isSaving = true);
-                            try {
-                              // 1. Create the hostel document first to get its ID
-                              final docRef =
-                                  await _firestore.collection('hostels').add({
-                                'hostelName': _nameController.text.trim(),
-                                'location': _selectedLocation,
-                                'description':
-                                    _descriptionController.text.trim(),
-                                'type': _selectedType,
-                                'distance': _distanceController.text.trim(),
-                                'walkingTime':
-                                    _walkingTimeController.text.trim(),
-                                'mapsLink': _mapsLinkController.text.trim(),
-                                'singleRoomSize':
-                                    _singleRoomSizeController.text.trim(),
-                                'doubleRoomSize':
-                                    _doubleRoomSizeController.text.trim(),
-                                'singlePrice':
-                                    _singlePriceController.text.trim(),
-                                'doublePrice':
-                                    _doublePriceController.text.trim(),
-                                'facilities': _selectedFacilities.toList(),
-                                'shops': _shopsController.text.trim(),
-                                'hospital': _hospitalController.text.trim(),
-                                'atm': _atmController.text.trim(),
-                                'createdBy': _auth.currentUser!.uid,
-                                'createdAt': FieldValue.serverTimestamp(),
-                                'photos': <String>[],
-                              });
-
-                              // 2. Upload picked photos under hostels/{id}/...
-                              List<String> photoUrls = const [];
-                              if (hasPickedMedia) {
-                                photoUrls = await uploadNewMedia(docRef.id);
-                                await docRef.update({
-                                  'photos': photoUrls,
-                                });
-                              }
-=======
 child: ElevatedButton(
   onPressed: () async {
     if (_formKey.currentState!.validate()) {
@@ -446,7 +400,7 @@ child: ElevatedButton(
           return;
         }
 
-        await _firestore.collection('hostels').add({
+        final hostelRef = await _firestore.collection('hostels').add({
           'hostelName': _nameController.text.trim(),
           'hostelCode': code,
           'location': _selectedLocation,
@@ -465,7 +419,13 @@ child: ElevatedButton(
           'atm': _atmController.text.trim(),
           'createdBy': _auth.currentUser!.uid,
           'createdAt': FieldValue.serverTimestamp(),
+          'photos': <String>[],
         });
+
+        if (hasPickedMedia) {
+          final photoUrls = await uploadNewMedia(hostelRef.id);
+          await hostelRef.update({'photos': photoUrls});
+        }
 
         if (!context.mounted) return;
 
@@ -505,7 +465,6 @@ child: ElevatedButton(
   ),
 ),
 
->>>>>>> d06751c9c5ce7be79582978ec0583449ca768518
 
                 ),
                 const SizedBox(height: 20),
