@@ -151,40 +151,7 @@ class _AdminHostelDetailsScreenState extends State<AdminHostelDetailsScreen> {
                 ),
               ),
             const SizedBox(height: 20),
-
-            // Tour video (live from Firestore)
-            if ((hostelData['videos'] is List) &&
-                (hostelData['videos'] as List).isNotEmpty) ...[
-              const Text(
-                'Tour Video',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.play_circle_fill,
-                        color: AppColors.primary, size: 30),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        (hostelData['videos'] as List).length == 1
-                            ? '1 tour video available'
-                            : '${(hostelData['videos'] as List).length} tour videos available',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-
+            
             // Facilities
             const Text(
               "Facilities",

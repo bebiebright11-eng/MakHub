@@ -15,6 +15,7 @@ class HostelDetailsScreen extends StatefulWidget {
 
 class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
   late final Stream<DocumentSnapshot> _hostelStream;
+  int _currentPhotoIndex = 0;
 
   @override
   void initState() {
@@ -32,8 +33,7 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
           if (!mounted) return;
           final data = snapshot.data() as Map<String, dynamic>?;
           if (data != null) {
-            WishlistService.instance
-                .addRecentlyViewed(widget.hostelId, data);
+            WishlistService.instance.addRecentlyViewed(widget.hostelId, data);
           }
         })
         .catchError((_) {});
@@ -72,27 +72,27 @@ class _HostelDetailsScreenState extends State<HostelDetailsScreen> {
                       _buildPricingCards(data),
                       const SizedBox(height: 32),
                       _buildSectionTitle('Description'),
-const SizedBox(height: 8),
-Text(
-  data['description'] ?? '',
-  style: const TextStyle(
-    color: Colors.grey,
-    height: 1.5,
-    fontSize: 14,
-  ),
-),
+                      const SizedBox(height: 8),
+                      Text(
+                        data['description'] ?? '',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          height: 1.5,
+                          fontSize: 14,
+                        ),
+                      ),
 
-const SizedBox(height: 28),
+                      const SizedBox(height: 28),
 
-_buildSectionTitle('Hostel Information'),
+                      _buildSectionTitle('Hostel Information'),
 
-const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-_buildHostelInformation(data),
+                      _buildHostelInformation(data),
 
-const SizedBox(height: 28),
+                      const SizedBox(height: 28),
 
-_buildSectionTitle('Facilities'),
+                      _buildSectionTitle('Facilities'),
                       const SizedBox(height: 16),
                       _buildFacilitiesGrid(data),
                       const SizedBox(height: 24),
@@ -113,7 +113,9 @@ _buildSectionTitle('Facilities'),
       bottomSheet: StreamBuilder<DocumentSnapshot>(
         stream: _hostelStream,
         builder: (context, snapshot) {
-          if (!snapshot.hasData || !snapshot.data!.exists) return const SizedBox.shrink();
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const SizedBox.shrink();
+          }
           final data = snapshot.data!.data() as Map<String, dynamic>;
           return _buildBottomButtons(context, data);
         },
@@ -123,25 +125,45 @@ _buildSectionTitle('Facilities'),
 
   Widget _buildHeader(BuildContext context, Map<String, dynamic> data) {
     final photos = List<String>.from(data['photos'] ?? []);
-    final imageUrl = photos.isNotEmpty ? photos[0] : 'https://via.placeholder.com/600x400';
+    final photoCount = photos.isEmpty ? 1 : photos.length;
+    final activePhotoIndex = _currentPhotoIndex.clamp(0, photoCount - 1);
 
     return Stack(
       children: [
-        Container(
+        SizedBox(
           height: 280,
           width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            image: DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover),
-          ),
-        ),
-        Positioned.fill(
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), shape: BoxShape.circle),
-              child: const Icon(Icons.play_arrow, color: AppColors.primary, size: 32),
-            ),
+          child: PageView.builder(
+            itemCount: photoCount,
+            onPageChanged: (index) =>
+                setState(() => _currentPhotoIndex = index),
+            itemBuilder: (context, index) {
+              if (photos.isEmpty) {
+                return Container(
+                  color: Colors.grey.shade200,
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.apartment,
+                    size: 72,
+                    color: Colors.grey,
+                  ),
+                );
+              }
+
+              return Image.network(
+                photos[index],
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(
+                  color: Colors.grey.shade200,
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.broken_image,
+                    size: 56,
+                    color: Colors.grey,
+                  ),
+                ),
+              );
+            },
           ),
         ),
         SafeArea(
@@ -161,12 +183,24 @@ _buildSectionTitle('Facilities'),
                   children: [
                     CircleAvatar(
                       backgroundColor: Colors.white,
-                      child: IconButton(icon: const Icon(Icons.favorite_border, color: Colors.black), onPressed: () {}),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.favorite_border,
+                          color: Colors.black,
+                        ),
+                        onPressed: () {},
+                      ),
                     ),
                     const SizedBox(width: 12),
                     CircleAvatar(
                       backgroundColor: Colors.white,
-                      child: IconButton(icon: const Icon(Icons.share_outlined, color: Colors.black), onPressed: () {}),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.share_outlined,
+                          color: Colors.black,
+                        ),
+                        onPressed: () {},
+                      ),
                     ),
                   ],
                 ),
@@ -178,32 +212,43 @@ _buildSectionTitle('Facilities'),
           bottom: 16,
           left: 0,
           right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(photos.isNotEmpty ? photos.length : 1, (index) => Container(
-              width: 8,
-              height: 8,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: index == 0 ? Colors.white : Colors.white.withValues(alpha: 0.5),
-                shape: BoxShape.circle,
+          child: Column(
+            children: [
+              if (photos.length > 1)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    '${activePhotoIndex + 1} / ${photos.length}',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+              if (photos.length > 1) const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  photoCount,
+                  (index) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: index == activePhotoIndex ? 20 : 8,
+                    height: 8,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: index == activePhotoIndex
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
               ),
-            )),
-          ),
-        ),
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(20)),
-            child: const Row(
-              children: [
-                Icon(Icons.videocam_outlined, color: Colors.white, size: 14),
-                SizedBox(width: 4),
-                Text('Tour', style: TextStyle(color: Colors.white, fontSize: 12)),
-              ],
-            ),
+            ],
           ),
         ),
       ],
@@ -217,25 +262,44 @@ _buildSectionTitle('Facilities'),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(data['hostelName'] ?? '', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text(
+              data['hostelName'] ?? '',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.location_on, size: 14, color: AppColors.primary),
+                const Icon(
+                  Icons.location_on,
+                  size: 14,
+                  color: AppColors.primary,
+                ),
                 const SizedBox(width: 4),
-                Text(data['location'] ?? '', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                Text(
+                  data['location'] ?? '',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                ),
               ],
             ),
           ],
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF6FF),
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Row(
             children: [
               const Icon(Icons.star, color: AppColors.primary, size: 14),
               const SizedBox(width: 4),
-              Text('${data['securityRating'] ?? '-'}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+              Text(
+                '${data['securityRating'] ?? '-'}',
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ),
@@ -309,35 +373,44 @@ _buildSectionTitle('Facilities'),
     );
   }
 
-  Widget _buildTag(String label, Color bgColor, Color textColor, IconData icon) {
+  Widget _buildTag(
+    String label,
+    Color bgColor,
+    Color textColor,
+    IconData icon,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         children: [
           Icon(icon, size: 14, color: textColor),
           const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 12)),
+          Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );
   }
 
-Widget _buildPricingCards(Map<String, dynamic> data) {
-  return Row(
-    children: [
-      _buildPriceCard(
-        'Single Room',
-        data['singlePrice']?.toString() ?? '0',
-      ),
-      const SizedBox(width: 16),
-      _buildPriceCard(
-        'Double Room',
-        data['doublePrice']?.toString() ?? '0',
-      ),
-    ],
-  );
-}
+  Widget _buildPricingCards(Map<String, dynamic> data) {
+    return Row(
+      children: [
+        _buildPriceCard('Single Room', data['singlePrice']?.toString() ?? '0'),
+        const SizedBox(width: 16),
+        _buildPriceCard('Double Room', data['doublePrice']?.toString() ?? '0'),
+      ],
+    );
+  }
 
   Widget _buildPriceCard(String type, String price) {
     return Expanded(
@@ -347,113 +420,137 @@ Widget _buildPricingCards(Map<String, dynamic> data) {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.grey.shade100),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.king_bed_outlined, size: 16, color: Colors.grey.shade400),
+                Icon(
+                  Icons.king_bed_outlined,
+                  size: 16,
+                  color: Colors.grey.shade400,
+                ),
                 const SizedBox(width: 8),
-                Text(type, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                Text(
+                  type,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
               ],
             ),
             const SizedBox(height: 8),
-            Text('UGX $price', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const Text('per semester', style: TextStyle(color: Colors.grey, fontSize: 10)),
+            Text(
+              'UGX $price',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Text(
+              'per semester',
+              style: TextStyle(color: Colors.grey, fontSize: 10),
+            ),
           ],
         ),
       ),
     );
   }
 
-
   Widget _buildHostelInformation(Map<String, dynamic> data) {
-  return Container(
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF8FAFC),
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Column(
-      children: [
-        _infoRow(Icons.home, "Hostel Type", () {
-          switch ((data['type'] ?? '').toString().toLowerCase()) {
-            case 'boys':   return 'Boys Only';
-            case 'girls':  return 'Girls Only';
-            case 'mixed':  return 'Mixed (Boys & Girls)';
-            default:       return data['type'] ?? '';
-          }
-        }()),
-        _infoRow(Icons.location_on, "Distance", data['distance'] ?? ""),
-        _infoRow(Icons.king_bed, "Single Room Size", data['singleRoomSize'] ?? ""),
-        _infoRow(Icons.bed, "Double Room Size", data['doubleRoomSize'] ?? ""),
-        _infoRow(Icons.directions_walk, "Walking Time", data['walkingTime'] ?? ""),
-        _infoRow(Icons.atm, "ATM", data['atm'] ?? ""),
-        _infoRow(Icons.local_hospital, "Hospital", data['hospital'] ?? ""),
-        _infoRow(Icons.store, "Nearby Shops", data['shops'] ?? ""),
-      ],
-    ),
-  );
-}
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          _infoRow(Icons.home, "Hostel Type", () {
+            switch ((data['type'] ?? '').toString().toLowerCase()) {
+              case 'boys':
+                return 'Boys Only';
+              case 'girls':
+                return 'Girls Only';
+              case 'mixed':
+                return 'Mixed (Boys & Girls)';
+              default:
+                return data['type'] ?? '';
+            }
+          }()),
+          _infoRow(Icons.location_on, "Distance", data['distance'] ?? ""),
+          _infoRow(
+            Icons.king_bed,
+            "Single Room Size",
+            data['singleRoomSize'] ?? "",
+          ),
+          _infoRow(Icons.bed, "Double Room Size", data['doubleRoomSize'] ?? ""),
+          _infoRow(
+            Icons.directions_walk,
+            "Walking Time",
+            data['walkingTime'] ?? "",
+          ),
+          _infoRow(Icons.atm, "ATM", data['atm'] ?? ""),
+          _infoRow(Icons.local_hospital, "Hospital", data['hospital'] ?? ""),
+          _infoRow(Icons.store, "Nearby Shops", data['shops'] ?? ""),
+        ],
+      ),
+    );
+  }
 
-
-Widget _infoRow(
-  IconData icon,
-  String title,
-  String value,
-) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    child: Row(
-      children: [
-        Icon(
-          icon,
-          color: AppColors.primary,
-          size: 20,
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
+  Widget _infoRow(IconData icon, String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primary, size: 20),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontWeight: FontWeight.w500,
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _buildSectionTitle(String title) {
-    return Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
+    return Text(
+      title,
+      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    );
   }
 
   Widget _buildFacilitiesGrid(Map<String, dynamic> data) {
     final facilities = List<String>.from(data['facilities'] ?? []);
     final iconMap = {
-  'WiFi': Icons.wifi,
-  'DSTV': Icons.tv,
-  'Reading Room': Icons.menu_book,
-  'Shuttle': Icons.airport_shuttle,
-  'Security': Icons.security,
-  'Kitchen': Icons.restaurant,
-  'Laundry': Icons.local_laundry_service,
-  'Swimming Pool': Icons.pool,
-  'Pool Table': Icons.sports_esports,
-};
+      'WiFi': Icons.wifi,
+      'DSTV': Icons.tv,
+      'Reading Room': Icons.menu_book,
+      'Shuttle': Icons.airport_shuttle,
+      'Security': Icons.security,
+      'Kitchen': Icons.restaurant,
+      'Laundry': Icons.local_laundry_service,
+      'Swimming Pool': Icons.pool,
+      'Pool Table': Icons.sports_esports,
+    };
 
     if (facilities.isEmpty) {
-      return const Text('No facilities listed', style: TextStyle(color: Colors.grey));
+      return const Text(
+        'No facilities listed',
+        style: TextStyle(color: Colors.grey),
+      );
     }
 
     return GridView.count(
@@ -463,19 +560,33 @@ Widget _infoRow(
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
       childAspectRatio: 1.1,
-      children: facilities.map((f) => _facilityItem(f, iconMap[f] ?? Icons.check_circle_outline)).toList(),
+      children: facilities
+          .map(
+            (f) => _facilityItem(f, iconMap[f] ?? Icons.check_circle_outline),
+          )
+          .toList(),
     );
   }
 
   Widget _facilityItem(String label, IconData icon) {
     return Container(
-      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, color: AppColors.primary, size: 20),
           const SizedBox(height: 8),
-          Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -483,23 +594,31 @@ Widget _infoRow(
 
   Widget _buildRules(Map<String, dynamic> data) {
     final rules = [
-  "No smoking inside the hostel.",
-  "Visitors are allowed from 8:00 AM to 8:00 PM.",
-  "Keep noise to a minimum after 10:00 PM.",
-  "Maintain cleanliness in shared areas.",
-  "Report damaged property to hostel management.",
-];
+      "No smoking inside the hostel.",
+      "Visitors are allowed from 8:00 AM to 8:00 PM.",
+      "Keep noise to a minimum after 10:00 PM.",
+      "Maintain cleanliness in shared areas.",
+      "Report damaged property to hostel management.",
+    ];
     if (rules.isEmpty) {
-      return const Text('No rules listed', style: TextStyle(color: Colors.grey));
+      return const Text(
+        'No rules listed',
+        style: TextStyle(color: Colors.grey),
+      );
     }
 
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Column(
         children: rules.asMap().entries.map((entry) {
           return Padding(
-            padding: EdgeInsets.only(bottom: entry.key == rules.length - 1 ? 0 : 12),
+            padding: EdgeInsets.only(
+              bottom: entry.key == rules.length - 1 ? 0 : 12,
+            ),
             child: _ruleRow(Icons.info_outline, entry.value, AppColors.primary),
           );
         }).toList(),
@@ -512,14 +631,18 @@ Widget _infoRow(
       children: [
         Icon(icon, size: 18, color: iconColor),
         const SizedBox(width: 12),
-        Expanded(child: Text(rule, style: TextStyle(color: Colors.grey.shade800, fontSize: 14))),
+        Expanded(
+          child: Text(
+            rule,
+            style: TextStyle(color: Colors.grey.shade800, fontSize: 14),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildReviewsSection({required Map<String, dynamic> data}) {
-    final double avgRating =
-        (data['averageRating'] as num?)?.toDouble() ?? 0.0;
+    final double avgRating = (data['averageRating'] as num?)?.toDouble() ?? 0.0;
     final int reviewCount = (data['reviewCount'] as num?)?.toInt() ?? 0;
     final String hostelName = (data['hostelName'] ?? '').toString();
 
@@ -527,8 +650,10 @@ Widget _infoRow(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // ── Section header ─────────────────────────────────────────────
-        const Text('Student Reviews',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          'Student Reviews',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 12),
 
         // ── Rating summary card ────────────────────────────────────────
@@ -568,8 +693,7 @@ Widget _infoRow(
               const SizedBox(height: 6),
               Text(
                 'Based on $reviewCount review${reviewCount == 1 ? '' : 's'}',
-                style: TextStyle(
-                    fontSize: 13, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
             ],
           ),
@@ -605,22 +729,28 @@ Widget _infoRow(
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.rate_review_outlined,
-                        size: 40, color: Colors.grey.shade300),
+                    Icon(
+                      Icons.rate_review_outlined,
+                      size: 40,
+                      color: Colors.grey.shade300,
+                    ),
                     const SizedBox(height: 10),
                     const Text(
                       'No reviews yet.',
                       style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: Colors.black87),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Be the first verified resident to review this hostel.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade500),
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
                     ),
                   ],
                 ),
@@ -629,10 +759,10 @@ Widget _infoRow(
 
             return Column(
               children: [
-                ...docs.map((doc) => _DetailsReviewCard(
-                      doc: doc,
-                      hostelId: widget.hostelId,
-                    )),
+                ...docs.map(
+                  (doc) =>
+                      _DetailsReviewCard(doc: doc, hostelId: widget.hostelId),
+                ),
 
                 // ── View All Reviews button ──────────────────────────
                 if (reviewCount > 5) ...[
@@ -655,7 +785,8 @@ Widget _infoRow(
                         foregroundColor: AppColors.primary,
                         side: const BorderSide(color: AppColors.primary),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -704,7 +835,7 @@ Widget _infoRow(
             color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -5),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -726,17 +857,24 @@ Widget _infoRow(
                     ),
                   ),
                 ),
-                icon: const Icon(Icons.map_outlined,
-                    color: AppColors.primary, size: 18),
-                label: const Text('View on Map',
-                    style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold)),
+                icon: const Icon(
+                  Icons.map_outlined,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+                label: const Text(
+                  'View on Map',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   side: const BorderSide(color: AppColors.primary),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
               ),
             ),
@@ -750,24 +888,29 @@ Widget _infoRow(
                     context,
                     MaterialPageRoute(
                       builder: (context) => StudentFloorSelectionScreen(
-                          hostelId: widget.hostelId),
+                        hostelId: widget.hostelId,
+                      ),
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     side: const BorderSide(color: Color(0xFFDBEAFE)),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.layers_outlined, color: AppColors.primary),
                       SizedBox(width: 8),
-                      Text('View Floors',
-                          style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        'View Floors',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -779,25 +922,29 @@ Widget _infoRow(
                     context,
                     MaterialPageRoute(
                       builder: (context) => StudentFloorSelectionScreen(
-                          hostelId: widget.hostelId),
+                        hostelId: widget.hostelId,
+                      ),
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.calendar_today_outlined,
-                          color: Colors.white),
+                      Icon(Icons.calendar_today_outlined, color: Colors.white),
                       SizedBox(width: 8),
-                      Text('Book Now',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        'Book Now',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -846,8 +993,9 @@ class _DetailsReviewCardState extends State<_DetailsReviewCard> {
     final data = widget.doc.data() as Map<String, dynamic>;
 
     // 1 — check fields already stored on the document
-    final stored =
-        (data['studentName'] ?? data['userName'] ?? '').toString().trim();
+    final stored = (data['studentName'] ?? data['userName'] ?? '')
+        .toString()
+        .trim();
     if (stored.isNotEmpty) {
       if (mounted) setState(() => _reviewerName = stored);
       return;
@@ -899,10 +1047,10 @@ class _DetailsReviewCardState extends State<_DetailsReviewCard> {
   Widget build(BuildContext context) {
     final data = widget.doc.data() as Map<String, dynamic>;
     final int rating = (data['rating'] as num?)?.toInt() ?? 0;
-    final String comment =
-        (data['review'] ?? data['comment'] ?? '').toString();
+    final String comment = (data['review'] ?? data['comment'] ?? '').toString();
     final String timeAgo = _HostelDetailsScreenState._relativeDate(
-        data['createdAt'] as Timestamp?);
+      data['createdAt'] as Timestamp?,
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -928,15 +1076,18 @@ class _DetailsReviewCardState extends State<_DetailsReviewCard> {
               Text(
                 _reviewerName,
                 style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: Colors.black87),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Colors.black87,
+                ),
               ),
               if (_isVerified == true) ...[
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 6, vertical: 2),
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.shade50,
                     borderRadius: BorderRadius.circular(6),
@@ -945,8 +1096,11 @@ class _DetailsReviewCardState extends State<_DetailsReviewCard> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.verified,
-                          size: 10, color: Colors.green.shade600),
+                      Icon(
+                        Icons.verified,
+                        size: 10,
+                        color: Colors.green.shade600,
+                      ),
                       const SizedBox(width: 2),
                       Text(
                         'Verified Resident',
@@ -984,7 +1138,10 @@ class _DetailsReviewCardState extends State<_DetailsReviewCard> {
           Text(
             comment,
             style: const TextStyle(
-                fontSize: 13, color: Colors.black87, height: 1.5),
+              fontSize: 13,
+              color: Colors.black87,
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -1000,8 +1157,7 @@ class _AllReviewsScreen extends StatelessWidget {
   final String hostelId;
   final String hostelName;
 
-  const _AllReviewsScreen(
-      {required this.hostelId, required this.hostelName});
+  const _AllReviewsScreen({required this.hostelId, required this.hostelName});
 
   @override
   Widget build(BuildContext context) {
@@ -1014,13 +1170,18 @@ class _AllReviewsScreen extends StatelessWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(hostelName,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.black)),
-            const Text('All Reviews',
-                style: TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(
+              hostelName,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.black,
+              ),
+            ),
+            const Text(
+              'All Reviews',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
           ],
         ),
       ),
@@ -1037,16 +1198,17 @@ class _AllReviewsScreen extends StatelessWidget {
           final docs = snapshot.data?.docs ?? [];
           if (docs.isEmpty) {
             return const Center(
-                child: Text('No reviews yet.',
-                    style: TextStyle(color: Colors.grey)));
+              child: Text(
+                'No reviews yet.',
+                style: TextStyle(color: Colors.grey),
+              ),
+            );
           }
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: docs.length,
-            itemBuilder: (context, index) => _DetailsReviewCard(
-              doc: docs[index],
-              hostelId: hostelId,
-            ),
+            itemBuilder: (context, index) =>
+                _DetailsReviewCard(doc: docs[index], hostelId: hostelId),
           );
         },
       ),

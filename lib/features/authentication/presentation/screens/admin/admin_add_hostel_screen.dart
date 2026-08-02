@@ -328,11 +328,9 @@ const SizedBox(height: 10),
                   ],
                 ),
 
-                _sectionTitle("Media Uploads", "Add photos and a tour video for better visibility."),
+                _sectionTitle("Media Uploads", "Add up to 30 photos for better visibility."),
 
                 buildPhotosTile(),
-                const SizedBox(height: 10),
-                buildVideoTile(),
 
                 _sectionTitle("Facilities", "Select the amenities available at this hostel."),
 
@@ -383,6 +381,52 @@ const SizedBox(height: 10),
 
                 SizedBox(
                   width: double.infinity,
+<<<<<<< HEAD
+                  child: ElevatedButton(
+                    onPressed: _isSaving
+                        ? null
+                        : () async {
+                            if (!_formKey.currentState!.validate()) return;
+                            setState(() => _isSaving = true);
+                            try {
+                              // 1. Create the hostel document first to get its ID
+                              final docRef =
+                                  await _firestore.collection('hostels').add({
+                                'hostelName': _nameController.text.trim(),
+                                'location': _selectedLocation,
+                                'description':
+                                    _descriptionController.text.trim(),
+                                'type': _selectedType,
+                                'distance': _distanceController.text.trim(),
+                                'walkingTime':
+                                    _walkingTimeController.text.trim(),
+                                'mapsLink': _mapsLinkController.text.trim(),
+                                'singleRoomSize':
+                                    _singleRoomSizeController.text.trim(),
+                                'doubleRoomSize':
+                                    _doubleRoomSizeController.text.trim(),
+                                'singlePrice':
+                                    _singlePriceController.text.trim(),
+                                'doublePrice':
+                                    _doublePriceController.text.trim(),
+                                'facilities': _selectedFacilities.toList(),
+                                'shops': _shopsController.text.trim(),
+                                'hospital': _hospitalController.text.trim(),
+                                'atm': _atmController.text.trim(),
+                                'createdBy': _auth.currentUser!.uid,
+                                'createdAt': FieldValue.serverTimestamp(),
+                                'photos': <String>[],
+                              });
+
+                              // 2. Upload picked photos under hostels/{id}/...
+                              List<String> photoUrls = const [];
+                              if (hasPickedMedia) {
+                                photoUrls = await uploadNewMedia(docRef.id);
+                                await docRef.update({
+                                  'photos': photoUrls,
+                                });
+                              }
+=======
 child: ElevatedButton(
   onPressed: () async {
     if (_formKey.currentState!.validate()) {
@@ -461,6 +505,7 @@ child: ElevatedButton(
   ),
 ),
 
+>>>>>>> d06751c9c5ce7be79582978ec0583449ca768518
 
                 ),
                 const SizedBox(height: 20),
