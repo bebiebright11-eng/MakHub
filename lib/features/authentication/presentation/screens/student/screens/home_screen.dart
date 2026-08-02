@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '/algorithms/search_algorithm.dart';
 import '/algorithms/recommendation_algorithm.dart';
+import '/models/search_criteria.dart';
 import 'guided_search_screen.dart';
 import '../widgets/hostel_card.dart';
 import 'describe_search_screen.dart';
@@ -116,7 +117,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => HostelResultsScreen(preferences: preferences),
+                    builder: (_) => const HostelResultsScreen(
+                      criteria: SearchCriteria(),
+                    ),
                   ),
                 );
               })),
@@ -129,10 +132,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => HostelResultsScreen(preferences: {
-                          ...preferences,
-                          'preferredLocation': location,
-                        }),
+                        builder: (_) => HostelResultsScreen(
+                          criteria: SearchCriteria(location: location),
+                        ),
                       ),
                     );
                   })),
@@ -613,6 +615,9 @@ Widget _buildHostelList(List<QueryDocumentSnapshot> hostelDocs) {
                 doublePrice: data['doublePrice'] ?? '0',
                 rating: ((data['averageRating'] ?? 0.0) as num).toStringAsFixed(1),
                 distanceFromCampus: data['distance']?.toString(),
+                photoUrl: (data['photos'] as List?)?.isNotEmpty == true
+                    ? data['photos'].first.toString()
+                    : null,
               ),
             );
         },

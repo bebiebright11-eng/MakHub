@@ -23,6 +23,9 @@ class HostelCard extends StatefulWidget {
   /// Pass null (default) to hide the indicator entirely.
   final int? availableRooms;
 
+  /// First hostel photo download URL. An empty value shows the placeholder.
+  final String? photoUrl;
+
   const HostelCard({
     super.key,
     required this.hostelId,
@@ -34,6 +37,7 @@ class HostelCard extends StatefulWidget {
     this.reviewCount = 0,
     this.distanceFromCampus,
     this.availableRooms,
+    this.photoUrl,
   });
 
   // ── Public static helpers so other widgets (e.g. WishlistScreen) can
@@ -189,9 +193,17 @@ class _HostelCardState extends State<HostelCard> {
                     height: 170,
                     width: 170,
                     color: Colors.grey.shade200,
-                    child: const Center(
-                      child: Icon(Icons.image, size: 32, color: Colors.grey),
-                    ),
+                    child: widget.photoUrl != null && widget.photoUrl!.isNotEmpty
+                        ? Image.network(
+                            widget.photoUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const Center(
+                              child: Icon(Icons.broken_image, size: 32, color: Colors.grey),
+                            ),
+                          )
+                        : const Center(
+                            child: Icon(Icons.image, size: 32, color: Colors.grey),
+                          ),
                   ),
                 ),
                 // Rating badge — top-left

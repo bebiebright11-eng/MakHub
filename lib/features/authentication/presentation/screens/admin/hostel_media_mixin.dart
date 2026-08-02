@@ -64,14 +64,23 @@ mixin HostelMediaMixin<T extends StatefulWidget> on State<T> {
     final List<String> photoUrls = [];
 
     for (int i = 0; i < _pickedPhotos.length; i++) {
-      final ext = p.extension(_pickedPhotos[i].path);
+      final photo = _pickedPhotos[i];
+      // On web, XFile.path is commonly a blob URL without an extension.
+      // Supply both a stable filename extension and image content type so the
+      // upload satisfies Firebase Storage's image-only security rule.
+      final ext = p.extension(photo.name).isNotEmpty
+          ? p.extension(photo.name)
+          : '.jpg';
+      final metadata = SettableMetadata(
+        contentType: photo.mimeType ?? 'image/jpeg',
+      );
       final ref = storage.ref(
         'hostels/$hostelId/photos/${DateTime.now().microsecondsSinceEpoch}_$i$ext',
       );
       if (kIsWeb) {
-        await ref.putData(await _pickedPhotos[i].readAsBytes());
+        await ref.putData(await photo.readAsBytes(), metadata);
       } else {
-        await ref.putFile(File(_pickedPhotos[i].path));
+        await ref.putFile(File(photo.path), metadata);
       }
       photoUrls.add(await ref.getDownloadURL());
     }

@@ -106,6 +106,9 @@ class HostelResultsScreen extends StatelessWidget {
                             reviewCount:
                                 (data['reviewCount'] as num?)?.toInt() ?? 0,
                             distanceFromCampus: data['distance']?.toString(),
+                            photoUrl: (data['photos'] as List?)?.isNotEmpty == true
+                                ? data['photos'].first.toString()
+                                : null,
                           ),
                         );
                       },
