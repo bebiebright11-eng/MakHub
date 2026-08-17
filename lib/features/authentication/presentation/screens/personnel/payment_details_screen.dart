@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '/algorithms/payment_verification_algorithm.dart';
 
 class PaymentDetailsScreen extends StatelessWidget {
   final String bookingId;
@@ -39,42 +40,78 @@ class PaymentDetailsScreen extends StatelessWidget {
     return null;
   }
 
-  Future<void> _updatePaymentStatus(
+  /// Confirms a payment via [PaymentVerificationAlgorithm.verify], which:
+  ///   1. Updates payment status → 'confirmed'
+  ///   2. Updates booking status → 'confirmed'
+  ///   3. Updates room occupancy
+  ///   4. Sends student notifications
+  ///   5. Generates and persists the human-readable Booking ID
+  Future<void> _confirmPayment(
     BuildContext context,
     String paymentDocId,
-    String? linkedBookingId,
-    String newStatus,
   ) async {
     try {
-      // Update Payment Document
+      final result = await PaymentVerificationAlgorithm.verify(paymentDocId);
+
+      if (!context.mounted) return;
+
+      if (!result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.errorMessage ?? 'Verification failed.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Payment Received. Receipt generated!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error confirming payment: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Rejects a payment — straightforward status update only.
+  Future<void> _rejectPayment(
+    BuildContext context,
+    String paymentDocId,
+    String linkedBookingId,
+  ) async {
+    try {
       await FirebaseFirestore.instance
           .collection('payments')
           .doc(paymentDocId)
-          .update({'paymentStatus': newStatus});
+          .update({'paymentStatus': 'rejected'});
 
-      // Update Booking Document if linked
-      final targetBookingId = (linkedBookingId != null && linkedBookingId.isNotEmpty)
-          ? linkedBookingId
-          : bookingId;
+      final targetBookingId =
+          linkedBookingId.isNotEmpty ? linkedBookingId : bookingId;
 
-      final bookingRef = FirebaseFirestore.instance.collection('bookings').doc(targetBookingId);
+      final bookingRef = FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(targetBookingId);
       final bookingDoc = await bookingRef.get();
 
       if (bookingDoc.exists) {
-        await bookingRef.update({
-          'bookingStatus': newStatus == 'confirmed' ? 'confirmed' : 'rejected',
-        });
+        await bookingRef.update({'bookingStatus': 'rejected'});
       }
 
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            newStatus == 'confirmed'
-                ? 'Payment Received. Receipt generated!'
-                : 'Payment Rejected.',
-          ),
-          backgroundColor: newStatus == 'confirmed' ? Colors.green : Colors.red,
+        const SnackBar(
+          content: Text('Payment Rejected.'),
+          backgroundColor: Colors.red,
         ),
       );
       Navigator.pop(context);
@@ -92,7 +129,8 @@ class PaymentDetailsScreen extends StatelessWidget {
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp is Timestamp) {
       final dt = timestamp.toDate();
-      return '${dt.day}/${dt.month}/${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+      return '${dt.day}/${dt.month}/${dt.year} '
+          '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
     } else if (timestamp is String) {
       return timestamp;
     }
@@ -103,7 +141,10 @@ class PaymentDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Payment Details', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Payment Details',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
@@ -115,7 +156,9 @@ class PaymentDetailsScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (!snapshot.hasData || snapshot.data == null || !snapshot.data!.exists) {
+          if (!snapshot.hasData ||
+              snapshot.data == null ||
+              !snapshot.data!.exists) {
             return const Center(child: Text('Payment record not found.'));
           }
 
@@ -123,38 +166,61 @@ class PaymentDetailsScreen extends StatelessWidget {
           final data = paymentDoc.data() as Map<String, dynamic>;
 
           final paymentDocId = paymentDoc.id;
-          final realBookingId = (data['bookingId'] ?? data['paymentId'] ?? bookingId).toString();
-          final studentName = (data['studentName'] ?? data['userName'] ?? 'Student').toString();
+          final realBookingId =
+              (data['bookingId'] ?? data['paymentId'] ?? bookingId).toString();
+          final studentName =
+              (data['studentName'] ?? data['userName'] ?? 'Student').toString();
           final hostelName = (data['hostelName'] ?? 'Hostel').toString();
-          final roomNumber = (data['roomNumber'] ?? data['roomId'] ?? 'N/A').toString();
-          final amount = data['amount'] != null ? 'UGX ${data['amount']}' : 'N/A';
-          
-          final transferTime = _formatTimestamp(data['paymentTime'] ?? data['paymentDate'] ?? data['createdAt']);
-          final transactionRef = (data['transactionReference'] ?? data['transactionID'] ?? data['ref'] ?? 'N/A').toString();
-          final mobileNum = (data['mobileMoneyNumber'] ?? data['mobileNumber'] ?? data['phone'] ?? 'N/A').toString();
-          
-          final receiptUrl = (data['receiptImage'] ?? data['receiptUrl']) as String?;
+          final roomNumber =
+              (data['roomNumber'] ?? data['roomId'] ?? 'N/A').toString();
+          final amount =
+              data['amount'] != null ? 'UGX ${data['amount']}' : 'N/A';
+
+          final transferTime = _formatTimestamp(
+              data['paymentTime'] ?? data['paymentDate'] ?? data['createdAt']);
+          final transactionRef = (data['transactionReference'] ??
+                  data['transactionID'] ??
+                  data['ref'] ??
+                  'N/A')
+              .toString();
+          final mobileNum = (data['mobileMoneyNumber'] ??
+                  data['mobileNumber'] ??
+                  data['phone'] ??
+                  'N/A')
+              .toString();
+
+          final receiptUrl =
+              (data['receiptImage'] ?? data['receiptUrl']) as String?;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Booking Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Booking Information',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 12),
                 _infoRow('Booking ID', realBookingId),
                 _infoRow('Student Name', studentName),
                 _infoRow('Hostel', hostelName),
                 _infoRow('Room', roomNumber),
                 const Divider(height: 32),
-                const Text('Payment Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Payment Information',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 12),
                 _infoRow('Amount Paid', amount),
                 _infoRow('Mobile Number', mobileNum),
                 _infoRow('Transfer Time', transferTime),
                 _infoRow('Transaction Ref', transactionRef),
                 const SizedBox(height: 24),
-                const Text('Transfer Receipt', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Transfer Receipt',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 12),
                 Container(
                   height: 300,
@@ -174,7 +240,8 @@ class PaymentDetailsScreen extends StatelessWidget {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                                  Icon(Icons.broken_image,
+                                      size: 50, color: Colors.grey),
                                   SizedBox(height: 8),
                                   Text('Failed to load receipt image'),
                                 ],
@@ -187,7 +254,10 @@ class PaymentDetailsScreen extends StatelessWidget {
                           children: [
                             Icon(Icons.receipt, size: 80, color: Colors.grey),
                             SizedBox(height: 8),
-                            Text('No receipt uploaded', style: TextStyle(color: Colors.grey)),
+                            Text(
+                              'No receipt uploaded',
+                              style: TextStyle(color: Colors.grey),
+                            ),
                           ],
                         ),
                 ),
@@ -196,11 +266,10 @@ class PaymentDetailsScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => _updatePaymentStatus(
+                        onPressed: () => _rejectPayment(
                           context,
                           paymentDocId,
                           realBookingId,
-                          'rejected',
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -213,11 +282,9 @@ class PaymentDetailsScreen extends StatelessWidget {
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => _updatePaymentStatus(
+                        onPressed: () => _confirmPayment(
                           context,
                           paymentDocId,
-                          realBookingId,
-                          'confirmed',
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
@@ -228,7 +295,7 @@ class PaymentDetailsScreen extends StatelessWidget {
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           );

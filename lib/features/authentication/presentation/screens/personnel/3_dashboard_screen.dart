@@ -2,11 +2,11 @@
 import 'package:flutter/material.dart';
 import '../../state/app_state.dart';
 import '5_floors_screen.dart';
-import '9_payments_screen.dart';
-import '11_reporting_screen.dart';
-import '14_profile_screen.dart';
-import '4_hostel_details_screen.dart';
-import '13_notifications_screen.dart';
+import 'payments_screen.dart';
+import 'reporting_screen.dart';
+import 'profile_screen.dart';
+import 'hostel_details_screen.dart';
+import 'notifications_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});

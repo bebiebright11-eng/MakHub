@@ -114,6 +114,17 @@ class PaymentVerificationAlgorithm {
         studentId: studentId,
         bookingId: bookingId,
       );
+      // Send the reporting-date reminder as a second notification.
+      // Non-fatal: a failure here must never roll back the confirmed booking.
+      try {
+        await NotificationAlgorithm.reportingDateReminder(
+          studentId: studentId,
+          bookingId: bookingId,
+          hostelId: hostelId,
+        );
+      } catch (_) {
+        // Swallow — the booking is already confirmed.
+      }
     }
     if (bookingId.isNotEmpty && hostelId.isNotEmpty) {
       try {

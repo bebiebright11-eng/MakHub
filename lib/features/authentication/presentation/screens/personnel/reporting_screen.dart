@@ -57,7 +57,8 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
   }
 
   /// Resolves a confirmed booking document into display-ready data by
-  /// fetching the student name, room number and reporting date.
+  /// fetching the student name, room number, reporting date, and the
+  /// human-readable Booking ID.
   Future<Map<String, String>> _resolveBooking(
     String bookingId,
     Map<String, dynamic> booking,
@@ -67,9 +68,16 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
     final floorId   = booking['floorId']   as String?;
     final roomId    = booking['roomId']    as String?;
 
-    String name         = 'Unknown Student';
-    String roomNumber   = 'N/A';
+    String name          = 'Unknown Student';
+    String roomNumber    = 'N/A';
     String reportingDate = 'Not set';
+    // Human-readable Booking ID stored by BookingIdService after payment.
+    // Falls back to the Firestore document ID for bookings that predate the
+    // feature or where ID generation failed.
+    final String humanBookingId =
+        (booking['bookingId'] ?? '').toString().isNotEmpty
+            ? booking['bookingId'].toString()
+            : bookingId;
 
     // Student name
     if (studentId != null && studentId.isNotEmpty) {
@@ -114,12 +122,13 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
     }
 
     return {
-      'docId':         bookingId,
-      'name':          name,
-      'room':          roomNumber.startsWith('Room')
-                           ? roomNumber
-                           : 'Room $roomNumber',
-      'reportingDate': reportingDate,
+      'docId':          bookingId,
+      'humanBookingId': humanBookingId,
+      'name':           name,
+      'room':           roomNumber.startsWith('Room')
+                            ? roomNumber
+                            : 'Room $roomNumber',
+      'reportingDate':  reportingDate,
     };
   }
 
@@ -139,7 +148,7 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
       ),
       body: Column(
         children: [
-          // ── Search bar (kept; not yet functional per spec) ───────────
+          // ── Search bar ───────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.all(20.0),
             child: TextField(
@@ -218,13 +227,17 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
 
                     var resolved = resolvedSnapshot.data!;
 
-                    // Client-side search filter (future-ready)
+                    // Client-side search across student name, room number,
+                    // and the human-readable Booking ID (e.g. BR-20260803-001).
                     if (_searchQuery.isNotEmpty) {
                       resolved = resolved.where((r) {
                         return r['name']!
                                 .toLowerCase()
                                 .contains(_searchQuery) ||
                             r['room']!
+                                .toLowerCase()
+                                .contains(_searchQuery) ||
+                            r['humanBookingId']!
                                 .toLowerCase()
                                 .contains(_searchQuery) ||
                             r['docId']!
@@ -250,10 +263,11 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
                         final r = resolved[index];
                         return _reservationCard(
                           context,
-                          docId:         r['docId']!,
-                          name:          r['name']!,
-                          room:          r['room']!,
-                          reportingDate: r['reportingDate']!,
+                          docId:          r['docId']!,
+                          humanBookingId: r['humanBookingId']!,
+                          name:           r['name']!,
+                          room:           r['room']!,
+                          reportingDate:  r['reportingDate']!,
                         );
                       },
                     );
@@ -272,6 +286,7 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
   Widget _reservationCard(
     BuildContext context, {
     required String docId,
+    required String humanBookingId,
     required String name,
     required String room,
     required String reportingDate,
@@ -329,6 +344,15 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
+                    'ID: $humanBookingId',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
                     'Reporting: $reportingDate',
                     style: TextStyle(
                       color: Colors.grey.shade500,
@@ -338,7 +362,6 @@ class _ReportingStudentsScreenState extends State<ReportingStudentsScreen> {
                 ],
               ),
             ),
-            // Chevron signals tappability (no Verify button)
             Icon(
               Icons.chevron_right,
               color: Colors.grey.shade400,

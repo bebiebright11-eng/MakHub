@@ -158,6 +158,78 @@ class NotificationAlgorithm {
         type: 'payment',
       );
 
+  /// Notify student to report before the reporting date.
+  /// Sent automatically right after [roomReserved] when a payment is confirmed.
+  ///
+  /// Fetches:
+  ///   - Student display name  from users/{studentId}
+  ///   - Reporting date        from hostels/{hostelId}  (reportingDate field)
+  ///
+  /// Falls back gracefully when either value is unavailable.
+  static Future<void> reportingDateReminder({
+    required String studentId,
+    required String bookingId,
+    required String hostelId,
+  }) async {
+    assert(studentId.isNotEmpty, 'studentId must not be empty');
+
+    // ── Fetch student name ────────────────────────────────────────────────
+    String studentName = 'Student';
+    try {
+      final userSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(studentId)
+          .get();
+      if (userSnap.exists) {
+        studentName =
+            (userSnap.data()?['fullName'] ?? '').toString().trim();
+        if (studentName.isEmpty) studentName = 'Student';
+      }
+    } catch (_) {
+      // Non-fatal — fall back to generic salutation.
+    }
+
+    // ── Fetch reporting date ──────────────────────────────────────────────
+    String reportingDateStr =
+        'Reporting date will be communicated by the hostel.';
+    try {
+      if (hostelId.isNotEmpty) {
+        final hostelSnap = await FirebaseFirestore.instance
+            .collection('hostels')
+            .doc(hostelId)
+            .get();
+        if (hostelSnap.exists) {
+          final ts =
+              hostelSnap.data()?['reportingDate'] as Timestamp?;
+          if (ts != null) {
+            final d = ts.toDate();
+            reportingDateStr =
+                '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+          }
+        }
+      }
+    } catch (_) {
+      // Non-fatal — fall back to generic message.
+    }
+
+    final bool hasDate =
+        reportingDateStr != 'Reporting date will be communicated by the hostel.';
+
+    final String subtitle = hasDate
+        ? 'Dear $studentName, remember to report not later than '
+            '$reportingDateStr. Otherwise your room may be allocated to '
+            'another student.\n\nNote: Booking fee is non-refundable.'
+        : 'Dear $studentName, $reportingDateStr\n\n'
+            'Note: Booking fee is non-refundable.';
+
+    await send(
+      userId: studentId,
+      title: 'Reporting Reminder',
+      subtitle: subtitle,
+      type: 'general',
+    );
+  }
+
   /// Notify hostel personnel that a room has been reserved by a student.
   /// Triggered automatically when a student successfully pays.
   ///

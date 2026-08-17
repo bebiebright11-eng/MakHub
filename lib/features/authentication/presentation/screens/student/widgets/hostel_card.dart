@@ -18,6 +18,10 @@ class HostelCard extends StatefulWidget {
   /// Optional — if absent the distance badge is omitted.
   final String? distanceFromCampus;
 
+  /// Optional URL of the first hostel photo.
+  /// When provided, displays the image instead of the placeholder icon.
+  final String? imageUrl;
+
   /// Number of available rooms remaining on this hostel.
   /// When non-null and below 15, a small availability indicator is shown.
   /// Pass null (default) to hide the indicator entirely.
@@ -33,6 +37,7 @@ class HostelCard extends StatefulWidget {
     required this.rating,
     this.reviewCount = 0,
     this.distanceFromCampus,
+    this.imageUrl,
     this.availableRooms,
   });
 
@@ -185,13 +190,32 @@ class _HostelCardState extends State<HostelCard> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: Container(
+                  child: SizedBox(
                     height: 170,
                     width: 170,
-                    color: Colors.grey.shade200,
-                    child: const Center(
-                      child: Icon(Icons.image, size: 32, color: Colors.grey),
-                    ),
+                    child: widget.imageUrl != null &&
+                            widget.imageUrl!.isNotEmpty
+                        ? Image.network(
+                            widget.imageUrl!,
+                            fit: BoxFit.cover,
+                            width: 170,
+                            height: 170,
+                            errorBuilder: (context, error, stack) =>
+                                Container(
+                              color: Colors.grey.shade200,
+                              child: const Center(
+                                child: Icon(Icons.image,
+                                    size: 32, color: Colors.grey),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: Colors.grey.shade200,
+                            child: const Center(
+                              child: Icon(Icons.image,
+                                  size: 32, color: Colors.grey),
+                            ),
+                          ),
                   ),
                 ),
                 // Rating badge — top-left
