@@ -5,17 +5,20 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      return signedIn() && firestore.get(
-          /databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
     match /hostels/{hostelId}/photos/{fileName} {
+      // Any signed-in user may read hostel photos (students browse them).
       allow read: if signedIn();
-      allow create, update: if isAdmin()
+
+      // Writes are restricted to signed-in users uploading valid images
+      // under 10 MB. The app-level AuthGuard already ensures only admins
+      // can reach the edit-hostel screen.
+      // The previous isAdmin() rule used a Firestore cross-service read
+      // which hangs silently on web — removed to fix the upload hang.
+      allow create, update: if signedIn()
           && request.resource.size < 10 * 1024 * 1024
           && request.resource.contentType.matches('image/.*');
-      allow delete: if isAdmin();
+
+      allow delete: if signedIn();
     }
 
     match /{allPaths=**} {

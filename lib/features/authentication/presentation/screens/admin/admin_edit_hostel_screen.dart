@@ -45,6 +45,7 @@ class _AdminEditHostelScreenState extends State<AdminEditHostelScreen>
   final Set<String> _selectedFacilities = {};
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isSaving = false;
+  bool _isUploadingPhotos = false;
 
   // URLs of photos already stored in Firestore for this hostel
   List<String> _existingPhotos = [];
@@ -61,8 +62,12 @@ class _AdminEditHostelScreenState extends State<AdminEditHostelScreen>
     "Security",
   ];
 
-@override
-void initState() {
+  // Tell the mixin how many photos already exist so combined limit is respected.
+  @override
+  int get existingPhotosCount => _existingPhotos.length;
+
+  @override
+  void initState() {
   super.initState();
 
   _nameController.text =
@@ -300,9 +305,9 @@ void initState() {
                     }
                   },
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return 'Hostel Code is required';
-                    }
+                    // Existing listings created before hostel codes were
+                    // introduced may not have one. Keep those editable.
+                    if (v == null || v.trim().isEmpty) return null;
                     final code = v.trim().toUpperCase();
                     if (code.length < 2 || code.length > 3) {
                       return 'Code must be 2 or 3 letters';
@@ -453,8 +458,8 @@ const SizedBox(height: 10),
 
                 _sectionTitle("Media Uploads", "Add up to 30 photos for better visibility."),
 
-                // ── Existing photos (from Firestore) ──
-                if (_existingPhotos.isNotEmpty) ...[                   
+                // ── Existing photos (already uploaded to Firebase Storage) ──
+                if (_existingPhotos.isNotEmpty) ...[
                   const Text(
                     "Current Photos",
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
@@ -511,7 +516,36 @@ const SizedBox(height: 10),
                   const SizedBox(height: 12),
                 ],
 
-                buildPhotosTile(),
+                // ── Pick new photos ──────────────────────────────────────────
+                buildPhotosTile(
+                  isSaving: _isUploadingPhotos,
+                  onSave: () async {
+                    setState(() => _isUploadingPhotos = true);
+                    try {
+                      final uploaded = await uploadNewMedia(widget.hostelId);
+                      clearPickedPhotos();
+                      setState(() {
+                        _existingPhotos.addAll(uploaded);
+                      });
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                '${uploaded.length} photo(s) saved. Press "Update Hostel" to apply all changes.'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Photo upload failed: $e')),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _isUploadingPhotos = false);
+                    }
+                  },
+                ),
 
                 _sectionTitle("Facilities", "Select the amenities available at this hostel."),
 
@@ -563,10 +597,30 @@ const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _isSaving
+                    onPressed: (_isSaving || _isUploadingPhotos)
                         ? null
                         : () async {
-                            if (!_formKey.currentState!.validate()) return;
+                            if (!_formKey.currentState!.validate()) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Please correct the highlighted fields before updating.'),
+                                ),
+                              );
+                              return;
+                            }
+
+                            // Warn if there are unsaved picked photos
+                            if (hasPickedMedia) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'You have unsaved photos. Press "Save Photos" first, then update.'),
+                                ),
+                              );
+                              return;
+                            }
+
                             setState(() => _isSaving = true);
                             try {
                               final code =

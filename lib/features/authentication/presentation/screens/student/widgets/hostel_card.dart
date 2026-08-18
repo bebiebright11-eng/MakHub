@@ -27,6 +27,9 @@ class HostelCard extends StatefulWidget {
   /// Pass null (default) to hide the indicator entirely.
   final int? availableRooms;
 
+  /// First hostel photo download URL. An empty value shows the placeholder.
+  final String? photoUrl;
+
   const HostelCard({
     super.key,
     required this.hostelId,
@@ -39,6 +42,7 @@ class HostelCard extends StatefulWidget {
     this.distanceFromCampus,
     this.imageUrl,
     this.availableRooms,
+    this.photoUrl,
   });
 
   // ── Public static helpers so other widgets (e.g. WishlistScreen) can

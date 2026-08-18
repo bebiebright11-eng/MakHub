@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -21,6 +21,8 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen>
   final _distanceController = TextEditingController();
   final _walkingTimeController = TextEditingController();
   final _mapsLinkController = TextEditingController();
+  final _latitudeController = TextEditingController();
+  final _longitudeController = TextEditingController();
   final _singlePriceController = TextEditingController();
   final _doublePriceController = TextEditingController();
   final _shopsController = TextEditingController();
@@ -37,7 +39,6 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen>
   final Set<String> _selectedFacilities = {};
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  bool _isSaving = false;
 
   final List<String> _facilities = [
     "WiFi",
@@ -59,6 +60,8 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen>
     _distanceController.dispose();
     _walkingTimeController.dispose();
     _mapsLinkController.dispose();
+    _latitudeController.dispose();
+    _longitudeController.dispose();
     _singlePriceController.dispose();
     _doublePriceController.dispose();
     _singleRoomSizeController.dispose();
@@ -254,10 +257,52 @@ class _AdminAddHostelScreenState extends State<AdminAddHostelScreen>
                   ],
                 ),
 
-                _fieldLabel("Google Maps Location"),
-                TextFormField(
-                  controller: _mapsLinkController,
-                  decoration: _decoration("Paste Google Maps link"),
+                _fieldLabel("GPS Coordinates (for map)"),
+                const Text(
+                  "Open Google Maps, find the hostel, long-press the location, copy the coordinates shown.",
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _fieldLabel("Latitude"),
+                          TextFormField(
+                            controller: _latitudeController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                            decoration: _decoration("e.g. 0.3341"),
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) return null;
+                              if (double.tryParse(v.trim()) == null) return 'Enter a valid number';
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _fieldLabel("Longitude"),
+                          TextFormField(
+                            controller: _longitudeController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                            decoration: _decoration("e.g. 32.5685"),
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) return null;
+                              if (double.tryParse(v.trim()) == null) return 'Enter a valid number';
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
 
 const SizedBox(height: 10),

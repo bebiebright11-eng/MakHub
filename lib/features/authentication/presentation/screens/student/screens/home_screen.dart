@@ -7,11 +7,6 @@ import '/algorithms/recommendation_algorithm.dart';
 import '/algorithms/popularity_service.dart';
 import '/algorithms/popularity_recommendation_algorithm.dart';
 import '/algorithms/trending_service.dart';
-import '/algorithms/trending_recommendation_algorithm.dart';
-import '/algorithms/budget_service.dart';
-import '/algorithms/budget_recommendation_algorithm.dart';
-import '/algorithms/location_service.dart';
-import '/algorithms/location_recommendation_algorithm.dart';
 import '/algorithms/recent_search_service.dart';
 import '/algorithms/search_match_algorithm.dart';
 import '/algorithms/discovery_service.dart';
@@ -57,6 +52,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   // ── Discovery section scroll controllers ─────────────────────────────────
   final ScrollController _moreWaitingScrollController = ScrollController();
   final ScrollController _newHostelsScrollController = ScrollController();
+  final ScrollController _hostelsScrollController = ScrollController();
 
   final GlobalKey _searchBarKey = GlobalKey();
   OverlayEntry? _searchOverlay;
@@ -114,6 +110,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     _kikoniScrollController.dispose();
     _moreWaitingScrollController.dispose();
     _newHostelsScrollController.dispose();
+    _hostelsScrollController.dispose();
     _removeSearchOverlay();
     super.dispose();
   }
