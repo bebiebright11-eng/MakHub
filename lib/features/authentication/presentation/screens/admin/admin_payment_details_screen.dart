@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import '/core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '/algorithms/booking_id_service.dart';
 
 class AdminPaymentDetailsScreen extends StatelessWidget {
   final String studentName;
@@ -26,7 +27,8 @@ class AdminPaymentDetailsScreen extends StatelessWidget {
     required this.bookingId,
   });
 
-  // Confirm the payment in Firestore and update the linked booking
+  // Confirm the payment in Firestore, update the linked booking,
+  // and assign the human-readable Booking ID via BookingIdService.
   Future<void> _markAsPaid(BuildContext context) async {
     try {
       await FirebaseFirestore.instance
@@ -34,12 +36,29 @@ class AdminPaymentDetailsScreen extends StatelessWidget {
           .doc(paymentDocId)
           .update({'paymentStatus': 'confirmed'});
 
+      String hostelId = '';
+
       if (bookingId.isNotEmpty) {
         final bookingRef =
             FirebaseFirestore.instance.collection('bookings').doc(bookingId);
         final bookingDoc = await bookingRef.get();
         if (bookingDoc.exists) {
           await bookingRef.update({'bookingStatus': 'confirmed'});
+          hostelId =
+              (bookingDoc.data()?['hostelId'] ?? '').toString();
+        }
+      }
+
+      // Generate and persist the human-readable Booking ID.
+      // Non-fatal: a failure here must not undo the confirmed payment.
+      if (bookingId.isNotEmpty && hostelId.isNotEmpty) {
+        try {
+          await BookingIdService.assignBookingId(
+            bookingDocId: bookingId,
+            hostelId: hostelId,
+          );
+        } catch (_) {
+          // Booking ID can be backfilled later without invalidating the booking.
         }
       }
 
