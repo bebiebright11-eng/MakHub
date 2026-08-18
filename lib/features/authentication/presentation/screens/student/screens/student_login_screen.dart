@@ -135,9 +135,9 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                 height: 56,
                 child: ElevatedButton(
 
-                  onPressed: () async {
+                  onPressed: _isLoading ? null : () async {
   if (_emailController.text.trim().isEmpty ||
-      _passwordController.text.trim().isEmpty) {
+      _passwordController.text.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text("Please enter both email and password"),
@@ -153,7 +153,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     UserCredential userCredential =
         await FirebaseAuth.instance.signInWithEmailAndPassword(
       email: _emailController.text.trim(),
-      password: _passwordController.text.trim(),
+      password: _passwordController.text, // no trim — passwords are case/space sensitive
     );
 
     // Read the user's Firestore document
@@ -208,6 +208,17 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(e.message ?? "Login failed"),
+      ),
+    );
+  } catch (e) {
+    // Catch any non-Firebase error (e.g. Firestore network timeout,
+    // permission denied) so _isLoading is always reset and the user
+    // sees a message instead of a permanently spinning button.
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("An unexpected error occurred. Please try again."),
       ),
     );
   } finally {
